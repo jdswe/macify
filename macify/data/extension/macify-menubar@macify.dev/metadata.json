@@ -3,6 +3,6 @@
   "name": "Macify Menubar",
   "description": "Barra superior estilo macOS: logo con menú del sistema y nombre de la app activa.",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "version": 1,
+  "version": 2,
   "url": "https://github.com/jdswe/macify"
 }

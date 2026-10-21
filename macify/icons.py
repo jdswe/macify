@@ -10,6 +10,7 @@
 
 import configparser
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -56,48 +57,102 @@ def ensure_theme(dry_run: bool, log) -> None:
     log(_("Icon theme {theme}: inherits from {parents}").format(theme=THEME_NAME, parents=", ".join(inherits)))
     if dry_run:
         return
-    # Se regenera desde cero: un icono viejo no debe tapar al del tema estilo Mac.
-    shutil.rmtree(THEME_DIR / "apps", ignore_errors=True)
     (THEME_DIR / "apps" / str(ICON_SIZE)).mkdir(parents=True, exist_ok=True)
-    (THEME_DIR / "index.theme").write_text(
+    _write_if_changed(THEME_DIR / "index.theme",
         "[Icon Theme]\n"
         f"Name={THEME_NAME}\n"
         "Comment=macOS-style icons made by Macify\n"
         f"Inherits={','.join(inherits)}\n"
         f"Directories=apps/{ICON_SIZE}\n\n"
         f"[apps/{ICON_SIZE}]\n"
-        f"Size={ICON_SIZE}\nMinSize=16\nMaxSize=1024\nType=Scalable\nContext=Applications\n"
-    )
+        f"Size={ICON_SIZE}\nMinSize=16\nMaxSize=1024\nType=Scalable\nContext=Applications\n")
+
+
+def _write_if_changed(path: Path, text: str) -> bool:
+    """Escribe sólo si el contenido cambia (menos escrituras, menos avisos a GNOME)."""
+    if path.exists() and path.read_text(errors="ignore") == text:
+        return False
+    path.write_text(text)
+    return True
 
 
 # ----- búsqueda de iconos -----
+#
+# El vigilante corre como proceso nuevo cada vez, así que nada puede depender de
+# recorrer todas las carpetas de iconos: los nombres de cada tema se guardan en
+# disco (se releen sólo si el tema cambia) y el icono original de una app se busca
+# primero en las rutas estándar, comprobando archivos concretos.
+
+STEMS_CACHE = HOME / ".cache" / "macify" / "icon-stems.json"
+HICOLOR_SIZES = ["scalable", "512x512", "256x256", "192x192", "128x128", "96x96", "64x64", "48x48"]
+_STEMS: dict[str, set[str]] = {}
+
+
+def _theme_dirs(theme: str) -> list[Path]:
+    return [root / theme for root in ICON_ROOTS if (root / theme).is_dir()]
+
+
+def _theme_key(theme: str) -> list:
+    """Cambia cuando el tema se reinstala o cambian sus carpetas de primer nivel."""
+    key = []
+    for folder in _theme_dirs(theme):
+        key.append([str(folder), folder.stat().st_mtime_ns])
+        key += [[entry.path, entry.stat().st_mtime_ns] for entry in os.scandir(folder) if entry.is_dir()]
+    return key
+
 
 def _theme_stems(theme: str) -> set[str]:
     """Nombres de icono de un tema. Sigue enlaces: WhiteSur-dark enlaza sus carpetas a WhiteSur."""
-    stems: set[str] = set()
-    for root in ICON_ROOTS:
-        folder = root / theme
-        if folder.is_dir():
+    if theme in _STEMS:
+        return _STEMS[theme]
+    key = _theme_key(theme)
+    try:
+        cache = json.loads(STEMS_CACHE.read_text())
+    except (OSError, ValueError):
+        cache = {}
+    if cache.get(theme, {}).get("key") == key:
+        stems = set(cache[theme]["stems"])
+    else:
+        stems = set()
+        for folder in _theme_dirs(theme):
             for _dirpath, _dirs, files in os.walk(folder, followlinks=True):
                 stems.update(name.rsplit(".", 1)[0] for name in files if name.endswith((".svg", ".png")))
+        cache[theme] = {"key": key, "stems": sorted(stems)}
+        try:
+            STEMS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            STEMS_CACHE.write_text(json.dumps(cache))
+        except OSError:
+            pass
+    _STEMS[theme] = stems
     return stems
 
 
+def _score(path: Path) -> int:
+    if "symbolic" in path.name:
+        return -1
+    if path.suffix == ".svg":
+        return 10_000
+    return max((int(part.split("x")[0]) for part in path.parts if part.split("x")[0].isdigit()), default=0)
+
+
 def _find_source(icon: str) -> Path | None:
-    """Archivo más grande disponible para un nombre de icono, en cualquier tema."""
+    """Mejor archivo original para un icono: rutas estándar primero, búsqueda completa al final."""
+    for root in ICON_ROOTS:
+        for size in HICOLOR_SIZES:
+            for suffix in (".svg", ".png"):
+                candidate = root / "hicolor" / size / "apps" / f"{icon}{suffix}"
+                if candidate.is_file():
+                    return candidate
+    for suffix in (".svg", ".png"):
+        candidate = Path("/usr/share/pixmaps") / f"{icon}{suffix}"
+        if candidate.is_file():
+            return candidate
     best, best_score = None, -1
     for root in ICON_ROOTS:
-        if not root.is_dir():
-            continue
-        for path in root.rglob(f"{icon}.*"):
-            if path.suffix not in (".svg", ".png") or THEME_NAME in path.parts:
-                continue
-            score = 10_000 if path.suffix == ".svg" else max(
-                (int(part.split("x")[0]) for part in path.parts if part.split("x")[0].isdigit()), default=0)
-            if "symbolic" in path.name:
-                score = -1
-            if score > best_score:
-                best, best_score = path, score
+        if root.is_dir():
+            for path in root.rglob(f"{icon}.*"):
+                if path.suffix in (".svg", ".png") and THEME_NAME not in path.parts and _score(path) > best_score:
+                    best, best_score = path, _score(path)
     return best
 
 
@@ -222,7 +277,7 @@ def app_entries() -> dict[str, Path]:
     return found
 
 
-def _write_override(source: Path, icon_name: str) -> None:
+def _override_text(source: Path, icon_name: str) -> str:
     lines = source.read_text(errors="ignore").splitlines()
     out, in_entry, replaced = [], False, False
     for line in lines:
@@ -237,46 +292,82 @@ def _write_override(source: Path, icon_name: str) -> None:
             replaced = True
             continue
         out.append(line)
-    OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
-    (OVERRIDES_DIR / source.name).write_text("\n".join(out) + "\n")
+    return "\n".join(out) + "\n"
+
+
+def _draw(source: Path, target: Path) -> bool:
+    """Dibuja el icono sólo si falta o si el original cambió después."""
+    if target.exists() and target.stat().st_mtime >= source.stat().st_mtime:
+        return False
+    mac_icon(source).save(target)
+    return True
 
 
 def generate(dry_run: bool, log) -> int:
-    """Crea iconos estilo Mac para las apps que no tienen uno. Devuelve cuántos."""
+    """Crea iconos estilo Mac para las apps que no tienen uno. Devuelve cuántas apps lo usan.
+
+    Es incremental: no rehace lo que ya está al día y borra sólo lo que sobra.
+    """
     mac = _theme_stems(base_theme()) if base_theme() != "Adwaita" else set()
-    created = 0
+    folder = THEME_DIR / "apps" / str(ICON_SIZE)
+    icons_wanted: set[str] = set()
+    overrides_wanted: set[str] = set()
+    handled = 0
+    changed = False
     for desktop_id, path in app_entries().items():
         entry = _read_entry(path)
-        if entry is None or not entry.get("Icon"):
+        if entry is None or not entry.get("Icon") or entry["Icon"] in OWN_ICONS:
             continue
         icon = entry["Icon"]
         stem = desktop_id.removesuffix(".desktop")
-        if icon in OWN_ICONS:
-            continue
+        app = entry.get("Name", stem)
         if icon.startswith("/"):
             # Snap y similares: imagen fija. Se usa un nombre del tema si existe.
-            alias = next((n for n in (stem.split("_")[0], stem, entry.get("Name", "").lower()) if n in mac), None)
-            name = alias or f"macify-{stem}"
-            source = Path(icon)
             if path.parent == OVERRIDES_DIR:
                 continue  # lanzador propio del usuario: no se toca
-            log(_("{app}: fixed image icon → {name}").format(app=entry.get("Name", stem), name=name))
+            alias = next((n for n in (stem.split("_")[0], stem, entry.get("Name", "").lower()) if n in mac), None)
+            name = alias or f"macify-{stem}"
+            log(_("{app}: fixed image icon → {name}").format(app=app, name=name))
+            handled += 1
+            overrides_wanted.add(desktop_id)
+            if alias is None and Path(icon).exists():
+                icons_wanted.add(name)
+                if not dry_run:
+                    changed |= _draw(Path(icon), folder / f"{name}.png")
             if not dry_run:
-                if alias is None and source.exists():
-                    mac_icon(source).save(THEME_DIR / "apps" / str(ICON_SIZE) / f"{name}.png")
-                _write_override(path, name)
-            created += 1
+                OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
+                changed |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name))
         elif icon not in mac:
             source = _find_source(icon)
             if source is None:
                 continue
-            log(_("{app}: no macOS-style icon → created").format(app=entry.get("Name", stem)))
+            log(_("{app}: no macOS-style icon → created").format(app=app))
+            handled += 1
+            icons_wanted.add(icon)
             if not dry_run:
-                mac_icon(source).save(THEME_DIR / "apps" / str(ICON_SIZE) / f"{icon}.png")
-            created += 1
-    if not dry_run and shutil.which("gtk-update-icon-cache"):
-        subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(THEME_DIR)], capture_output=True)
-    return created
+                changed |= _draw(source, folder / f"{icon}.png")
+    if not dry_run:
+        changed |= _prune(folder, icons_wanted, overrides_wanted, log)
+        if changed and shutil.which("gtk-update-icon-cache"):
+            subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(THEME_DIR)], capture_output=True)
+    return handled
+
+
+def _prune(folder: Path, icons_wanted: set[str], overrides_wanted: set[str], log) -> bool:
+    """Borra iconos generados y lanzadores de Macify que ya no hacen falta."""
+    removed = False
+    if folder.is_dir():
+        for png in folder.glob("*.png"):
+            if png.stem not in icons_wanted:
+                png.unlink()
+                removed = True
+    if OVERRIDES_DIR.is_dir():
+        for launcher in OVERRIDES_DIR.glob("*.desktop"):
+            if launcher.name not in overrides_wanted and OVERRIDE_MARK in launcher.read_text(errors="ignore"):
+                log(_("Remove launcher {path}").format(path=launcher))
+                launcher.unlink()
+                removed = True
+    return removed
 
 
 def remove(dry_run: bool, log) -> None:

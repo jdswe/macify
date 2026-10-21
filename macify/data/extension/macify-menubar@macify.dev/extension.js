@@ -25,11 +25,10 @@ const SPANISH = {
     'Shut Down…': 'Apagar…',
     'Lock Screen': 'Bloquear pantalla',
     'Log Out…': 'Cerrar sesión…',
-    'Files': 'Archivos',
 };
 const IS_SPANISH = GLib.get_language_names()[0].startsWith('es');
 const _ = text => (IS_SPANISH && SPANISH[text]) || text;
-const DESKTOP_NAME = _('Files');
+
 
 function launchApp(ids, fallback) {
     const system = Shell.AppSystem.get_default();
@@ -83,7 +82,7 @@ class AppTitle extends PanelMenu.Button {
     _init() {
         super._init(0.0, 'Macify App Title', true);
         this._label = new St.Label({
-            text: DESKTOP_NAME,
+            text: '',
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'macify-app-title',
         });
@@ -94,8 +93,10 @@ class AppTitle extends PanelMenu.Button {
     }
 
     _update() {
+        // Sin app activa no se muestra nada: en Ubuntu, Archivos no está siempre abierto como Finder.
         const app = this._tracker.focus_app;
-        this._label.text = app ? app.get_name() : DESKTOP_NAME;
+        this._label.text = app ? app.get_name() : '';
+        this.visible = Boolean(app);
     }
 
     destroy() {

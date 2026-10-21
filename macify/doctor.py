@@ -46,12 +46,24 @@ def _same(current: str, expected: str) -> bool:
     return close(a.unpack(), b.unpack())
 
 
+# Estados de extensión de GNOME Shell (org.gnome.Shell.Extensions → «state»).
+SHELL_STATES = {1: "ACTIVE", 2: "INACTIVE", 3: "ERROR", 4: "OUT OF DATE", 5: "DOWNLOADING",
+                6: "INITIALIZED", 7: "DEACTIVATING", 8: "ACTIVATING"}
+
+
 def _shell_state(uuid: str) -> str:
-    result = subprocess.run(["gnome-extensions", "info", uuid], capture_output=True, text=True)
-    for line in result.stdout.splitlines():
-        if line.strip().startswith("State:"):
-            return line.split(":", 1)[1].strip()
-    return "NOT LOADED"
+    """Estado de una extensión preguntando al Shell por D-Bus (sin lanzar procesos)."""
+    from gi.repository import Gio
+
+    try:
+        reply = Gio.bus_get_sync(Gio.BusType.SESSION, None).call_sync(
+            "org.gnome.Shell.Extensions", "/org/gnome/Shell/Extensions", "org.gnome.Shell.Extensions",
+            "GetExtensionInfo", GLib.Variant("(s)", (uuid,)), GLib.VariantType("(a{sv})"),
+            Gio.DBusCallFlags.NONE, 5000, None)
+    except GLib.Error:
+        return "NOT LOADED"
+    info = reply.unpack()[0]
+    return SHELL_STATES.get(int(info["state"]), "NOT LOADED") if "state" in info else "NOT LOADED"
 
 
 def _remote_extension_version(uuid: str) -> int | None:
@@ -80,8 +92,24 @@ def check_tools() -> Check:
     return Check(_("System tools"), FAIL, ", ".join(missing), lambda log: deps.install(missing, log))
 
 
+def _parallel(function, items) -> dict:
+    """Consultas de red a la vez: el diagnóstico espera a la más lenta, no a la suma."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def safe(item):
+        try:
+            return function(item)
+        except (OSError, ValueError, KeyError):
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return dict(zip(items, pool.map(safe, items)))
+
+
 def check_themes(online: bool) -> list[Check]:
     choices = profile.load_choices()
+    present = [key for key in themes.REPOS if themes.repo_dir(key).exists()]
+    latest_commits = _parallel(lambda key: themes.latest_commit(key)[1], present) if online else {}
     result = []
     installers = {"gtk": lambda log: themes.install_gtk(choices.appearance, False, log),
                   "icons": lambda log: themes.install_icons(False, log),
@@ -102,9 +130,8 @@ def check_themes(online: bool) -> list[Check]:
         if not online:
             result.append(Check(name, OK, _("Installed (update check skipped).")))
             continue
-        try:
-            _branch, latest = themes.latest_commit(key)
-        except OSError:
+        latest = latest_commits.get(key)
+        if latest is None:
             result.append(Check(name, WARN, _("Could not reach GitHub to check for updates.")))
             continue
         if installed == latest:
@@ -117,6 +144,7 @@ def check_themes(online: bool) -> list[Check]:
 def check_extensions(online: bool) -> list[Check]:
     result = []
     wanted = list(extensions.EXTENSIONS) + [extensions.MENUBAR]
+    remote_versions = _parallel(_remote_extension_version, list(extensions.EXTENSIONS)) if online else {}
     for uuid in wanted:
         name = extensions.EXTENSIONS.get(uuid, "Macify Menubar")
         if not (extensions.INSTALL_DIR / uuid).exists():
@@ -131,7 +159,7 @@ def check_extensions(online: bool) -> list[Check]:
         if state != "ACTIVE":
             result.append(Check(name, WARN, _("Installed; it starts after you log in again.")))
             continue
-        remote = _remote_extension_version(uuid) if online and uuid != extensions.MENUBAR else None
+        remote = remote_versions.get(uuid)
         local = _local_extension_version(uuid)
         if remote and local and remote > local:
             def update(log, uuid=uuid) -> None:

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="0.4.2"
+VERSION="0.5.0"
 PKG="macify_${VERSION}_all"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT

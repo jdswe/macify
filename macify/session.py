@@ -7,16 +7,18 @@
 
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from . import apps, extensions, icons, launcher
-from .assets import HOME, is_busy
+from .assets import HOME, is_busy, load_config, save_config_value
 from .i18n import _
 
 AUTOSTART = HOME / ".config" / "autostart" / "dev.macify.Refresh.desktop"
 UNIT_DIR = HOME / ".config" / "systemd" / "user"
 SERVICE = "macify-icons.service"
 PATH_UNIT = "macify-icons.path"
+UPDATE_CHECK_EVERY = 24 * 60 * 60   # segundos
 
 
 def refresh(log, login: bool = False) -> None:
@@ -34,7 +36,12 @@ def refresh(log, login: bool = False) -> None:
     if login:
         from . import doctor
 
-        doctor.notify_if_needed(doctor.run(online=True))
+        # Buscar actualizaciones en internet sólo una vez al día; el resto, revisión local.
+        last = load_config().get("last_update_check", 0)
+        online = time.time() - last > UPDATE_CHECK_EVERY
+        doctor.notify_if_needed(doctor.run(online=online))
+        if online:
+            save_config_value("last_update_check", int(time.time()))
 
 
 def install(dry_run: bool, log) -> None:

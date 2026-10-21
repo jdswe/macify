@@ -161,6 +161,34 @@ class IconTests(unittest.TestCase):
     def test_own_icon_is_never_regenerated(self):
         self.assertIn("dev.macify.Macify", icons.OWN_ICONS)
 
+    def test_up_to_date_icon_is_not_redrawn(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as folder:
+            source, target = Path(folder, "app.png"), Path(folder, "out.png")
+            source.write_bytes(b"x")
+            target.write_bytes(b"y")       # más nuevo que el original
+            with mock.patch.object(icons, "mac_icon") as draw:
+                self.assertFalse(icons._draw(source, target))
+            draw.assert_not_called()
+
+    def test_online_update_check_once_a_day(self):
+        import time
+        from unittest import mock
+
+        from macify import doctor, session
+
+        calls = []
+        with mock.patch.object(session, "load_config", return_value={"last_update_check": time.time()}), \
+             mock.patch.object(session, "is_busy", return_value=False), \
+             mock.patch.object(session.apps, "apply"), mock.patch.object(session.extensions, "disable_other_docks"), \
+             mock.patch.object(icons, "mac_theme_ready", return_value=False), \
+             mock.patch.object(doctor, "run", side_effect=lambda online: calls.append(online) or []), \
+             mock.patch.object(doctor, "notify_if_needed"):
+            session.refresh(lambda _m: None, login=True)
+        self.assertEqual(calls, [False])
+
     def test_upkeep_waits_while_macify_is_busy(self):
         """Regresión 0.4.1: el vigilante regeneró iconos con WhiteSur a medio instalar."""
         from unittest import mock

@@ -10,13 +10,22 @@ BACKUP_FILE = Path.home() / ".config" / "macify" / "backup.json"
 EXTENSIONS_DIR = Path.home() / ".local" / "share" / "gnome-shell" / "extensions"
 
 
+_SCHEMA_DIRS: dict[str, Path] = {}
+
+
 def _extension_schema_dir(schema: str) -> Path | None:
-    """Carpeta schemas/ de la extensión que define este esquema, si la hay."""
+    """Carpeta schemas/ de la extensión que define este esquema, si la hay.
+
+    Sólo se recuerdan los aciertos: una extensión puede instalarse durante la ejecución.
+    """
+    if schema in _SCHEMA_DIRS:
+        return _SCHEMA_DIRS[schema]
     if not schema.startswith("org.gnome.shell.extensions.") or not EXTENSIONS_DIR.is_dir():
         return None
     needle = f'id="{schema}"'
     for xml in EXTENSIONS_DIR.glob("*/schemas/*.gschema.xml"):
         if needle in xml.read_text(errors="ignore"):
+            _SCHEMA_DIRS[schema] = xml.parent
             return xml.parent
     return None
 
@@ -27,18 +36,33 @@ def _gsettings(*args: str) -> list[str]:
     return ["gsettings", *(["--schemadir", str(folder)] if folder else []), *args]
 
 
+def _schema(schema: str):
+    """Esquema por Gio, dentro del proceso: leer así evita lanzar un gsettings por clave."""
+    from gi.repository import Gio
+
+    default = Gio.SettingsSchemaSource.get_default()
+    folder = _extension_schema_dir(schema)
+    source = Gio.SettingsSchemaSource.new_from_directory(str(folder), default, False) if folder else default
+    return source.lookup(schema, True) if source else None
+
+
 def has_schema(schema: str) -> bool:
-    return subprocess.run(_gsettings("list-keys", schema), capture_output=True).returncode == 0
+    return _schema(schema) is not None
 
 
 def has_key(schema: str, key: str) -> bool:
-    result = subprocess.run(_gsettings("list-keys", schema), capture_output=True, text=True)
-    return result.returncode == 0 and key in result.stdout.split()
+    found = _schema(schema)
+    return found is not None and found.has_key(key)
 
 
 def read(schema: str, key: str) -> str:
-    result = subprocess.run(_gsettings("get", schema, key), capture_output=True, text=True)
-    return result.stdout.strip()
+    """Valor en el mismo formato de texto que `gsettings get` (sirve para `gsettings set`)."""
+    from gi.repository import Gio
+
+    found = _schema(schema)
+    if found is None or not found.has_key(key):
+        return ""
+    return Gio.Settings.new_full(found, None, None).get_value(key).print_(True)
 
 
 def write(schema: str, key: str, value: str, dry_run: bool, log) -> None:
