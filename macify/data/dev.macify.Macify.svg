@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB27A"/>
+      <stop offset="0.5" stop-color="#C46BEA"/>
+      <stop offset="1" stop-color="#4F6BF5"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="win" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#EEF0FA" stop-opacity="0.85"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#1B1240" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M100 286 Q100 100 286 100 H738 Q924 100 924 286 V420 Q512 520 100 420 Z" fill="url(#glass)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="186" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="3"/>
+  <g filter="url(#shadow)">
+    <rect x="232" y="300" width="560" height="424" rx="58" fill="url(#win)"/>
+  </g>
+  <rect x="232" y="300" width="560" height="96" rx="58" fill="#FFFFFF"/>
+  <rect x="232" y="350" width="560" height="46" fill="#FFFFFF"/>
+  <circle cx="300" cy="348" r="20" fill="#FF5F57"/>
+  <circle cx="362" cy="348" r="20" fill="#FEBC2E"/>
+  <circle cx="424" cy="348" r="20" fill="#28C840"/>
+  <rect x="282" y="450" width="250" height="34" rx="17" fill="#C46BEA" fill-opacity="0.55"/>
+  <rect x="282" y="508" width="180" height="34" rx="17" fill="#4F6BF5" fill-opacity="0.45"/>
+  <path d="M640 520 l22 52 52 22 -52 22 -22 52 -22 -52 -52 -22 52 -22 z" fill="#FFB27A"/>
+  <path d="M700 446 l11 26 26 11 -26 11 -11 26 -11 -26 -26 -11 26 -11 z" fill="#C46BEA"/>
+</svg>

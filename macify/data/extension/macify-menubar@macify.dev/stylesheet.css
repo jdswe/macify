@@ -1,0 +1,18 @@
+/* Barra superior integrada con el fondo, como en macOS. */
+#panel {
+  background-color: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  border: none;
+}
+#panel .panel-button {
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  font-weight: 500;
+}
+#panel .panel-button .system-status-icon {
+  icon-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.macify-logo-button { padding: 0 6px 0 10px; }
+.macify-logo { icon-size: 15px; }
+.macify-app-title { font-weight: bold; padding: 0 8px; }

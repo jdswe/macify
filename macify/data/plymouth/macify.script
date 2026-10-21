@@ -1,0 +1,62 @@
+# Macify: arranque estilo macOS. Fondo negro, logo blanco y barra de progreso fina.
+
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+center_x = Window.GetX() + Window.GetWidth() / 2;
+center_y = Window.GetY() + Window.GetHeight() / 2;
+
+logo.image = Image("logo.png");
+logo.sprite = Sprite(logo.image);
+logo.y = center_y - logo.image.GetHeight() / 2 - 40;
+logo.sprite.SetPosition(center_x - logo.image.GetWidth() / 2, logo.y, 1);
+
+bar.background = Image("bar-background.png");
+bar.fill = Image("bar-fill.png");
+bar.x = center_x - bar.background.GetWidth() / 2;
+bar.y = logo.y + logo.image.GetHeight() + 64;
+bar.background_sprite = Sprite(bar.background);
+bar.background_sprite.SetPosition(bar.x, bar.y, 1);
+bar.fill_sprite = Sprite();
+bar.fill_sprite.SetPosition(bar.x, bar.y, 2);
+
+fun progress_callback(duration, progress) {
+    width = Math.Int(bar.fill.GetWidth() * progress);
+    if (width < 2) width = 2;
+    bar.fill_sprite.SetImage(bar.fill.Scale(width, bar.fill.GetHeight()));
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+# Mensajes y contraseña (por ejemplo, si el disco está cifrado).
+message.sprite = Sprite();
+message.sprite.SetPosition(center_x, bar.y + 40, 3);
+
+fun show_text(text) {
+    message.image = Image.Text(text, 1, 1, 1);
+    message.sprite.SetImage(message.image);
+    message.sprite.SetPosition(center_x - message.image.GetWidth() / 2, bar.y + 40, 3);
+    message.sprite.SetOpacity(1);
+}
+
+fun display_password_callback(prompt, bullets) {
+    text = prompt + "  ";
+    for (i = 0; i < bullets; i++)
+        text += "•";
+    show_text(text);
+}
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+
+fun display_question_callback(prompt, entry) {
+    show_text(prompt + "  " + entry);
+}
+Plymouth.SetDisplayQuestionFunction(display_question_callback);
+
+fun display_normal_callback() {
+    message.sprite.SetOpacity(0);
+}
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+fun message_callback(text) {
+    show_text(text);
+}
+Plymouth.SetMessageFunction(message_callback);

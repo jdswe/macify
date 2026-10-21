@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Macify
+Description=macOS-style boot: black background, white logo and a thin progress bar
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/macify
+ScriptFile=/usr/share/plymouth/themes/macify/macify.script
