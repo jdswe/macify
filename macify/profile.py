@@ -124,6 +124,9 @@ def settings(choices: Choices) -> dict:
         },
         # La barra superior va transparente e integrada con el fondo (lo pinta Macify Menubar).
         "org.gnome.shell.extensions.blur-my-shell.panel": {"blur": "false"},
+        # El dock animado hace su propio desenfoque; el módulo de Blur my Shell para
+        # Dash to Dock falla con él («object.connect is not a function»).
+        "org.gnome.shell.extensions.blur-my-shell.dash-to-dock": {"blur": "false"},
         "org.gnome.shell.extensions.dash2dock-lite": {
             "dock-location": "0",                       # abajo
             "autohide-dash": "false",

@@ -23,7 +23,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 ## Install
 
 ```bash
-sudo apt install ./macify_0.4.0_all.deb
+sudo apt install ./macify_*_all.deb
 ```
 
 Open **Macify** from the app grid, follow the assistant and press **Install**. It asks for your password once (for the boot and login screens) and, at the end, to restart.

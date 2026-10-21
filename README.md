@@ -30,7 +30,7 @@
 Download the `.deb` from [Releases](../../releases/latest), then:
 
 ```bash
-sudo apt install ./macify_0.4.0_all.deb
+sudo apt install ./macify_*_all.deb
 ```
 
 Open **Macify**, follow the steps, press **Install** and restart.
