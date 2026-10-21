@@ -288,8 +288,12 @@ class MacifyWindow(Adw.ApplicationWindow):
         lamp = Adw.SwitchRow(title=_("Magic lamp effect"), subtitle=_("Animation when minimizing windows"))
         lamp.set_active(self.choices.magic_lamp)
         lamp.connect("notify::active", lambda r, _p: setattr(self.choices, "magic_lamp", r.get_active()))
+        autohide = Adw.SwitchRow(title=_("Hide automatically"),
+                                 subtitle=_("When a window covers it. Move the pointer to the bottom edge to show it."))
+        autohide.set_active(self.choices.dock_autohide)
+        autohide.connect("notify::active", lambda r, _p: setattr(self.choices, "dock_autohide", r.get_active()))
         group = Adw.PreferencesGroup()
-        for row in (size_row, magnify, lamp):
+        for row in (size_row, magnify, lamp, autohide):
             group.add(row)
         return self._page(text(_("Your Dock"), "mf-title"),
                           text(_("Bottom, floating and glass, like on macOS."), "mf-subtitle"), group)

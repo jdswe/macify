@@ -45,6 +45,11 @@ def base_theme() -> str:
     return "Adwaita"
 
 
+def mac_theme_ready() -> bool:
+    """El set estilo Mac está completo (no a medio instalar ni ausente)."""
+    return base_theme() == MAC_THEMES[0] and len(_theme_stems(MAC_THEMES[0])) > 5000
+
+
 def ensure_theme(dry_run: bool, log) -> None:
     """Crea el tema Macify con una cadena de herencia sin huecos."""
     inherits = [base_theme(), "Adwaita", "hicolor"]

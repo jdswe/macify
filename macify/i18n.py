@@ -136,8 +136,8 @@ SPANISH = {
     "Theme chain:": "Cadena de temas:",
     "No broken icons.": "Ningún icono roto.",
     "Your apps": "Tus apps",
-    "VS Code, Brave and Firefox use the macOS title bar and buttons.":
-        "VS Code, Brave y Firefox usan la barra y los botones de macOS.",
+    "Browsers, VS Code, Firefox and Flatpak apps use the macOS buttons.":
+        "Navegadores, VS Code, Firefox y apps Flatpak usan los botones de macOS.",
     "Automatic upkeep": "Mantenimiento automático",
     "New apps get their macOS icon on their own; the dock switches at login.":
         "Las apps nuevas reciben su icono estilo Mac solas; el dock cambia al iniciar sesión.",
@@ -202,6 +202,15 @@ SPANISH = {
     "Everything is fine": "Todo está bien",
     "Some things need attention": "Algunas cosas necesitan atención",
     "Nothing to fix.": "Nada que arreglar.",
+    "{name} is open: its buttons will change at your next login.":
+        "{name} está abierto: sus botones cambiarán en tu próximo inicio de sesión.",
+    "{name}: use the system theme for its buttons": "{name}: usar el tema del sistema para sus botones",
+    "{name}: restore its buttons": "{name}: restaurar sus botones",
+    "Flatpak apps: use the system theme and icons": "Apps Flatpak: usar el tema y los iconos del sistema",
+    "Flatpak apps: restore their default theme access": "Apps Flatpak: restaurar su acceso al tema",
+    "Hide automatically": "Ocultar automáticamente",
+    "When a window covers it. Move the pointer to the bottom edge to show it.":
+        "Cuando una ventana lo tapa. Lleva el puntero al borde inferior para mostrarlo.",
     # Colores de acento
     "red": "rojo", "orange": "naranja", "yellow": "amarillo", "green": "verde", "teal": "turquesa",
     "blue": "azul", "purple": "morado", "pink": "rosa", "slate": "grafito",

@@ -66,3 +66,25 @@ def install_bundled_data() -> None:
 def user_wallpaper() -> Path | None:
     value = load_config().get("wallpaper")
     return Path(value) if value and Path(value).is_file() else None
+
+
+# Mientras instala o repara, Macify deja una marca; el vigilante de apps nuevas
+# espera a que desaparezca para no generar iconos con los temas a medio instalar.
+BUSY_FILE = CACHE_DIR / ".busy"
+BUSY_MAX_AGE = 30 * 60   # segundos: una marca más vieja es de un proceso que se cortó
+
+
+class busy:
+    def __enter__(self):
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        BUSY_FILE.write_text(str(os.getpid()))
+        return self
+
+    def __exit__(self, *_exc):
+        BUSY_FILE.unlink(missing_ok=True)
+
+
+def is_busy() -> bool:
+    import time
+
+    return BUSY_FILE.exists() and time.time() - BUSY_FILE.stat().st_mtime < BUSY_MAX_AGE

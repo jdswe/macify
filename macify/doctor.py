@@ -15,7 +15,7 @@ from typing import Callable
 from gi.repository import GLib
 
 from . import deps, extensions, fonts, icons, profile, session, system, themes
-from .assets import load_config
+from .assets import busy, load_config
 from .i18n import _
 
 OK, WARN, FAIL = "ok", "warn", "fail"
@@ -209,11 +209,16 @@ def run(online: bool = True) -> list[Check]:
 def fix(checks: list[Check], log) -> int:
     """Aplica los arreglos disponibles. Devuelve cuántos se aplicaron."""
     fixed = 0
-    for check in checks:
-        if check.status != OK and check.fix:
-            log(_("Fixing: {name}").format(name=check.name))
-            check.fix(log)
-            fixed += 1
+    with busy():
+        for check in checks:
+            if check.status != OK and check.fix:
+                log(_("Fixing: {name}").format(name=check.name))
+                check.fix(log)
+                fixed += 1
+        if fixed and icons.THEME_DIR.exists() and icons.mac_theme_ready():
+            # Los temas pudieron cambiar: los iconos se rehacen con el set ya completo.
+            icons.ensure_theme(False, log)
+            icons.generate(False, log)
     return fixed
 
 

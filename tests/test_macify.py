@@ -161,6 +161,17 @@ class IconTests(unittest.TestCase):
     def test_own_icon_is_never_regenerated(self):
         self.assertIn("dev.macify.Macify", icons.OWN_ICONS)
 
+    def test_upkeep_waits_while_macify_is_busy(self):
+        """Regresión 0.4.1: el vigilante regeneró iconos con WhiteSur a medio instalar."""
+        from unittest import mock
+
+        from macify import assets, session
+
+        with assets.busy(), mock.patch.object(icons, "generate") as generate:
+            session.refresh(lambda _m: None)
+        generate.assert_not_called()
+        self.assertFalse(assets.is_busy())
+
     @unittest.skipUnless(icons.THEME_DIR.exists(), "Macify no está aplicado")
     def test_no_broken_icons(self):
         self.assertEqual(icons.audit()["missing_apps"], [])

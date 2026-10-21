@@ -30,6 +30,7 @@ class Choices:
     dock_size: int = 48
     magnify: bool = True            # ampliar iconos del dock al pasar el ratón
     magic_lamp: bool = True         # efecto lámpara mágica al minimizar
+    dock_autohide: bool = True      # el dock se esconde si una ventana lo tapa (pantallas pequeñas)
     login_screen: bool = True       # arranque e inicio de sesión estilo macOS (pide contraseña)
 
 
@@ -129,7 +130,9 @@ def settings(choices: Choices) -> dict:
         "org.gnome.shell.extensions.blur-my-shell.dash-to-dock": {"blur": "false"},
         "org.gnome.shell.extensions.dash2dock-lite": {
             "dock-location": "0",                       # abajo
-            "autohide-dash": "false",
+            "autohide-dash": "true" if choices.dock_autohide else "false",
+            "autohide-dodge": "true",                   # sólo se esconde cuando una ventana lo tapa
+            "multi-monitor-preference": "1",            # un dock en cada pantalla
             "icon-size": dock_icon_size(choices.dock_size),
             "animate-icons": "true",
             "animation-magnify": "0.5" if choices.magnify else "0.0",

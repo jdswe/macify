@@ -7,6 +7,7 @@ porque los navegadores reescriben sus preferencias al cerrarse.
 """
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -16,7 +17,16 @@ from .i18n import _
 
 BACKUP = CONFIG_DIR / "apps-backup.json"
 VSCODE_SETTINGS = HOME / ".config" / "Code" / "User" / "settings.json"
-BRAVE_PREFERENCES = HOME / ".config" / "BraveSoftware" / "Brave-Browser" / "Default" / "Preferences"
+GTK_THEME = 1   # valor de Chromium para «apariencia GTK» (0 = clásica, 2 = Qt)
+CHROMIUM_BROWSERS = [
+    ("Brave", "brave", HOME / ".config" / "BraveSoftware" / "Brave-Browser" / "Default" / "Preferences"),
+    ("Google Chrome", "chrome", HOME / ".config" / "google-chrome" / "Default" / "Preferences"),
+    ("Chromium", "chromium", HOME / "snap" / "chromium" / "common" / "chromium" / "Default" / "Preferences"),
+    ("Microsoft Edge", "msedge", HOME / ".config" / "microsoft-edge" / "Default" / "Preferences"),
+    ("Vivaldi", "vivaldi-bin", HOME / ".config" / "vivaldi" / "Default" / "Preferences"),
+]
+FLATPAK_ACCESS = ["--filesystem=xdg-config/gtk-3.0:ro", "--filesystem=xdg-config/gtk-4.0:ro",
+                  "--filesystem=~/.themes:ro", "--filesystem=~/.local/share/icons:ro"]
 FIREFOX_PROFILES = [HOME / "snap" / "firefox" / "common" / ".mozilla" / "firefox", HOME / ".mozilla" / "firefox"]
 MISSING = "__missing__"
 
@@ -49,21 +59,39 @@ def _vscode(dry_run: bool, log, backup: dict) -> None:
     VSCODE_SETTINGS.write_text(json.dumps(settings, indent=4))
 
 
-def _brave(dry_run: bool, log, backup: dict) -> None:
-    if not BRAVE_PREFERENCES.exists():
+def _chromium_browsers(dry_run: bool, log, backup: dict) -> None:
+    """Navegadores Chromium: modo de apariencia GTK, que dibuja los botones con el tema del sistema."""
+    for name, process, preferences_path in CHROMIUM_BROWSERS:
+        if not preferences_path.exists():
+            continue
+        preferences = json.loads(preferences_path.read_text())
+        theme = preferences.get("extensions", {}).get("theme", {})
+        frame = preferences.get("browser", {}).get("custom_chrome_frame", MISSING)
+        if theme.get("system_theme") == GTK_THEME and frame in (MISSING, True):
+            continue
+        if _running(process):
+            log(_("{name} is open: its buttons will change at your next login.").format(name=name))
+            continue
+        log(_("{name}: use the system theme for its buttons").format(name=name))
+        if dry_run:
+            continue
+        saved = backup.setdefault("chromium", {}).setdefault(name, {})
+        saved.setdefault("system_theme", theme.get("system_theme", MISSING))
+        saved.setdefault("custom_chrome_frame", frame)
+        preferences.setdefault("extensions", {}).setdefault("theme", {})["system_theme"] = GTK_THEME
+        preferences.get("browser", {}).pop("custom_chrome_frame", None)   # su propia barra, con botones GTK
+        preferences_path.write_text(json.dumps(preferences))
+
+
+def _flatpak(dry_run: bool, log, backup: dict) -> None:
+    """Apps Flatpak: acceso de solo lectura al tema, los iconos y la configuración GTK."""
+    if shutil.which("flatpak") is None or backup.get("flatpak"):
         return
-    preferences = json.loads(BRAVE_PREFERENCES.read_text())
-    if preferences.get("browser", {}).get("custom_chrome_frame") is False:
-        return
-    if _running("brave"):
-        log(_("Brave is open: its title bar will change at your next login."))
-        return
-    log(_("Brave: use the system title bar"))
+    log(_("Flatpak apps: use the system theme and icons"))
     if dry_run:
         return
-    backup.setdefault("brave", preferences.get("browser", {}).get("custom_chrome_frame", MISSING))
-    preferences.setdefault("browser", {})["custom_chrome_frame"] = False
-    BRAVE_PREFERENCES.write_text(json.dumps(preferences))
+    subprocess.run(["flatpak", "override", "--user", *FLATPAK_ACCESS], check=False, capture_output=True)
+    backup["flatpak"] = True
 
 
 def _firefox(dry_run: bool, log, backup: dict) -> None:
@@ -81,7 +109,7 @@ def _firefox(dry_run: bool, log, backup: dict) -> None:
 
 def apply(dry_run: bool, log) -> None:
     backup = _load_backup()
-    for tweak in (_vscode, _brave, _firefox):
+    for tweak in (_vscode, _chromium_browsers, _firefox, _flatpak):
         try:
             tweak(dry_run, log, backup)
         except (OSError, ValueError, RuntimeError) as error:
@@ -101,15 +129,26 @@ def restore(dry_run: bool, log) -> None:
             else:
                 settings["window.titleBarStyle"] = backup["vscode"]
             VSCODE_SETTINGS.write_text(json.dumps(settings, indent=4))
-    if "brave" in backup and BRAVE_PREFERENCES.exists() and not _running("brave"):
-        log(_("Brave: restore its title bar"))
+    for name, process, preferences_path in CHROMIUM_BROWSERS:
+        saved = backup.get("chromium", {}).get(name)
+        if not saved or not preferences_path.exists() or _running(process):
+            continue
+        log(_("{name}: restore its buttons").format(name=name))
+        if dry_run:
+            continue
+        preferences = json.loads(preferences_path.read_text())
+        theme = preferences.setdefault("extensions", {}).setdefault("theme", {})
+        if saved["system_theme"] == MISSING:
+            theme.pop("system_theme", None)
+        else:
+            theme["system_theme"] = saved["system_theme"]
+        if saved["custom_chrome_frame"] != MISSING:
+            preferences.setdefault("browser", {})["custom_chrome_frame"] = saved["custom_chrome_frame"]
+        preferences_path.write_text(json.dumps(preferences))
+    if backup.get("flatpak") and shutil.which("flatpak"):
+        log(_("Flatpak apps: restore their default theme access"))
         if not dry_run:
-            preferences = json.loads(BRAVE_PREFERENCES.read_text())
-            if backup["brave"] == MISSING:
-                preferences.get("browser", {}).pop("custom_chrome_frame", None)
-            else:
-                preferences.setdefault("browser", {})["custom_chrome_frame"] = backup["brave"]
-            BRAVE_PREFERENCES.write_text(json.dumps(preferences))
+            subprocess.run(["flatpak", "override", "--user", "--reset"], check=False, capture_output=True)
     if backup.get("firefox") and themes.repo_dir("gtk").exists():
         log(_("Firefox: remove the macOS theme"))
         if not dry_run:

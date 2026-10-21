@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 from . import apps, extensions, icons, launcher
-from .assets import HOME
+from .assets import HOME, is_busy
 from .i18n import _
 
 AUTOSTART = HOME / ".config" / "autostart" / "dev.macify.Refresh.desktop"
@@ -21,12 +21,14 @@ PATH_UNIT = "macify-icons.path"
 
 def refresh(log, login: bool = False) -> None:
     """Lo que se repite solo: al iniciar sesión (login=True) o al cambiar las apps."""
+    if is_busy():
+        return   # Macify está instalando o reparando: al terminar regenera los iconos él mismo.
     if login:
         installed = (extensions.INSTALL_DIR / "dash2dock-lite@icedman.github.com").exists()
         if installed:
             extensions.disable_other_docks(False, log)
         apps.apply(False, log)
-    if icons.THEME_DIR.exists():
+    if icons.THEME_DIR.exists() and icons.mac_theme_ready():
         icons.ensure_theme(False, log)
         icons.generate(False, log)
     if login:

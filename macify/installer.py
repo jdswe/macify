@@ -9,7 +9,7 @@ from typing import Callable
 
 from .i18n import _
 from . import apps, boot, deps, extensions, fonts, icons, profile, session, system, themes
-from .assets import install_bundled_data
+from .assets import busy, install_bundled_data
 from .profile import Choices
 
 Log = Callable[[str], None]
@@ -64,7 +64,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
                           extensions.install_menubar(dry_run, log))),
         Step(_("Checking every icon"), _("Creates missing icons and makes sure none is broken."),
              lambda log: _icons(dry_run, log)),
-        Step(_("Your apps"), _("VS Code, Brave and Firefox use the macOS title bar and buttons."),
+        Step(_("Your apps"), _("Browsers, VS Code, Firefox and Flatpak apps use the macOS buttons."),
              lambda log: apps.apply(dry_run, log)),
         Step(_("Automatic upkeep"), _("New apps get their macOS icon on their own; the dock switches at login."),
              lambda log: session.install(dry_run, log)),
@@ -82,7 +82,8 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
 def run(choices: Choices, dry_run: bool, log: Log) -> None:
     all_steps = steps(choices, dry_run)
     log(_("== Macify: {count} steps").format(count=len(all_steps)) + (_(" (dry run)") if dry_run else ""))
-    for step in all_steps:
-        log(f"-- {step.title}")
-        step.run(log)
+    with busy():
+        for step in all_steps:
+            log(f"-- {step.title}")
+            step.run(log)
     log(_("== Dry run finished: nothing was changed.") if dry_run else _("== Done. Restart to see all the changes."))
