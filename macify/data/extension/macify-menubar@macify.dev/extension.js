@@ -115,7 +115,33 @@ class AppTitle extends PanelMenu.Button {
 //   margen y hueco hasta el borde incluidos), y espera un momento antes de esconderse.
 const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
 const HIDE_DELAY_MS = 300;
+const REVEAL_MS = 700;          // tiempo en que se vigila que el dock termine de entrar
 const KEEP_MARGIN = 28;
+
+// Sobre una app maximizada que ocupa todo un monitor (Brave, VS Code y otras de Chromium o
+// Electron), GNOME puede mandar la imagen de la app directo a la pantalla y no repintar la
+// capa del dock: el dock "entra" pero no se ve hasta que algo fuerce un repintado. Durante
+// la entrada se mantiene viva su animación y se pide repintar en cada cuadro.
+function revealFully(dock) {
+    if (dock._macifyRevealId)
+        return;
+    const started = GLib.get_monotonic_time();
+    dock._macifyRevealId = GLib.timeout_add(GLib.PRIORITY_HIGH, 16, () => {
+        const elapsed = (GLib.get_monotonic_time() - started) / 1000;
+        if (dock._hidden || !dock.dash || elapsed > REVEAL_MS) {
+            if (!dock._hidden && dock.dash)
+                console.log(`Macify dock: revealed translation=${Math.round(dock.dash.translationY)} ` +
+                    `opacity=${dock.opacity} after ${Math.round(elapsed)} ms`);
+            dock._macifyRevealId = 0;
+            return GLib.SOURCE_REMOVE;
+        }
+        if (Math.abs(dock.dash.translationY) > 0.5)
+            dock._beginAnimation?.();
+        dock.queue_redraw();
+        global.stage.queue_redraw();
+        return GLib.SOURCE_CONTINUE;
+    });
+}
 
 // El puntero está sobre el dock visible o en el camino entre él y el borde inferior.
 function pointerOnDock(dock) {
@@ -193,6 +219,7 @@ class FullscreenDock {
             this.frameDelay = 0;
             this._shown = true;
             this.dock.slideIn();
+            revealFully(this.dock);
         };
         hider._checkOverlap = function () {
             if (this._shown && pointerOnDock(this.dock))
@@ -236,6 +263,10 @@ class FullscreenDock {
                 if (dock.dwell)
                     delete dock.dwell._macifyLog;
                 const hider = dock.autohider;
+                if (dock._macifyRevealId) {
+                    GLib.source_remove(dock._macifyRevealId);
+                    dock._macifyRevealId = 0;
+                }
                 if (hider?._macifyOriginal) {
                     if (hider._macifyHideId)
                         GLib.source_remove(hider._macifyHideId);
