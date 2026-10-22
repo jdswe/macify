@@ -253,8 +253,15 @@ def check_boot() -> Check | None:
         return Check(_("Startup screen"), WARN, _("Another boot screen is active."))
     installed = Path("/usr/share/plymouth/themes/macify")
     packaged = resources.files("macify").joinpath("data", "plymouth")
-    outdated = any(not (installed / item.name).exists() or (installed / item.name).read_bytes() != item.read_bytes()
-                   for item in packaged.iterdir())
+    def outdated_file(item) -> bool:
+        target = installed / item.name
+        if not target.exists():
+            return True
+        if item.name == boot.SCRIPT:
+            return not boot.same_script(target.read_text(errors="ignore"), item.read_text())
+        return target.read_bytes() != item.read_bytes()
+
+    outdated = any(outdated_file(item) for item in packaged.iterdir())
     if not outdated:
         return Check(_("Startup screen"), OK, _("Macify boot screen active."))
     return Check(_("Startup screen"), WARN, _("Update available (asks for your password)."),

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
@@ -157,6 +158,26 @@ class SystemPiecesTests(unittest.TestCase):
         for name in ("macify.plymouth", "macify.script", "logo.png", "bar-background.png", "bar-fill.png"):
             self.assertTrue((folder / name).exists(), name)
 
+    def test_boot_script_gets_this_pc_values(self):
+        from macify import boot
+
+        script = boot.script_text(5.5)
+        self.assertIn("config.shutdown_seconds = 5.5;", script)
+        self.assertIn('config.welcome = "', script)
+        self.assertIn("Plymouth.SetQuitFunction", script)
+        self.assertGreaterEqual(boot.shutdown_seconds(), 2.5)
+        self.assertLessEqual(boot.shutdown_seconds(), 12.0)
+        # El Doctor no debe pedir actualizar sólo porque cambió el tiempo medido.
+        packaged = (PACKAGE / "data" / "plymouth" / "macify.script").read_text()
+        self.assertTrue(boot.same_script(boot.script_text(9.9), packaged))
+        self.assertFalse(boot.same_script(script + "\n# cambio", packaged))
+
+    def test_release_notes_are_plain_items(self):
+        from macify import updates
+
+        release = {"notes": "## What's new\n- **Dock** fix\n* Boot `bar`\nplain text"}
+        self.assertEqual(updates.notes(release), ["Dock fix", "Boot bar"])
+
     def test_menubar_logo_is_white_and_without_background(self):
         svg = extensions.menubar_logo_svg()
         self.assertNotIn("<rect", svg)
@@ -238,14 +259,27 @@ class InterfaceTests(unittest.TestCase):
         def activate(application):
             window = MacifyWindow(application)
             for name in ("welcome", "appearance", "wallpaper", "dock", "summary", "progress", "done",
-                         "manage", "doctor"):
+                         "manage", "doctor", "update"):
                 window._show(name)
                 built.append(window.stack.get_visible_child_name())
+            # Pantalla de actualización en sus tres casos, sin red.
+            from macify import __version__
+
+            window._show_update(None, OSError("offline"))
+            self.assertTrue(window.update_button.get_visible())
+            window._show_update({"version": __version__, "notes": ""}, None)
+            self.assertFalse(window.update_button.get_visible())
+            window._show_update({"version": "99.0.0", "size": 2_000_000, "notes": "- New dock"}, None)
+            self.assertTrue(window.update_button.get_visible())
+            self.assertIn("99.0.0", window.update_title.get_label())
             application.quit()
 
         app.connect("activate", activate)
-        app.run(None)
-        self.assertEqual(len(built), 9)
+        from macify import updates
+
+        with mock.patch.object(updates, "latest", return_value=None):
+            app.run(None)
+        self.assertEqual(len(built), 10)
 
 
 if __name__ == "__main__":

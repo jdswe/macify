@@ -12,7 +12,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import doctor, info, installer, launcher, profile, system  # noqa: E402
+from . import __version__, doctor, info, installer, launcher, profile, system, updates  # noqa: E402
 from .assets import WALLPAPER_DIR, assets_root, install_bundled_data, load_config, save_config_value  # noqa: E402
 from .colors import accent_for_wallpaper, accent_label, dominant_rgb  # noqa: E402
 from .i18n import _, language  # noqa: E402
@@ -141,7 +141,7 @@ class MacifyWindow(Adw.ApplicationWindow):
                            ("wallpaper", self._wallpaper_page()), ("dock", self._dock_page()),
                            ("summary", self._summary_page()), ("progress", self._progress_page()),
                            ("done", self._done_page()), ("manage", self._manage_page()),
-                           ("doctor", self._doctor_page())):
+                           ("doctor", self._doctor_page()), ("update", self._update_page())):
             self.stack.add_named(page, name)
 
         self.back = Gtk.Button(label=_("Back"), css_classes=["mf-ghost"])
@@ -481,17 +481,21 @@ class MacifyWindow(Adw.ApplicationWindow):
         tiles.attach(self._tile("preferences-desktop-appearance-symbolic", _("Customize"),
                                 _("Look, wallpaper and dock, live."), lambda: self._start_flow(quick=True),
                                 "mf-tile-primary"), 0, 0, 2, 1)
+        self.update_tile = self._tile("software-update-available-symbolic", _("Software Update"),
+                                      _("Version {version}").format(version=__version__), self._check_updates)
+        tiles.attach(self.update_tile, 0, 1, 1, 1)
         tiles.attach(self._tile("emblem-ok-symbolic", _("Check for Problems"),
-                                _("Updates, errors and repairs."), self._run_doctor), 0, 1, 1, 1)
+                                _("Updates, errors and repairs."), self._run_doctor), 1, 1, 1, 1)
         tiles.attach(self._tile("view-refresh-symbolic", _("Reinstall Everything"),
-                                _("Every step again, from the start."), lambda: self._start_flow(quick=False)), 1, 1, 1, 1)
+                                _("Every step again, from the start."), lambda: self._start_flow(quick=False)), 0, 2, 1, 1)
         tiles.attach(self._tile("edit-undo-symbolic", _("Restore Original Settings"),
                                 _("Ubuntu settings as they were."),
-                                lambda: self._run_maintenance(_("Restoring…"), lambda log: system.restore(False, log))), 0, 2, 1, 1)
+                                lambda: self._run_maintenance(_("Restoring…"), lambda log: system.restore(False, log))), 1, 2, 1, 1)
         tiles.attach(self._tile("user-trash-symbolic", _("Uninstall Everything"),
                                 _("Remove all of Macify's changes."),
                                 lambda: self._run_maintenance(_("Uninstalling…"), lambda log: uninstall(False, log)),
-                                "mf-tile-danger"), 1, 2, 1, 1)
+                                "mf-tile-danger"), 0, 3, 2, 1)
+        self._quiet_update_check()
         content = vbox(14)
         header = vbox(10, halign=Gtk.Align.CENTER)
         for widget in (icon, text(_("Macify is active"), "mf-title", center=True),
@@ -500,6 +504,154 @@ class MacifyWindow(Adw.ApplicationWindow):
         content.append(header)
         content.append(tiles)
         return self._page(content, center=True)
+
+    # ----- actualizaciones -----
+
+    def _update_page(self) -> Gtk.Widget:
+        icon = Gtk.Image.new_from_icon_name(APP_ID)
+        icon.set_pixel_size(96)
+        self.update_title = text(_("Software Update"), "mf-title", center=True)
+        self.update_detail = text("", "mf-subtitle", center=True)
+        self.update_spinner = Gtk.Spinner(halign=Gtk.Align.CENTER)
+        self.update_bar = Gtk.ProgressBar(visible=False)
+        self.update_notes = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"], visible=False)
+        self.update_button = Gtk.Button(label=_("Update Now"), halign=Gtk.Align.CENTER, css_classes=["mf-cta"])
+        self.update_button.connect("clicked", lambda _b: self._install_update())
+        back = Gtk.Button(label=_("Back"), halign=Gtk.Align.CENTER, css_classes=["mf-ghost"])
+        back.connect("clicked", lambda _b: self.busy or self._show("manage"))
+        self.update_back = back
+        buttons = Gtk.Box(spacing=12, halign=Gtk.Align.CENTER)
+        buttons.append(back)
+        buttons.append(self.update_button)
+        content = vbox(16)
+        header = vbox(10, halign=Gtk.Align.CENTER)
+        for widget in (icon, self.update_title, self.update_detail, self.update_spinner):
+            header.append(widget)
+        for widget in (header, self.update_bar, self.update_notes, buttons):
+            content.append(widget)
+        return self._page(content, center=True)
+
+    def _quiet_update_check(self) -> None:
+        """Al abrir: si hay una versión nueva, la ficha de actualización lo dice."""
+        def work() -> None:
+            try:
+                release = updates.latest()
+            except Exception:  # noqa: BLE001 - sin conexión: la ficha queda como está
+                return
+            if release and updates.is_newer(release["version"]):
+                GLib.idle_add(self._mark_update_tile, release)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _mark_update_tile(self, release: dict) -> bool:
+        self.update_tile.add_css_class("mf-tile-primary")
+        label = self.update_tile.get_child().get_last_child()
+        label.set_label(_("Version {version} is available").format(version=release["version"]))
+        return GLib.SOURCE_REMOVE
+
+    def _check_updates(self) -> None:
+        if self.busy:
+            return
+        self.release = None
+        self.update_title.set_label(_("Checking for updates…"))
+        self.update_detail.set_label(_("Looking for a new version on GitHub."))
+        self.update_spinner.set_visible(True)
+        self.update_spinner.start()
+        self.update_bar.set_visible(False)
+        self.update_notes.set_visible(False)
+        self.update_button.set_visible(False)
+        self._show("update")
+
+        def work() -> None:
+            try:
+                release = updates.latest()
+                GLib.idle_add(self._show_update, release, None)
+            except Exception as error:  # noqa: BLE001
+                GLib.idle_add(self._show_update, None, error)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_update(self, release: dict | None, error: Exception | None) -> bool:
+        self.update_spinner.stop()
+        self.update_spinner.set_visible(False)
+        if error is not None:
+            self.update_title.set_label(_("Could not check for updates"))
+            self.update_detail.set_label(_("Check your internet connection and try again."))
+            self.update_button.set_label(_("Try Again"))
+            self.update_button.set_visible(True)
+            return GLib.SOURCE_REMOVE
+        if not release or not updates.is_newer(release["version"]):
+            self.update_title.set_label(_("Macify is up to date"))
+            self.update_detail.set_label(_("You have the latest version, {version}.").format(version=__version__))
+            self.update_button.set_visible(False)
+            return GLib.SOURCE_REMOVE
+        self.release = release
+        size = release.get("size", 0) / 1_048_576
+        self.update_title.set_label(_("Macify {version} is available").format(version=release["version"]))
+        self.update_detail.set_label(_("You have version {current}. Download size: {size:.1f} MB.")
+                                     .format(current=__version__, size=size))
+        clear(self.update_notes)
+        for item in updates.notes(release)[:8]:
+            row = Adw.ActionRow(title=GLib.markup_escape_text(item))
+            row.add_prefix(Gtk.Image.new_from_icon_name("emblem-ok-symbolic"))
+            self.update_notes.append(row)
+        self.update_notes.set_visible(bool(updates.notes(release)))
+        self.update_button.set_label(_("Update Now"))
+        self.update_button.set_visible(True)
+        return GLib.SOURCE_REMOVE
+
+    def _install_update(self) -> None:
+        if self.busy:
+            return
+        release = getattr(self, "release", None)
+        if release is None:            # «Try Again» tras un error de conexión
+            self._check_updates()
+            return
+        if release == "reopen":        # ya instalada: abre la versión nueva y cierra esta
+            # Espera a que esta ventana suelte su nombre en el bus; si no, la nueva sólo la activaría.
+            subprocess.Popen(["/bin/sh", "-c", 'sleep 1; exec "$@"', "macify", *launcher.command()],
+                             start_new_session=True)
+            self.get_application().quit()
+            return
+        self.busy = True
+        self.update_button.set_visible(False)
+        self.update_back.set_sensitive(False)
+        self.update_bar.set_visible(True)
+        self.update_bar.set_fraction(0)
+        self.update_title.set_label(_("Downloading Macify {version}…").format(version=release["version"]))
+
+        def progress(fraction: float) -> None:
+            GLib.idle_add(self.update_bar.set_fraction, fraction)
+
+        def log(message: str) -> None:
+            GLib.idle_add(self.update_detail.set_label, message)
+
+        def work() -> None:
+            try:
+                updates.install(release, log, progress)
+                GLib.idle_add(self._update_done, None)
+            except Exception as error:  # noqa: BLE001
+                GLib.idle_add(self._update_done, error)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _update_done(self, error: Exception | None) -> bool:
+        self.busy = False
+        self.update_back.set_sensitive(True)
+        self.update_bar.set_visible(False)
+        if error is not None:
+            self.update_title.set_label(_("The update was not installed"))
+            self.update_detail.set_label(str(error))
+            self.update_button.set_label(_("Try Again"))
+            self.update_button.set_visible(True)
+            return GLib.SOURCE_REMOVE
+        self.update_title.set_label(_("Macify {version} is installed").format(version=self.release["version"]))
+        self.update_detail.set_label(_("Reopen Macify to use the new version."))
+        self.update_notes.set_visible(False)
+        self.update_button.set_label(_("Reopen Macify"))
+        self.update_button.set_visible(True)
+        self.release = "reopen"
+        return GLib.SOURCE_REMOVE
 
     # ----- diagnóstico -----
 

@@ -1,10 +1,19 @@
 # Macify: arranque estilo macOS. Fondo negro, logo blanco y barra de progreso fina.
+# Al encender la barra se llena y termina con «Welcome»; al apagar se vacía con
+# «See you soon» en el tiempo que tarda de verdad este equipo en apagarse.
+
+# Valores que Macify escribe al instalar el tema (ver boot.py).
+config.shutdown_seconds = 4;
+config.welcome = "Welcome";
+config.goodbye = "See you soon";
 
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
 center_x = Window.GetX() + Window.GetWidth() / 2;
 center_y = Window.GetY() + Window.GetHeight() / 2;
+mode = Plymouth.GetMode();
+leaving = (mode == "shutdown" || mode == "reboot");
 
 logo.image = Image("logo.png");
 logo.sprite = Sprite(logo.image);
@@ -20,43 +29,90 @@ bar.background_sprite.SetPosition(bar.x, bar.y, 1);
 bar.fill_sprite = Sprite();
 bar.fill_sprite.SetPosition(bar.x, bar.y, 2);
 
-# La barra se mueve en cada cuadro, sin saltos: avanza suave hacia el progreso real
-# que informa Plymouth y, mientras tanto, nunca se queda quieta (avance mínimo por tiempo).
+# Texto bajo la barra: saludo al final del arranque, despedida al apagar, avisos.
+greeting.sprite = Sprite();
+greeting.opacity = 0;
+greeting.visible = 0;
+
+fun show_greeting(text) {
+    greeting.image = Image.Text(text, 1, 1, 1, 1, "Sans 18");
+    greeting.sprite.SetImage(greeting.image);
+    greeting.sprite.SetPosition(center_x - greeting.image.GetWidth() / 2, bar.y + 36, 3);
+    greeting.sprite.SetOpacity(greeting.opacity);
+    greeting.visible = 1;
+}
+
 progress.real = 0;
 progress.shown = 0;
 progress.frames = 0;
-progress.last_width = 0;
+progress.last_width = -1;
+progress.done = 0;
+if (leaving) {
+    progress.shown = 1;
+    show_greeting(config.goodbye);
+}
 
 fun progress_callback(duration, real) {
     if (real > progress.real) progress.real = real;
 }
 Plymouth.SetBootProgressFunction(progress_callback);
 
-fun refresh_callback() {
-    progress.frames++;
-    seconds = progress.frames / 50;
-    # Avance mínimo: 50 % a los 6 s, 75 % a los 18 s; se acerca a 90 % sin llegar.
-    timed = 0.9 * seconds / (seconds + 6);
-    target = progress.real;
-    if (timed > target) target = timed;
-    if (target > progress.shown) progress.shown += (target - progress.shown) * 0.08;
-    width = Math.Int(bar.fill.GetWidth() * progress.shown);
+fun draw_bar(fraction) {
+    width = Math.Int(bar.fill.GetWidth() * fraction);
     if (width < 2) width = 2;
     if (width != progress.last_width) {
         bar.fill_sprite.SetImage(bar.fill.Scale(width, bar.fill.GetHeight()));
         progress.last_width = width;
     }
 }
+
+# Cada cuadro (50 por segundo) la barra se acerca suave a su objetivo.
+fun refresh_callback() {
+    progress.frames++;
+    seconds = progress.frames / 50;
+    if (leaving) {
+        # Se vacía en el tiempo real de apagado de este equipo, con frenada al final.
+        t = seconds / config.shutdown_seconds;
+        if (t > 1) t = 1;
+        target = (1 - t) * (1 - t);
+        progress.shown += (target - progress.shown) * 0.25;
+    } else {
+        # Al encender sigue el progreso que estima Plymouth con los arranques anteriores;
+        # mientras tanto nunca se queda quieta (mínimo por tiempo).
+        timed = 0.85 * seconds / (seconds + 8);
+        target = progress.real;
+        if (timed > target) target = timed;
+        if (progress.done) target = 1;
+        if (target > progress.shown) progress.shown += (target - progress.shown) * 0.1;
+        if (progress.real > 0.96 && !greeting.visible) show_greeting(config.welcome);
+    }
+    draw_bar(progress.shown);
+    if (greeting.visible && greeting.opacity < 1) {
+        greeting.opacity += 0.05;
+        greeting.sprite.SetOpacity(greeting.opacity);
+    }
+}
 Plymouth.SetRefreshFunction(refresh_callback);
+
+# El arranque terminó: la barra se completa y queda el saludo hasta que aparece el login.
+fun quit_callback() {
+    if (!leaving) {
+        progress.done = 1;
+        progress.shown = 1;
+        draw_bar(1);
+        greeting.opacity = 1;
+        show_greeting(config.welcome);
+    }
+}
+Plymouth.SetQuitFunction(quit_callback);
 
 # Mensajes y contraseña (por ejemplo, si el disco está cifrado).
 message.sprite = Sprite();
-message.sprite.SetPosition(center_x, bar.y + 40, 3);
 
 fun show_text(text) {
     message.image = Image.Text(text, 1, 1, 1);
     message.sprite.SetImage(message.image);
-    message.sprite.SetPosition(center_x - message.image.GetWidth() / 2, bar.y + 40, 3);
+    message.sprite.SetPosition(center_x - message.image.GetWidth() / 2, bar.y + 76, 3);
     message.sprite.SetOpacity(1);
 }
 

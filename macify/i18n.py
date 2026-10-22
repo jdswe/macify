@@ -249,6 +249,26 @@ SPANISH = {
     # Colores de acento
     "red": "rojo", "orange": "naranja", "yellow": "amarillo", "green": "verde", "teal": "turquesa",
     "blue": "azul", "purple": "morado", "pink": "rosa", "slate": "grafito",
+    "Welcome": "Bienvenido",
+    "See you soon": "Hasta pronto",
+    "Software Update": "Actualización de software",
+    "Version {version}": "Versión {version}",
+    "Version {version} is available": "La versión {version} está disponible",
+    "Update Now": "Actualizar ahora",
+    "Checking for updates…": "Buscando actualizaciones…",
+    "Looking for a new version on GitHub.": "Buscando una versión nueva en GitHub.",
+    "Could not check for updates": "No se pudo buscar actualizaciones",
+    "Check your internet connection and try again.": "Revisa tu conexión a internet e inténtalo de nuevo.",
+    "Try Again": "Reintentar",
+    "Macify is up to date": "Macify está al día",
+    "You have the latest version, {version}.": "Tienes la última versión, {version}.",
+    "Macify {version} is available": "Macify {version} está disponible",
+    "You have version {current}. Download size: {size:.1f} MB.": "Tienes la versión {current}. Tamaño de descarga: {size:.1f} MB.",
+    "Downloading Macify {version}…": "Descargando Macify {version}…",
+    "The update was not installed": "La actualización no se instaló",
+    "Macify {version} is installed": "Macify {version} está instalado",
+    "Reopen Macify to use the new version.": "Vuelve a abrir Macify para usar la versión nueva.",
+    "Reopen Macify": "Volver a abrir Macify",
 }
 
 

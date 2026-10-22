@@ -5,7 +5,10 @@ administrador (data/root/macify-root.sh) lanzado con pkexec: una sola contraseñ
 """
 
 import io
+import json
+import re
 import shutil
+import statistics
 import subprocess
 from importlib import resources
 from pathlib import Path
@@ -19,6 +22,10 @@ from .i18n import _
 BUILD_DIR = CACHE_DIR / "plymouth"
 LOGO_SIZE = 112
 BAR_SIZE = (220, 6)
+SCRIPT = "macify.script"
+DEFAULT_SHUTDOWN_SECONDS = 4.0
+# Líneas del script que Macify ajusta a cada equipo e idioma (ver macify.script).
+_CONFIG_LINE = re.compile(r'^config\.(shutdown_seconds|welcome|goodbye) = .*;$', re.MULTILINE)
 
 
 def _helper() -> Path:
@@ -49,12 +56,54 @@ def _bar(color: tuple[int, int, int, int]) -> Image.Image:
     return image
 
 
+def shutdown_seconds() -> float:
+    """Lo que tarda este equipo en apagarse: desde la pantalla de apagado hasta el
+    último mensaje del registro, mediana de los últimos apagados."""
+    try:
+        boots = json.loads(subprocess.run(["journalctl", "--list-boots", "-o", "json", "--no-pager"],
+                                          capture_output=True, text=True, timeout=10).stdout)
+        last_entry = {b["boot_id"]: b["last_entry"] for b in boots}
+        lines = subprocess.run(["journalctl", "-o", "json", "--no-pager", "--output-fields=_BOOT_ID",
+                                "-u", "plymouth-poweroff.service", "-u", "plymouth-reboot.service",
+                                "-u", "plymouth-halt.service"],
+                               capture_output=True, text=True, timeout=10).stdout.splitlines()
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return DEFAULT_SHUTDOWN_SECONDS
+    started = {}
+    for line in lines:
+        entry = json.loads(line)
+        started.setdefault(entry["_BOOT_ID"], int(entry["__REALTIME_TIMESTAMP"]))
+    durations = [(last_entry[boot] - start) / 1e6 for boot, start in started.items() if boot in last_entry]
+    durations = [d for d in durations if 0 < d < 60][-5:]
+    if not durations:
+        return DEFAULT_SHUTDOWN_SECONDS
+    return round(min(max(statistics.median(durations), 2.5), 12.0), 1)
+
+
+def _quote(text: str) -> str:
+    return '"' + text.replace("\\", "").replace('"', "") + '"'
+
+
+def script_text(seconds: float | None = None) -> str:
+    """El script de arranque con el tiempo de apagado de este equipo y los textos en su idioma."""
+    text = resources.files("macify").joinpath("data", "plymouth", SCRIPT).read_text()
+    values = {"shutdown_seconds": str(seconds or shutdown_seconds()),
+              "welcome": _quote(_("Welcome")), "goodbye": _quote(_("See you soon"))}
+    return _CONFIG_LINE.sub(lambda m: f"config.{m[1]} = {values[m[1]]};", text)
+
+
+def same_script(installed: str, packaged: str) -> bool:
+    """Compara scripts sin contar los valores propios de cada equipo."""
+    return _CONFIG_LINE.sub("", installed) == _CONFIG_LINE.sub("", packaged)
+
+
 def build_theme() -> Path:
     """Prepara en la caché los archivos del tema de arranque Macify."""
     shutil.rmtree(BUILD_DIR, ignore_errors=True)
     BUILD_DIR.mkdir(parents=True)
     for item in resources.files("macify").joinpath("data", "plymouth").iterdir():
         (BUILD_DIR / item.name).write_bytes(item.read_bytes())
+    (BUILD_DIR / SCRIPT).write_text(script_text())
     _logo().save(BUILD_DIR / "logo.png")
     _bar((255, 255, 255, 64)).save(BUILD_DIR / "bar-background.png")
     _bar((255, 255, 255, 255)).save(BUILD_DIR / "bar-fill.png")

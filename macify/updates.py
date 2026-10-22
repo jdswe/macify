@@ -23,7 +23,7 @@ def _parse(version: str) -> tuple[int, ...]:
 
 
 def latest() -> dict | None:
-    """Última versión publicada: {"version", "url", "name", "sha256"} o None."""
+    """Última versión publicada: {"version", "url", "name", "size", "sha256", "notes", "date"} o None."""
     with urllib.request.urlopen(API, timeout=15) as response:
         release = json.load(response)
     asset = next((a for a in release.get("assets", []) if a["name"].endswith("_all.deb")), None)
@@ -31,20 +31,39 @@ def latest() -> dict | None:
         return None
     digest = asset.get("digest") or ""
     return {"version": release["tag_name"].lstrip("v"), "url": asset["browser_download_url"],
-            "name": asset["name"], "sha256": digest.split(":", 1)[1] if digest.startswith("sha256:") else None}
+            "name": asset["name"], "size": asset.get("size", 0),
+            "sha256": digest.split(":", 1)[1] if digest.startswith("sha256:") else None,
+            "notes": release.get("body") or "", "date": (release.get("published_at") or "")[:10]}
+
+
+def notes(release: dict) -> list[str]:
+    """Las novedades del release como lista de frases cortas (sin el formato Markdown)."""
+    items = []
+    for line in release.get("notes", "").splitlines():
+        line = line.strip()
+        if line.startswith(("- ", "* ")):
+            items.append(line[2:].replace("**", "").replace("`", ""))
+    return items
 
 
 def is_newer(remote: str, local: str = __version__) -> bool:
     return _parse(remote) > _parse(local)
 
 
-def install(release: dict, log) -> None:
+def install(release: dict, log, progress=None) -> None:
+    """Descarga, verifica e instala el release. progress(fracción) informa la descarga."""
     folder = CACHE_DIR / "updates"
     folder.mkdir(parents=True, exist_ok=True)
     package = folder / Path(release["name"]).name
     log(_("Downloading {name} from {source}").format(name=release["name"], source="GitHub"))
-    with urllib.request.urlopen(release["url"], timeout=300) as response:
-        package.write_bytes(response.read())
+    with urllib.request.urlopen(release["url"], timeout=300) as response, package.open("wb") as out:
+        total = int(response.headers.get("Content-Length") or release.get("size") or 0)
+        done = 0
+        while chunk := response.read(65536):
+            out.write(chunk)
+            done += len(chunk)
+            if progress and total:
+                progress(min(done / total, 1.0))
     if release["sha256"] and hashlib.sha256(package.read_bytes()).hexdigest() != release["sha256"]:
         package.unlink()
         raise RuntimeError(_("The download does not match its published fingerprint."))
