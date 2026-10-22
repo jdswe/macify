@@ -180,6 +180,69 @@ class WallpaperTests(unittest.TestCase):
             self.assertFalse(boot.login_outdated(wallpaper))     # sin pantallas de Macify, nada que hacer
 
 
+class UpgradeTests(unittest.TestCase):
+    """Actualizar aplica sólo lo que cambió y limpia lo viejo; nunca reinstala todo."""
+
+    def test_upgrade_only_when_applied_and_version_changed(self):
+        import tempfile
+        from unittest import mock
+        from macify import __version__, upgrade
+        with tempfile.TemporaryDirectory() as tmp:
+            backup = Path(tmp) / "backup.json"
+            with mock.patch.object(upgrade.system, "BACKUP_FILE", backup), \
+                 mock.patch.object(upgrade, "load_config", return_value={"applied_version": "0.1.0"}):
+                self.assertFalse(upgrade.needed())          # Macify nunca se aplicó
+                backup.write_text("{}")
+                self.assertTrue(upgrade.needed())
+            with mock.patch.object(upgrade.system, "BACKUP_FILE", backup), \
+                 mock.patch.object(upgrade, "load_config", return_value={"applied_version": __version__}):
+                self.assertFalse(upgrade.needed())
+
+    def test_upgrade_fixes_only_outdated_pieces_and_cleans(self):
+        import tempfile
+        from unittest import mock
+        from macify import doctor, upgrade
+        fixed = []
+        outdated = doctor.Check("Icon set", doctor.WARN, "Update available.", lambda log: fixed.append("icons"))
+        current = doctor.Check("Cursor", doctor.OK, "Up to date.", lambda log: fixed.append("cursor"))
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            (cache / "updates").mkdir()
+            (cache / "updates" / "macify_0.1.0_all.deb").write_bytes(b"x" * 1000)
+            (cache / "debug-whitesur").mkdir()
+            fitted = cache / "wallpapers"
+            fitted.mkdir()
+            used, unused = fitted / "a-2560x1440.jpg", fitted / "b-2560x1440.jpg"
+            used.write_bytes(b"1")
+            unused.write_bytes(b"2")
+            backup = cache / "backup.json"
+            backup.write_text("{}")
+            with mock.patch.object(upgrade.system, "BACKUP_FILE", backup), \
+                 mock.patch.object(upgrade, "CACHE_DIR", cache), \
+                 mock.patch.object(upgrade.wallpapers, "FITTED_DIR", fitted), \
+                 mock.patch.object(upgrade.wallpapers, "THUMB_DIR", cache / "thumbnails"), \
+                 mock.patch.object(upgrade, "_wallpaper_in_use", return_value=used), \
+                 mock.patch.object(upgrade, "busy"), \
+                 mock.patch.object(upgrade, "load_config", return_value={}), \
+                 mock.patch.object(upgrade, "save_config_value") as save, \
+                 mock.patch.object(doctor, "check_themes", return_value=[current, outdated]), \
+                 mock.patch.object(doctor, "check_theme_css", return_value=current), \
+                 mock.patch.object(doctor, "check_extensions", return_value=[]), \
+                 mock.patch.object(doctor, "check_icons", return_value=current), \
+                 mock.patch.object(doctor, "check_fonts", return_value=current), \
+                 mock.patch.object(doctor, "check_upkeep", return_value=current), \
+                 mock.patch.object(upgrade.installer, "apply_look") as look, \
+                 mock.patch.object(upgrade.icons, "mac_theme_ready", return_value=False):
+                upgrade.run(lambda _m: None)
+            self.assertEqual(fixed, ["icons"])               # sólo lo desactualizado
+            look.assert_called_once()                         # los ajustes nuevos, sin descargas
+            self.assertFalse((cache / "updates" / "macify_0.1.0_all.deb").exists())
+            self.assertFalse((cache / "debug-whitesur").exists())
+            self.assertTrue(used.exists())
+            self.assertFalse(unused.exists())
+            save.assert_called_once()
+
+
 class InstallerTests(unittest.TestCase):
     def test_steps_have_titles_and_details(self):
         for login in (False, True):

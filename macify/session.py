@@ -26,6 +26,10 @@ def refresh(log, login: bool = False) -> None:
     if is_busy():
         return   # Macify está instalando o reparando: al terminar regenera los iconos él mismo.
     if login:
+        from . import upgrade
+        if upgrade.needed():
+            # Una versión nueva llegó por otro camino (apt, una app vieja): sólo lo que cambió.
+            upgrade.run(log)
         installed = (extensions.INSTALL_DIR / "dash2dock-lite@icedman.github.com").exists()
         if installed:
             extensions.disable_other_docks(False, log)

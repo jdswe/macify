@@ -30,10 +30,14 @@ fi
 
 chmod 644 "$tmp/macify.deb"
 sudo apt-get install -y "$tmp/macify.deb"
-# Si Macify ya estaba aplicado, deja lista ya la extensión nueva (y lo demás): al cerrar y
-# abrir sesión GNOME carga la nueva, sin esperar a un segundo inicio de sesión.
+# Si Macify ya estaba aplicado, la versión nueva aplica sólo lo que cambió y borra lo viejo
+# (sin reinstalar todo). El detalle queda en ~/.cache/macify/upgrade.log.
 if [ -f "$HOME/.config/macify/config.json" ]; then
-  /usr/bin/macify refresh --login > /dev/null 2>&1 || true
+  echo
+  echo "Applying only what changed…"
+  mkdir -p "$HOME/.cache/macify"
+  /usr/bin/macify upgrade > "$HOME/.cache/macify/upgrade.log" 2>&1 || true
+  grep -E "^(Updating|Cleaned|Actualizando|Se liberaron)" "$HOME/.cache/macify/upgrade.log" || true
   echo
   echo "Macify is updated. Log out and back in to see everything new."
 else

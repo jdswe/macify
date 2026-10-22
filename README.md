@@ -25,7 +25,7 @@
 - **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches windows, menus, bar and dock together — your wallpaper stays.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
-- **Software Update** — checks GitHub, downloads and installs new versions from inside the app.
+- **Software Update** — checks GitHub and installs new versions from inside the app. An update applies only what changed (new settings, a newer theme or extension) and cleans up old files — nothing is reinstalled.
 - **Every app type** — traffic-light buttons in apt, Flatpak and snap GTK apps, including ones you install later.
 - **Clean removal** — restore or uninstall everything in one click.
 

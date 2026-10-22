@@ -29,6 +29,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Colors | Accent color taken from your wallpaper |
 | Apps | Traffic-light buttons in apt, Flatpak and snap GTK apps (also ones installed later), VS Code and Firefox |
 | Upkeep | New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login |
+| Updates | Software Update (or the install command) installs the new version and runs `macify upgrade`: only what changed is applied — a newer theme or extension, new settings — and old downloads and caches are removed. Your choices stay; nothing is reinstalled |
 
 ## Install
 

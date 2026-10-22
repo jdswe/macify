@@ -22,6 +22,7 @@ def cli(argv: list[str]) -> int:
     p_doctor.add_argument("--offline", action="store_true", help="Skip update checks.")
     p_refresh = sub.add_parser("refresh", help="Upkeep: icons for new apps (and dock switch at login).")
     p_refresh.add_argument("--login", action="store_true")
+    sub.add_parser("upgrade", help="After installing a new version: apply only what changed and clean up.")
     p_look = sub.add_parser("look", help="Apply the look again (appearance, wallpaper, dock) without reinstalling.")
     p_look.add_argument("--appearance", choices=["light", "dark"])
     p_look.add_argument("--wallpaper", help="An image to use as wallpaper (its -dark twin is used in dark mode).")
@@ -56,6 +57,9 @@ def cli(argv: list[str]) -> int:
         return 0 if all(c.status == doctor.OK for c in checks) else 1
     elif args.command == "refresh":
         session.refresh(print, login=args.login)
+    elif args.command == "upgrade":
+        from . import upgrade
+        upgrade.run(print)
     elif args.command == "look":
         if args.appearance:
             choices.appearance = args.appearance

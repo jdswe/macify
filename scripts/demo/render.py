@@ -424,7 +424,7 @@ SCENES = [
     (3.6, shot_scene(S / "badge.png", "Notification badges", "A red count on the app's dock icon, like on a Mac",
                      crop=(360, 880, 1560, 1080), max_h=500)),
     (3.0, app_scene("09-manage", "Macify stays with you", "Customize live, check for problems, restore or uninstall")),
-    (3.0, app_scene("10-update-available", "Software Update", "New versions from GitHub, verified before installing")),
+    (3.4, app_scene("10-update-available", "Software Update", "Only what's new is applied and old files are cleaned up — nothing is reinstalled")),
     (3.2, app_scene("13-doctor", "Doctor", "Finds outdated or broken pieces and fixes them in one click")),
     (5.5, outro),
 ]

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .i18n import _
-from . import apps, boot, deps, extensions, fonts, icons, profile, session, snaps, system, themes
-from .assets import busy, install_bundled_data
+from . import __version__, apps, boot, deps, extensions, fonts, icons, profile, session, snaps, system, themes
+from .assets import busy, install_bundled_data, save_config_value
 from .profile import Choices
 
 Log = Callable[[str], None]
@@ -97,4 +97,6 @@ def run(choices: Choices, dry_run: bool, log: Log) -> None:
         for step in all_steps:
             log(f"-- {step.title}")
             step.run(log)
+    if not dry_run:
+        save_config_value("applied_version", __version__)     # las actualizaciones parten de aquí
     log(_("== Dry run finished: nothing was changed.") if dry_run else _("== Done. Restart to see all the changes."))
