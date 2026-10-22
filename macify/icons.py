@@ -1,6 +1,6 @@
 """Tema de iconos «Macify»: nunca deja iconos rotos y crea los que faltan.
 
-- Hereda del tema estilo Mac instalado (WhiteSur, o Colloid como respaldo),
+- Hereda del tema estilo Mac instalado (WhiteSur),
   luego de Adwaita y hicolor: cualquier icono que falte cae en uno que existe.
 - Para cada app sin icono estilo Mac genera uno nuevo: el icono original
   sobre un «squircle» con el tamaño y la forma de los iconos de macOS.
@@ -35,7 +35,7 @@ APP_DIRS = [OVERRIDES_DIR, Path("/var/lib/snapd/desktop/applications"),
             HOME / ".local" / "share" / "flatpak" / "exports" / "share" / "applications",
             Path("/var/lib/flatpak/exports/share/applications"),
             Path("/usr/local/share/applications"), Path("/usr/share/applications")]
-MAC_THEMES = ["WhiteSur-dark", "WhiteSur", "Colloid-Purple"]
+MAC_THEMES = ["WhiteSur-dark", "WhiteSur"]
 
 
 def base_theme() -> str:

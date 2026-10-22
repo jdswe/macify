@@ -14,8 +14,6 @@ HOME = Path.home()
 GTK4_DIR = HOME / ".config" / "gtk-4.0"
 # Archivos que el instalador de WhiteSur escribe en gtk-4.0 (no se toca el resto).
 GTK4_FILES = ["gtk.css", "gtk-dark.css", "gtk-Light.css", "gtk-Dark.css", "assets", "windows-assets"]
-# Enlaces de iconos y cursor que creaban versiones anteriores de Macify.
-LEGACY_LINKS = ["Colloid-Purple", "Drop-Purple"]
 
 
 def targets() -> list[Path]:
@@ -25,7 +23,6 @@ def targets() -> list[Path]:
     paths += [GTK4_DIR / name for name in GTK4_FILES]
     paths += [HOME / ".local" / "bin" / "gnome-theme-switcher",
               HOME / ".local" / "share" / "applications" / "org.gnome.GTK4ThemeSwitcher.desktop"]
-    paths += [HOME / ".local" / "share" / "icons" / name for name in LEGACY_LINKS]
     paths += [DATA_DIR, CACHE_DIR, CONFIG_DIR]
     return paths
 
