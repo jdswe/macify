@@ -226,6 +226,7 @@ SPANISH = {
         "Estás viendo los cambios en vivo. Pulsa Aplicar para conservarlos.",
     "Applied": "Aplicado",
     "Your new look is ready. No restart needed.": "Tu nuevo estilo está listo. No hace falta reiniciar.",
+    "Update available (asks for your password).": "Hay una actualización (pide tu contraseña).",
     # Colores de acento
     "red": "rojo", "orange": "naranja", "yellow": "amarillo", "green": "verde", "teal": "turquesa",
     "blue": "azul", "purple": "morado", "pink": "rosa", "slate": "grafito",

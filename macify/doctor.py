@@ -9,6 +9,7 @@ import json
 import shutil
 import subprocess
 import urllib.request
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable
 
@@ -219,10 +220,21 @@ def check_upkeep() -> Check:
 def check_boot() -> Check | None:
     if not load_config().get("system_screens"):
         return None
+    from importlib import resources
+
+    from . import boot
+
     result = subprocess.run(["update-alternatives", "--query", "default.plymouth"], capture_output=True, text=True)
-    if "macify.plymouth" in next((l for l in result.stdout.splitlines() if l.startswith("Value:")), ""):
+    if "macify.plymouth" not in next((l for l in result.stdout.splitlines() if l.startswith("Value:")), ""):
+        return Check(_("Startup screen"), WARN, _("Another boot screen is active."))
+    installed = Path("/usr/share/plymouth/themes/macify")
+    packaged = resources.files("macify").joinpath("data", "plymouth")
+    outdated = any(not (installed / item.name).exists() or (installed / item.name).read_bytes() != item.read_bytes()
+                   for item in packaged.iterdir())
+    if not outdated:
         return Check(_("Startup screen"), OK, _("Macify boot screen active."))
-    return Check(_("Startup screen"), WARN, _("Another boot screen is active."))
+    return Check(_("Startup screen"), WARN, _("Update available (asks for your password)."),
+                 lambda log: boot.apply(profile.wallpaper_path(profile.load_choices()), False, log))
 
 
 def run(online: bool = True) -> list[Check]:
