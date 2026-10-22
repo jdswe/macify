@@ -16,7 +16,8 @@
 
 - **Boot and login** — the progress bar tracks real startup (“Welcome”) and shutdown (“See you soon”); macOS-style login.
 - **Windows** — traffic-light buttons and macOS title bars, light or dark.
-- **Menu bar** — File, Edit, View, Window and Help menus that work in any app, laid out like Apple's guidelines. Battery, Wi‑Fi and Sound each open their own menu; Control Center holds the rest.
+- **Menu bar** — File, Edit, View, Window and Help menus that work in any app, laid out like Apple's guidelines. Battery (with Energy Mode), Wi‑Fi and Sound (above 100 % when over‑amplification is on) each open their own menu; Control Center keeps only the rest, in Apple's order.
+- **macOS touches** — volume and brightness appear as a glass card at the top right; screenshots slide in as a thumbnail you can paste right away; the calendar marks today in red like the macOS widget.
 - **Live Activities** — a bubble at the top for music, charging and connection changes. Click it for Now Playing: cover, progress, controls, volume and the choice of source.
 - **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.

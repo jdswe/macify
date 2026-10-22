@@ -1,6 +1,6 @@
 // Menú de la batería, como el de macOS: porcentaje, fuente de energía, tiempo restante,
-// «Modo de bajo consumo» y acceso a los ajustes. Datos de UPower; el modo, de
-// power-profiles-daemon (el mismo que usa GNOME, sin pedir contraseña).
+// «Modo de energía» (Bajo consumo, Automático, Alto rendimiento) y acceso a los ajustes.
+// Datos de UPower; el modo, de power-profiles-daemon (el que usa GNOME, sin contraseña).
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -13,6 +13,8 @@ import {header, infoRow, separator, settingsItem} from './menuParts.js';
 const UPOWER = ['org.freedesktop.UPower', '/org/freedesktop/UPower/devices/DisplayDevice', 'org.freedesktop.UPower.Device'];
 const PROFILES = ['org.freedesktop.UPower.PowerProfiles', '/org/freedesktop/UPower/PowerProfiles',
     'org.freedesktop.UPower.PowerProfiles'];
+// Los nombres de macOS para los modos de power-profiles-daemon.
+const ENERGY_MODES = [['power-saver', 'Low Power'], ['balanced', 'Automatic'], ['performance', 'High Power']];
 const STATE = {CHARGING: 1, DISCHARGING: 2, EMPTY: 3, FULL: 4, PENDING_CHARGE: 5, PENDING_DISCHARGE: 6};
 
 function proxy([name, path, iface], cancellable, callback) {
@@ -39,10 +41,10 @@ export class BatteryMenu {
         this._source = infoRow(menu);
         this._time = infoRow(menu);
         separator(menu);
-        this._lowPower = new PopupMenu.PopupSwitchMenuItem(_('Low Power Mode'), false);
-        this._lowPower.connect('toggled', (_i, on) => this._setLowPower(on));
-        menu.addMenuItem(this._lowPower);
-        separator(menu);
+        this._modes = new PopupMenu.PopupMenuSection();
+        menu.addMenuItem(this._modes);
+        this._modesSeparator = new PopupMenu.PopupSeparatorMenuItem();
+        menu.addMenuItem(this._modesSeparator);
         settingsItem(menu, _('Battery Settings…'), 'power');
 
         proxy(UPOWER, this._cancellable, p => {
@@ -82,14 +84,32 @@ export class BatteryMenu {
         else
             this._time.label.text = '';
         this._time.visible = Boolean(this._time.label.text);
-        const profile = this._get(this._profiles, 'ActiveProfile');
-        this._lowPower.visible = Boolean(this._profiles);
-        this._lowPower.setToggleState(profile === 'power-saver');
+        this._updateModes();
     }
 
-    _setLowPower(on) {
+    // «Modo de energía», con los modos que tenga este equipo y una marca en el activo.
+    _updateModes() {
+        const available = (this._get(this._profiles, 'Profiles') ?? []).map(p => p.Profile?.deepUnpack?.() ?? p.Profile);
+        const active = this._get(this._profiles, 'ActiveProfile');
+        this._modes.removeAll();
+        const modes = ENERGY_MODES.filter(([profile]) => available.includes(profile));
+        this._modes.actor.visible = this._modesSeparator.visible = modes.length > 0;
+        if (!modes.length)
+            return;
+        const title = new PopupMenu.PopupMenuItem(_('Energy Mode'), {reactive: false, can_focus: false});
+        title.add_style_class_name('macify-extra-section');
+        this._modes.addMenuItem(title);
+        for (const [profile, label] of modes) {
+            const item = new PopupMenu.PopupMenuItem(_(label));
+            item.setOrnament(profile === active ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+            item.connect('activate', () => this._setMode(profile));
+            this._modes.addMenuItem(item);
+        }
+    }
+
+    _setMode(profile) {
         this._profiles?.call('org.freedesktop.DBus.Properties.Set',
-            new GLib.Variant('(ssv)', [PROFILES[2], 'ActiveProfile', new GLib.Variant('s', on ? 'power-saver' : 'balanced')]),
+            new GLib.Variant('(ssv)', [PROFILES[2], 'ActiveProfile', new GLib.Variant('s', profile)]),
             Gio.DBusCallFlags.NONE, -1, null, null);
     }
 

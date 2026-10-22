@@ -13,6 +13,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as Screenshot from 'resource:///org/gnome/shell/ui/screenshot.js';
 
 const OUT = GLib.getenv('MACIFY_TEST_OUT') ?? '/tmp';
 const results = [];
@@ -196,7 +197,8 @@ function testParts() {
     const macify = Main.extensionManager.lookup('macify-menubar@macify.dev');
     const parts = (macify?.stateObj?._parts ?? []).map(p => p.constructor.name);
     check('extension active', macify?.state === 1, `state ${macify?.state}`);
-    for (const name of ['Gnome50Fixes', 'AppMenus', 'StatusBar', 'LiveActivities', 'FullscreenDock'])
+    for (const name of ['Gnome50Fixes', 'AppMenus', 'StatusBar', 'ControlCenter', 'LiveActivities', 'MacOsd',
+        'ScreenshotPreview', 'FullscreenDock'])
         check(`part ${name}`, parts.includes(name));
     const right = Main.panel._rightBox.get_children();
     const dateIndex = right.indexOf(Main.panel.statusArea.dateMenu.container);
@@ -388,6 +390,96 @@ async function testStatusExtras() {
     }
 }
 
+// El Centro de control sólo con lo que no tiene su propio menú, en el orden de macOS.
+async function testControlCenter() {
+    const qs = Main.panel.statusArea.quickSettings;
+    const grid = qs.menu._grid;
+    const shown = item => grid.contains(item);
+    check('Control Center: no battery/system row (it is in the battery and logo menus)',
+        !(qs._system?.quickSettingsItems ?? []).some(shown));
+    check('Control Center: no volume slider (Sound menu)', !(qs._volumeOutput?.quickSettingsItems ?? []).some(shown));
+    check('Control Center: no power mode tile (Battery menu)', !(qs._powerProfiles?.quickSettingsItems ?? []).some(shown));
+    check('Control Center: no Wi‑Fi tile (Wi‑Fi menu)',
+        !(qs._network?.quickSettingsItems ?? []).some(i => i.constructor.name === 'NMWirelessToggle' && shown(i)));
+    const order = ['_bluetooth', '_rfkill', '_doNotDisturb', '_brightness', '_darkMode', '_nightLight']
+        .flatMap(key => qs[key]?.quickSettingsItems ?? []).filter(shown)
+        .map(item => grid.get_children().indexOf(item));
+    check('Control Center: Apple order (connections, focus, display)',
+        order.every((v, i) => i === 0 || v > order[i - 1]), order.join(','));
+    await captureMenu('quickSettings', 'control-center');
+}
+
+// Volumen por encima del 100 % sólo si la persona activó la sobreamplificación.
+async function testSoundAmplification() {
+    const sound = new Gio.Settings({schema_id: 'org.gnome.desktop.sound'});
+    const menu = Main.panel.statusArea['macify-sound'].menu;
+    const slider = () => menu._getMenuItems()[1]?.get_children().find(c => 'maximum_value' in c);
+    for (const amplified of [false, true]) {
+        sound.set_boolean('allow-volume-above-100-percent', amplified);
+        menu.open();
+        await sleep(300);
+        const max = slider()?.maximum_value ?? 0;
+        check(`Sound menu: over‑amplification ${amplified ? 'on → above 100 %' : 'off → 100 %'}`,
+            amplified ? max > 1 : max === 1, `max ${max}`);
+        menu.close();
+        await sleep(200);
+    }
+    sound.reset('allow-volume-above-100-percent');
+}
+
+// Los modos de energía están en el menú Batería (si el equipo los ofrece). Sólo se miran:
+// cambiar el modo cambiaría el del equipo real.
+async function testEnergyModes() {
+    const menu = Main.panel.statusArea['macify-battery'].menu;
+    menu.open();
+    await sleep(600);
+    const labels = menu._getMenuItems().flatMap(i => i._getMenuItems?.() ?? [i]).map(i => i.label?.text ?? '');
+    const hasDaemon = GLib.file_test('/usr/libexec/power-profiles-daemon', GLib.FileTest.EXISTS) ||
+        GLib.file_test('/usr/libexec/tuned-ppd', GLib.FileTest.EXISTS);
+    check('Battery menu: energy modes', !hasDaemon || (labels.includes('Energy Mode') && labels.includes('Low Power')),
+        labels.filter(Boolean).join(' | '));
+    menu.close();
+    await sleep(200);
+}
+
+// El indicador de volumen sale arriba a la derecha con su nombre, como en macOS.
+async function testOsd() {
+    Main.osdWindowManager.showAll(new Gio.ThemedIcon({name: 'audio-volume-medium-symbolic'}), null, 0.6, 1);
+    await sleep(400);
+    const window = Main.osdWindowManager._osdWindows[Main.layoutManager.primaryIndex];
+    const box = window._hbox;
+    const [x, y] = box.get_transformed_position();
+    const monitor = Main.layoutManager.primaryMonitor;
+    check('volume indicator at the top right', x + box.width > monitor.x + monitor.width - 80 &&
+        y < monitor.y + 120, `${Math.round(x)},${Math.round(y)} ${Math.round(box.width)}x${Math.round(box.height)}`);
+    const title = window._vbox.get_first_child();
+    check('volume indicator says what it is', title.visible && title.text === 'Sound', title.text);
+    await screenshot('osd');
+    Main.osdWindowManager.hideAll();
+    await sleep(300);
+}
+
+// Miniatura de captura abajo a la derecha, sin el aviso de GNOME, y se va sola.
+async function testScreenshotPreview(macify) {
+    const preview = macify._parts.find(p => p.constructor.name === 'ScreenshotPreview');
+    const [content] = await new Shell.Screenshot().screenshot_stage_to_content();
+    const file = await Screenshot.captureScreenshot(content.get_texture(), null, 1, null);
+    await sleep(500);
+    const actor = preview._actor;
+    const notification = preview._notification;
+    const [x, y] = actor?.get_transformed_position() ?? [0, 0];
+    const monitor = Main.layoutManager.monitors[global.display.get_current_monitor()];
+    check('screenshot thumbnail at the bottom right', actor?.visible &&
+        x > monitor.x + monitor.width / 2 && y > monitor.y + monitor.height / 2, `${Math.round(x)},${Math.round(y)}`);
+    check('no GNOME banner on top of it', notification?.urgency === MessageTray.Urgency.LOW);
+    await screenshot('screenshot-preview');
+    preview._hide();
+    await sleep(600);
+    check('thumbnail leaves and takes its notification', !preview._actor && !Main.messageTray.getSources()
+        .some(s => s.notifications.includes(notification)));
+    file?.delete(null);
+}
+
 // Cambia la escala de todas las pantallas con el servicio de pantallas de GNOME, como lo
 // haría Ajustes › Pantallas. Las pantallas quedan una al lado de la otra.
 function displayCall(method, args = null) {
@@ -450,7 +542,9 @@ async function captureMenu(role, name) {
     button.menu.actor.style = 'max-height: 900px;';
     button.menu.actor.queue_relayout();
     await sleep(700);
-    const [, natural] = button.menu.actor.get_preferred_height(-1);
+    // El Centro de control mide su contenido, no la caja exterior.
+    const natural = Math.max(...[button.menu.actor, button.menu.box].filter(Boolean)
+        .map(actor => actor.get_preferred_height(-1)[1]));
     check(`${role} opens with a sane height`, natural > 40 && natural < 2000, `${Math.round(natural)} px`);
     const items = button.menu._getMenuItems();
     console.log(`MACIFY-TEST menu ${role} height=${Math.round(natural)} items=${items.length} open=${button.menu.isOpen} ` +
@@ -479,7 +573,7 @@ function sampleWifiNetworks() {
     };
 }
 
-async function captureDemo() {
+async function captureDemo(macify) {
     sampleWifiNetworks();
     await sleep(1500);
     await screenshot('desktop');
@@ -488,6 +582,10 @@ async function captureDemo() {
         ['macify-battery', 'menu-battery'], ['macify-wifi', 'menu-wifi'], ['macify-sound', 'menu-sound']])
         await captureMenu(role, name);
     global.display.focus_window?.minimize();
+    await captureMenu('quickSettings', 'control-center');
+    await captureMenu('dateMenu', 'date-menu');
+    await testOsd();
+    await testScreenshotPreview(macify);
     const player = fakePlayer('demo', 'Golden Hour', 'Macify Radio');
     await sleep(2500);
 
@@ -525,8 +623,13 @@ async function run() {
             throw new Error('only app grid requested');
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'demo') {
-            await captureDemo();
+            await captureDemo(macify);
             throw new Error('only demo captures requested');
+        }
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'date') {
+            await captureMenu('dateMenu', 'date-menu');
+            await captureMenu('quickSettings', 'control-center');
+            throw new Error('only date and Control Center requested');
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'menus') {
             await openApp('org.gnome.TextEditor.desktop');
@@ -537,6 +640,12 @@ async function run() {
             throw new Error('only menus requested');
         }
         await testStatusExtras();
+        await testControlCenter();
+        await testSoundAmplification();
+        await testEnergyModes();
+        await testOsd();
+        await testScreenshotPreview(macify);
+        await captureMenu('dateMenu', 'date-menu');
         await testLiveActivities(macify);
         await testDockScanout();
         await testBadges();

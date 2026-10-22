@@ -1,5 +1,6 @@
 // Macify Menubar: la barra de menús de macOS en GNOME. Logo con el menú del sistema,
-// menús de la app activa, iconos de estado, Live Activities y arreglos del dock.
+// menús de la app activa, iconos de estado, Centro de control, Live Activities, indicador de
+// volumen y brillo, miniatura de capturas y arreglos del dock.
 
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
@@ -13,8 +14,11 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {AppMenus} from './appMenus.js';
+import {ControlCenter} from './controlCenter.js';
 import {FullscreenDock, Gnome50Fixes} from './dock.js';
 import {LiveActivities} from './liveActivities.js';
+import {MacOsd} from './osd.js';
+import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
 import {_} from './i18n.js';
 
@@ -71,7 +75,10 @@ const PARTS = [
     ['fixes', () => new Gnome50Fixes()],
     ['menus', () => new AppMenus()],
     ['status', () => new StatusBar()],
+    ['control', () => new ControlCenter()],
     ['live', () => new LiveActivities()],
+    ['osd', () => new MacOsd()],
+    ['screenshots', () => new ScreenshotPreview()],
     ['dock', () => new FullscreenDock()],
 ];
 

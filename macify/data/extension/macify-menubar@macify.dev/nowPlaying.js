@@ -4,14 +4,11 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
-import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {_} from './i18n.js';
 
@@ -40,49 +37,6 @@ function iconButton(icon, name, action) {
     });
     button.connect('clicked', action);
     return button;
-}
-
-// Volumen del sistema (la salida de audio por defecto), igual que el del Centro de control.
-export class SystemVolume {
-    constructor() {
-        this._control = Volume.getMixerControl();
-    }
-
-    get _sink() {
-        return this._control?.get_default_sink() ?? null;
-    }
-
-    get available() {
-        return Boolean(this._sink);
-    }
-
-    get level() {
-        const sink = this._sink;
-        if (!sink)
-            return 0;
-        return sink.is_muted ? 0 : sink.volume / this._control.get_vol_max_norm();
-    }
-
-    set level(value) {
-        const sink = this._sink;
-        if (!sink)
-            return;
-        const max = this._control.get_vol_max_norm();
-        sink.volume = Math.round(Math.max(0, Math.min(1, value)) * max);
-        if (sink.is_muted && value > 0)
-            sink.change_is_muted(false);
-        sink.push_volume();
-    }
-
-    // Cambia el volumen y lo muestra en pantalla como las teclas de volumen.
-    nudge(delta) {
-        this.level += delta;
-        const level = this.level;
-        const icon = level <= 0 ? 'audio-volume-muted-symbolic'
-            : level < 0.34 ? 'audio-volume-low-symbolic'
-                : level < 0.67 ? 'audio-volume-medium-symbolic' : 'audio-volume-high-symbolic';
-        Main.osdWindowManager.showAll(new Gio.ThemedIcon({name: icon}), null, level, 1);
-    }
 }
 
 export class NowPlaying {
@@ -188,6 +142,10 @@ export class NowPlaying {
 
     _syncVolume() {
         this._syncing = true;
+        this._volumeSlider.maximum_value = this._volume.maxLevel;
+        this._volumeSlider.clearMarks?.();
+        if (this._volume.maxLevel > 1)
+            this._volumeSlider.addMark?.(1);
         this._volumeSlider.value = this._volume.level;
         this._syncing = false;
     }

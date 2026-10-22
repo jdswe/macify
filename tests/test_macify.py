@@ -361,11 +361,15 @@ class IconTests(unittest.TestCase):
         with mock.patch.object(session, "load_config", return_value={"last_update_check": time.time()}), \
              mock.patch.object(session, "is_busy", return_value=False), \
              mock.patch.object(session.apps, "apply"), mock.patch.object(session.extensions, "disable_other_docks"), \
+             mock.patch.object(session.extensions, "menubar_outdated", return_value=False), \
+             mock.patch.object(session.extensions, "install_menubar") as install, \
+             mock.patch.object(session.snaps, "sync"), \
              mock.patch.object(icons, "mac_theme_ready", return_value=False), \
              mock.patch.object(doctor, "run", side_effect=lambda online: calls.append(online) or []), \
              mock.patch.object(doctor, "notify_if_needed"):
             session.refresh(lambda _m: None, login=True)
         self.assertEqual(calls, [False])
+        install.assert_not_called()       # la prueba no toca la extensión instalada de verdad
 
     def test_upkeep_waits_while_macify_is_busy(self):
         """Regresión 0.4.1: el vigilante regeneró iconos con WhiteSur a medio instalar."""

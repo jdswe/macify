@@ -19,7 +19,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import {_} from './i18n.js';
 import {MediaPlayers} from './mediaPlayers.js';
-import {NowPlaying, SystemVolume} from './nowPlaying.js';
+import {NowPlaying} from './nowPlaying.js';
+import {SystemVolume} from './systemVolume.js';
 
 const EVENT_MS = 3500;          // lo que dura un aviso (carga, conexión)
 const BARS_MS = 5000;           // las barras se mueven al empezar una canción y luego descansan

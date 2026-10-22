@@ -32,6 +32,9 @@ icons = Path(sys.argv[2]) / "icons"
 icons.mkdir(exist_ok=True)
 (icons / "macify-logo-symbolic.svg").write_text(extensions.menubar_logo_svg())
 EOF
+# Las capturas de pantalla de la prueba van a su propia carpeta, no a las Imágenes reales.
+mkdir -p "$work/pictures"
+echo "XDG_PICTURES_DIR=\"$work/pictures\"" > "$work/config/user-dirs.dirs"
 ln -s "$HOME/.local/share/fonts" "$work/data/fonts"
 ln -s "$HOME/.local/share/icons" "$work/data/icons"
 

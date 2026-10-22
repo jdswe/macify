@@ -26,7 +26,8 @@ echo "2/4 GNOME screens (hidden test session)"
 MACIFY_TEST_ONLY=demo \
 MACIFY_TEST_SETTINGS="/org/gnome/desktop/background/picture-uri='$wallpaper';/org/gnome/desktop/background/picture-uri-dark='$wallpaper'" \
     "$repo/tests/shell/run.sh" "$work/shell" > /dev/null 2>&1 || true
-for shot in desktop menu-edit menu-window menu-battery menu-wifi menu-sound now-playing app-grid badge; do
+for shot in desktop menu-edit menu-window menu-battery menu-wifi menu-sound control-center osd date-menu \
+    screenshot-preview now-playing app-grid badge; do
     [ -f "$work/shell/$shot.png" ] || { echo "missing GNOME screen: $shot"; exit 1; }
 done
 

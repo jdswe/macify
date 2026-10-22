@@ -104,3 +104,86 @@
   -barlevel-active-background-color: -st-accent-color;
   -slider-handle-radius: 6px;
 }
+
+/* ---------- indicador de volumen y brillo (arriba a la derecha, como macOS 27) ---------- */
+
+.osd-window.macify-osd {
+  margin: 38px 10px 0 0;
+  padding: 12px 16px 14px 14px;
+  min-width: 230px;
+  spacing: 12px;
+  border-radius: 18px;
+  text-align: left;
+  font-weight: normal;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+.osd-window.macify-osd-dark {
+  color: #ffffff;
+  background-color: rgba(38, 38, 40, 0.80);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.osd-window.macify-osd-light {
+  color: #1d1d1f;
+  background-color: rgba(248, 248, 250, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+}
+.osd-window.macify-osd StIcon { icon-size: 20px; }
+.osd-window.macify-osd > * { spacing: 6px; }
+.macify-osd-title { font-size: 13px; font-weight: bold; }
+.osd-window.macify-osd StLabel { font-size: 12px; margin: 0; }
+.osd-window.macify-osd .macify-osd-title { font-size: 13px; }
+.osd-window.macify-osd .level {
+  min-width: 180px;
+  height: 6px;
+  margin: 0;
+  border-radius: 3px;
+  -barlevel-height: 6px;
+}
+.osd-window.macify-osd-dark .level {
+  -barlevel-background-color: rgba(255, 255, 255, 0.18);
+  -barlevel-active-background-color: #ffffff;
+}
+.osd-window.macify-osd-light .level {
+  -barlevel-background-color: rgba(0, 0, 0, 0.12);
+  -barlevel-active-background-color: #3a3a3c;
+}
+
+/* ---------- miniatura de captura ---------- */
+
+.macify-shot {
+  padding: 5px;
+  border-radius: 14px;
+  background-color: rgba(250, 250, 252, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.macify-shot:hover { background-color: rgba(255, 255, 255, 0.98); }
+.macify-shot-box { spacing: 4px; }
+.macify-shot-image { border-radius: 9px; }
+.macify-shot-hint { font-size: 11px; color: #3a3a3c; text-align: center; padding: 1px 0 2px; }
+
+/* ---------- fecha y avisos: tarjetas como los widgets de macOS ----------
+ * El tema y Blur My Shell (menús de cristal) ponen sus reglas con !important: aquí van con
+ * más detalle en el selector para que ganen las de Apple (el mes y el día de hoy en rojo). */
+
+.datemenu-popover { padding: 8px; }
+.datemenu-popover .datemenu-calendar-column .calendar {
+  border-radius: 18px;
+  padding: 6px;
+  background-color: rgba(128, 128, 128, 0.14);
+}
+.datemenu-popover .world-clocks-button,
+.datemenu-popover .weather-button,
+.datemenu-popover .events-button { border-radius: 18px !important; }
+.datemenu-popover .message-list .message { border-radius: 16px; }
+.datemenu-popover #calendarArea .calendar .calendar-month-header .calendar-month-label {
+  color: #ff3b30 !important;
+  font-weight: bold;
+}
+.datemenu-popover #calendarArea .calendar .calendar-day.calendar-today {
+  color: #ffffff !important;
+  background-color: #ff3b30 !important;
+  font-weight: bold;
+}
+.datemenu-popover #calendarArea .calendar .calendar-day.calendar-today:hover,
+.datemenu-popover #calendarArea .calendar .calendar-day.calendar-today:focus { background-color: #ff5147 !important; }

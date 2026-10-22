@@ -81,6 +81,10 @@ const SPANISH = {
     // Menús de estado
     'Battery': 'Batería',
     'Low Power Mode': 'Modo de bajo consumo',
+    'Energy Mode': 'Modo de energía',
+    'Low Power': 'Bajo consumo',
+    'Automatic': 'Automático',
+    'High Power': 'Alto rendimiento',
     'Battery Settings…': 'Ajustes de batería…',
     'Power Source:': 'Fuente de energía:',
     'Power Adapter': 'Adaptador de corriente',
@@ -103,6 +107,12 @@ const SPANISH = {
     'Play/Pause': 'Reproducir/Pausa',
     'Next': 'Siguiente',
     'Control Center': 'Centro de control',
+    // Indicador de volumen y brillo
+    'Microphone': 'Micrófono',
+    'Display': 'Pantalla',
+    'Keyboard Brightness': 'Brillo del teclado',
+    // Capturas
+    'Copied · Ctrl+V to paste': 'Copiada · Ctrl+V para pegar',
 };
 
 const IS_SPANISH = GLib.get_language_names()[0].startsWith('es');
