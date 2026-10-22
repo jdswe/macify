@@ -39,7 +39,7 @@ Or download the `.deb` from [Releases](../../releases/latest) and run `sudo apt 
 
 Open **Macify**, follow the steps, press **Install** and restart.
 
-Built for Ubuntu with GNOME 45–50. Tested on Ubuntu 26.04 (GNOME 50, Wayland).
+Built for Ubuntu with GNOME 45–50. Tested on Ubuntu 26.04.1 (GNOME 50, Wayland).
 
 ## Screenshots
 
