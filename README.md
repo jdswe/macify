@@ -16,12 +16,13 @@
 
 - **Boot and login** — the progress bar tracks real startup (“Welcome”) and shutdown (“See you soon”); macOS-style login.
 - **Windows** — traffic-light buttons and macOS title bars, light or dark.
-- **Menu bar** — File, Edit, View, Window and Help menus that work in any app, laid out like Apple's guidelines. Battery (with Energy Mode), Wi‑Fi and Sound (above 100 % when over‑amplification is on) each open their own menu; Control Center keeps only the rest, in Apple's order.
-- **macOS touches** — volume and brightness appear as a glass card at the top right; screenshots slide in as a thumbnail you can paste right away; the calendar marks today in red like the macOS widget.
+- **Menu bar** — File, Edit, View, Window and Help menus that work in any app, laid out like Apple's guidelines. Battery (with Energy Mode), Bluetooth (only on computers that have it), Wi‑Fi and Sound (output and microphone; above 100 % when over‑amplification is on) each open their own menu; Control Center keeps only the rest: Airplane Mode, Do Not Disturb, brightness, Dark Style and Night Light.
+- **macOS touches** — volume, brightness and microphone appear as a glass card at the top right; screenshots slide in as a thumbnail you can paste right away; the calendar marks today in red; Alt+Tab and the display switcher (Super+P) are glass panels; the music bars move while something plays.
 - **Live Activities** — a bubble at the top for music, charging and connection changes. Click it for Now Playing: cover, progress, controls, volume and the choice of source.
 - **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.
-- **Wallpaper colors** — the accent color follows your wallpaper.
+- **Wallpapers, light and dark** — eight original folded-glass wallpapers, each with a light and a dark version that switch with your appearance. Your own folders become sections of the gallery. Changing the wallpaper also updates the login screen (one password), without reinstalling.
+- **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches everything.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Software Update** — checks GitHub, downloads and installs new versions from inside the app.

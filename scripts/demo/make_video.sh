@@ -12,7 +12,9 @@ out=${1:-$repo/docs/demo.mp4}
 work=$(mktemp -d)
 web=$(mktemp -d -p "$HOME" macify-web.XXXXXX)       # Firefox (snap) no escribe en /tmp ni en carpetas ocultas
 trap 'rm -rf "$work" "$web"' EXIT
+# Siempre un fondo original de Macify (claro y oscuro): nunca los fondos propios de quien graba.
 wallpaper="file://$repo/macify/data/wallpapers/lilac.jpg"
+wallpaper_dark="file://$repo/macify/data/wallpapers/lilac-dark.jpg"
 
 echo "1/4 app screens"
 PYTHONPATH="$repo" python3 -c "from macify import boot; boot.build_theme()"
@@ -23,10 +25,12 @@ done
 [ -f "$work/app/13-doctor.png" ] || { echo "app capture failed:"; tail -5 "$work/capture.log"; exit 1; }
 
 echo "2/4 GNOME screens (hidden test session)"
-MACIFY_TEST_ONLY=demo \
-MACIFY_TEST_SETTINGS="/org/gnome/desktop/background/picture-uri='$wallpaper';/org/gnome/desktop/background/picture-uri-dark='$wallpaper'" \
+# Dos pantallas: así aparece el selector de pantallas (Super+P). Las escenas usan la primera.
+MACIFY_TEST_ONLY=demo MACIFY_MONITORS="1920x1080 1920x1080" \
+MACIFY_TEST_SETTINGS="/org/gnome/desktop/background/picture-uri='$wallpaper';/org/gnome/desktop/background/picture-uri-dark='$wallpaper_dark';/org/gnome/desktop/screensaver/picture-uri='$wallpaper_dark'" \
     "$repo/tests/shell/run.sh" "$work/shell" > /dev/null 2>&1 || true
-for shot in desktop menu-edit menu-window menu-battery menu-wifi menu-sound control-center osd date-menu \
+for shot in desktop menu-edit menu-window menu-battery menu-bluetooth menu-wifi menu-sound control-center osd date-menu \
+    display-switcher \
     screenshot-preview now-playing app-grid badge; do
     [ -f "$work/shell/$shot.png" ] || { echo "missing GNOME screen: $shot"; exit 1; }
 done

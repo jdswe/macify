@@ -4,13 +4,14 @@ Los valores usan el formato de texto GVariant que entiende `gsettings set`.
 Las claves que no existan en el sistema se omiten al aplicar (ver system.py).
 """
 
+import json
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
-from .assets import WALLPAPER_DIR, load_config, save_config_value
-from .colors import accent_for_wallpaper
+from .assets import CONFIG_DIR, WALLPAPER_DIR, load_config, save_config_value
+from .colors import accent_for_wallpaper, glass_tint, top_brightness
 
-DEFAULT_WALLPAPER = "dawn.jpg"
+DEFAULT_WALLPAPER = "lilac.jpg"       # con su versión oscura, lilac-dark.jpg
 
 
 def q(text: str) -> str:
@@ -49,9 +50,46 @@ def wallpaper_path(choices: Choices) -> Path:
     return chosen if chosen and chosen.is_file() else WALLPAPER_DIR / DEFAULT_WALLPAPER
 
 
+def dark_variant(path: Path) -> Path:
+    """«nombre-dark.jpg» junto a «nombre.jpg» es su versión oscura, como en los fondos de macOS."""
+    twin = path.with_name(f"{path.stem}-dark{path.suffix}")
+    return twin if twin.is_file() else path
+
+
+def desktop_wallpaper(choices: Choices) -> Path:
+    """El fondo que se ve: la versión oscura con el aspecto oscuro, si la hay."""
+    path = wallpaper_path(choices)
+    return dark_variant(path) if choices.appearance == "dark" else path
+
+
 def accent(choices: Choices) -> str:
-    wallpaper = wallpaper_path(choices)
+    wallpaper = desktop_wallpaper(choices)
     return accent_for_wallpaper(wallpaper) if wallpaper.exists() else "blue"
+
+
+LOOK_FILE = CONFIG_DIR / "look.json"
+BRIGHT_BAR = 0.62          # con un fondo más claro que esto arriba, la barra usa texto oscuro
+
+
+def _bar_text(wallpaper: Path) -> str:
+    return "dark-text" if wallpaper.exists() and top_brightness(wallpaper) > BRIGHT_BAR else "light-text"
+
+
+def look(choices: Choices) -> dict:
+    """Lo que Macify Menubar ajusta en vivo: el texto de la barra según el fondo de cada aspecto,
+    y el aspecto aplicado (si se cambia desde el Centro de control, Macify lo sigue)."""
+    light = wallpaper_path(choices)
+    return {"appearance": choices.appearance,
+            "bar": {"light": _bar_text(light), "dark": _bar_text(dark_variant(light))}}
+
+
+def write_look(choices: Choices) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    LOOK_FILE.write_text(json.dumps(look(choices)))
+
+
+def _tuple(values) -> str:
+    return "(" + ", ".join(str(v) for v in values) + ")"
 
 
 # Dash2Dock Animated elige el tamaño por posición en esta lista (ver dock.js de la extensión).
@@ -79,7 +117,12 @@ def dock_icon_size(pixels: int) -> str:
 def settings(choices: Choices) -> dict:
     dark = choices.appearance == "dark"
     variant = "Dark" if dark else "Light"
-    uri = q("file://" + str(wallpaper_path(choices)))
+    light = wallpaper_path(choices)
+    uri = q("file://" + str(light))
+    dark_uri = q("file://" + str(dark_variant(light)))
+    shown = q("file://" + str(desktop_wallpaper(choices)))
+    glass = glass_tint(desktop_wallpaper(choices), dark) if light.exists() else (
+        (0.12, 0.12, 0.14, 0.35) if dark else (1.0, 1.0, 1.0, 0.35))
     return {
         "org.gnome.desktop.interface": {
             "gtk-theme": q(f"WhiteSur-{variant}-alt"),
@@ -104,11 +147,11 @@ def settings(choices: Choices) -> dict:
         },
         "org.gnome.desktop.background": {
             "picture-uri": uri,
-            "picture-uri-dark": uri,
+            "picture-uri-dark": dark_uri,           # con «-dark» al lado, cambia con el aspecto
             "picture-options": q("zoom"),
         },
         "org.gnome.desktop.screensaver": {
-            "picture-uri": uri,
+            "picture-uri": shown,
             "picture-options": q("zoom"),
             "lock-enabled": "true",
         },
@@ -158,15 +201,16 @@ def settings(choices: Choices) -> dict:
             "open-app-animation": "true",               # rebote al abrir una app
             "lamp-app-animation": "false",              # de eso se encarga Magic Lamp
             "blur-background": "true",
-            "background-color": "(0.12, 0.12, 0.14, 0.35)" if dark else "(1.0, 1.0, 1.0, 0.35)",
+            # Cristal del aspecto elegido teñido con el fondo; en claro, un filo de luz más visible.
+            "background-color": _tuple(glass),
             "border-radius": str(float(DOCK_RADIUS_24PX)),
             "border-thickness": "1",
-            "border-color": "(1.0, 1.0, 1.0, 0.18)",
+            "border-color": "(1.0, 1.0, 1.0, 0.18)" if dark else "(1.0, 1.0, 1.0, 0.6)",
             "running-indicator-style": str(DOCK_DOT_INDICATOR),
             "icon-shadow": "true",
             "trash-icon": "true",
             "separator-thickness": "1",
-            "separator-color": "(1.0, 1.0, 1.0, 0.25)",
+            "separator-color": "(1.0, 1.0, 1.0, 0.25)" if dark else "(0.0, 0.0, 0.0, 0.15)",
             "notification-badge-style": "0",            # globo rojo con número (lo dibuja Macify Menubar)
             "notification-badge-color": "(1.0, 0.23, 0.19, 1.0)",
         },

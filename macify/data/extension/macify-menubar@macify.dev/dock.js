@@ -4,6 +4,7 @@ import Cairo from 'gi://cairo';
 import GLib from 'gi://GLib';
 import Mtk from 'gi://Mtk';
 
+import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
@@ -16,6 +17,10 @@ const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
 const HIDE_DELAY_MS = 300;
 const REVEAL_MS = 700;          // tiempo en que se vigila que el dock termine de entrar
 const KEEP_MARGIN = 28;
+// Al poner o quitar una pantalla (o Super+P: duplicar, sólo el portátil…) el dock rehace sus
+// docks y a veces queda roto: sin dash, de 0×0 o con docks viejos que siguen animándose
+// («this.dash is null»). Pasado este tiempo se revisa y, si hace falta, se reinicia.
+const DISPLAYS_SETTLE_MS = 1500;
 
 // Sobre una app maximizada que ocupa todo un monitor (Brave, VS Code y otras de Chromium o
 // Electron), GNOME puede mandar la imagen de la app directo a la pantalla y no repintar la
@@ -144,13 +149,46 @@ export class FullscreenDock {
     constructor() {
         global.display.connectObject('in-fullscreen-changed', () => this._update(), this);
         Main.extensionManager.connectObject('extension-state-changed', () => this._update(), this);
-        Main.layoutManager.connectObject('monitors-changed', () => this._update(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            this._update();
+            this._checkAfterDisplayChange();
+        }, this);
+        this._displays = Main.layoutManager.monitors.length;
         // El dock puede crearse después que esta extensión.
         this._startId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
             this._startId = 0;
             this._update();
             return GLib.SOURCE_REMOVE;
         });
+        this._update();
+    }
+
+    _checkAfterDisplayChange() {
+        if (this._checkId)
+            GLib.source_remove(this._checkId);
+        this._checkId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DISPLAYS_SETTLE_MS, () => {
+            this._checkId = 0;
+            this._repair().catch(e => console.warn(`Macify: dock repair: ${e.message}`));
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    async _repair() {
+        const extension = Main.extensionManager.lookup(DOCK_UUID);
+        if (extension?.state !== ExtensionState.ACTIVE)
+            return;
+        const displays = Main.layoutManager.monitors.length;
+        const changed = displays !== this._displays;
+        this._displays = displays;
+        const docks = this._docks();
+        const wanted = Number(extension.stateObj?.multi_monitor_preference) === 1 ? displays : 1;
+        const broken = docks.length !== wanted || docks.some(d => !d.dash || d.width < 1 || d.height < 1);
+        if (!changed && !broken)
+            return;
+        // Igual que desactivarlo y activarlo: docks nuevos, sin animaciones viejas.
+        console.log(`Macify dock: restarting after a display change (${docks.length} docks, ${displays} displays)`);
+        await Main.extensionManager._callExtensionDisable(DOCK_UUID);
+        await Main.extensionManager._callExtensionEnable(DOCK_UUID);
         this._update();
     }
 
@@ -200,6 +238,13 @@ export class FullscreenDock {
 
     _patch(dock) {
         enableBadges(dock);
+        if (typeof dock.animate === 'function' && !dock._macifyAnimate) {
+            // Un dock quitado (sin dash) que aún se anima sólo daría errores en cada cuadro.
+            dock._macifyAnimate = dock.animate;
+            dock.animate = function (...args) {
+                return this.dash ? this._macifyAnimate(...args) : undefined;
+            };
+        }
         if (!dock._macifyWatched) {
             // Si el dock se rehace (al cambiar su tamaño), suelta lo que tenía pedido.
             dock._macifyWatched = true;
@@ -286,6 +331,8 @@ export class FullscreenDock {
     destroy() {
         if (this._startId)
             GLib.source_remove(this._startId);
+        if (this._checkId)
+            GLib.source_remove(this._checkId);
         if (this._watched?._macifyCreateDock) {
             this._watched.createDock = this._watched._macifyCreateDock;
             delete this._watched._macifyCreateDock;
@@ -298,6 +345,10 @@ export class FullscreenDock {
                 releaseComposited(dock);
                 dock.disconnectObject(this);
                 delete dock._macifyWatched;
+                if (dock._macifyAnimate) {
+                    dock.animate = dock._macifyAnimate;
+                    delete dock._macifyAnimate;
+                }
                 dock.dwell?.disconnectObject(this);
                 if (dock.dwell)
                     delete dock.dwell._macifyLog;

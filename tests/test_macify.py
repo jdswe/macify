@@ -98,6 +98,69 @@ class ProfileTests(unittest.TestCase):
         self.assertFalse(doctor._same("'WhiteSur-Dark'", "'WhiteSur-Light'"))
 
 
+class WallpaperTests(unittest.TestCase):
+    """Fondos con versión oscura, secciones por carpeta y la barra que se ajusta al fondo."""
+
+    def _image(self, path, color):
+        from PIL import Image
+        Image.new("RGB", (64, 36), color).save(path)
+
+    def test_every_bundled_wallpaper_has_a_dark_twin(self):
+        from macify import wallpapers
+        folder = PACKAGE / "data" / "wallpapers"
+        for name, (_title, section) in wallpapers.CATALOG.items():
+            if section == wallpapers.MACIFY:
+                self.assertTrue((folder / name.replace(".jpg", "-dark.jpg")).is_file(), name)
+
+    def test_dark_twin_follows_the_appearance(self):
+        import tempfile
+        from unittest import mock
+        from macify import profile
+        with tempfile.TemporaryDirectory() as tmp:
+            light, dark = Path(tmp) / "bay.jpg", Path(tmp) / "bay-dark.jpg"
+            self._image(light, (240, 230, 220))
+            self._image(dark, (20, 20, 30))
+            choices = profile.Choices(appearance="dark", wallpaper=str(light))
+            self.assertEqual(profile.desktop_wallpaper(choices), dark)
+            background = profile.settings(choices)["org.gnome.desktop.background"]
+            self.assertIn("bay.jpg", background["picture-uri"])
+            self.assertIn("bay-dark.jpg", background["picture-uri-dark"])
+            self.assertEqual(profile.look(choices)["bar"], {"light": "dark-text", "dark": "light-text"})
+            choices.appearance = "light"
+            self.assertEqual(profile.desktop_wallpaper(choices), light)
+            with mock.patch("macify.profile.top_brightness", return_value=0.1):
+                self.assertEqual(profile.look(choices)["bar"]["light"], "light-text")
+
+    def test_folders_become_sections_and_twins_are_hidden(self):
+        import tempfile
+        from unittest import mock
+        from macify import wallpapers
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "wallpapers" / "Landscapes").mkdir(parents=True)
+            self._image(root / "wallpapers" / "loose.jpg", (1, 2, 3))
+            self._image(root / "wallpapers" / "Landscapes" / "macos-hills.jpg", (4, 5, 6))
+            self._image(root / "wallpapers" / "Landscapes" / "macos-hills-dark.jpg", (7, 8, 9))
+            with mock.patch.object(wallpapers, "assets_root", return_value=root), \
+                 mock.patch.object(wallpapers, "load_config", return_value={}):
+                items = wallpapers.catalog()
+            mine = {w.title: w.section for w in items if w.section not in wallpapers.FIRST}
+            self.assertEqual(mine, {"Loose": "Your Folder", "macOS Hills": "Landscapes"})
+            self.assertEqual(wallpapers.sections(items)[:2], wallpapers.FIRST)
+            self.assertEqual(wallpapers.sections(items)[-2:], ["Landscapes", "Your Folder"])
+
+    def test_login_screen_is_outdated_after_a_new_wallpaper(self):
+        from unittest import mock
+        from macify import boot
+        wallpaper = PACKAGE / "data" / "wallpapers" / "lilac.jpg"
+        config = {"system_screens": True, "login_wallpaper": boot.login_key(wallpaper)}
+        with mock.patch.object(boot, "load_config", return_value=config):
+            self.assertFalse(boot.login_outdated(wallpaper))
+            self.assertTrue(boot.login_outdated(wallpaper.with_name("sand.jpg")))
+        with mock.patch.object(boot, "load_config", return_value={}):
+            self.assertFalse(boot.login_outdated(wallpaper))     # sin pantallas de Macify, nada que hacer
+
+
 class InstallerTests(unittest.TestCase):
     def test_steps_have_titles_and_details(self):
         for login in (False, True):

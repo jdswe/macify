@@ -12,8 +12,8 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Login | macOS-style login screen (WhiteSur GDM theme) |
 | Windows | Traffic-light buttons, macOS title bars, light or dark (WhiteSur, GTK 3 and 4) |
 | Menu bar | Logo menu, the app's name in bold and File, Edit, View, Window and Help menus for any app, following Apple's guidelines (Macify Menubar extension) |
-| Status menus | Battery (Energy Mode: Low Power, Automatic, High Power; time left), Wi‑Fi (networks, connect), Sound (volume up to 150 % when over‑amplification is on, output device) and Control Center, each its own menu |
-| Control Center | Only what has no menu of its own, in Apple's order: Bluetooth, Airplane Mode, Do Not Disturb, brightness, Dark Style, Night Light. Shut down, restart and lock are in the logo menu |
+| Status menus | Battery (Energy Mode: Low Power, Automatic, High Power; time left), Bluetooth (on/off, connect paired devices; shown only if the computer has Bluetooth), Wi‑Fi (networks, connect), Sound (volume up to 150 % when over‑amplification is on, output device) and Control Center, each its own menu |
+| Control Center | Only what has no menu of its own, in Apple's order: Airplane Mode, Do Not Disturb, brightness, Dark Style, Night Light. Shut down, restart and lock are in the logo menu |
 | Volume and brightness | The keys show a glass card at the top right with its name (Sound, Display…), like macOS |
 | Screenshots | A thumbnail slides in at the bottom right; the image is already copied, so Ctrl+V pastes it. Click it to open the image |
 | Calendar | The clock menu shows the month and today in red, with widget-style cards |
@@ -23,7 +23,9 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
 | Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |
 | Cursor & fonts | WhiteSur cursor, San Francisco fonts (SF Pro, SF Mono) |
-| Wallpapers | Eight original 4K wallpapers in sections, plus your own photos |
+| Wallpapers | Eight original 4K wallpapers, each with a light and a dark version; your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
+| One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches everything. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
+| Displays | Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change |
 | Colors | Accent color taken from your wallpaper |
 | Apps | Traffic-light buttons in apt, Flatpak and snap GTK apps (also ones installed later), VS Code and Firefox |
 | Upkeep | New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login |

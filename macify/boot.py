@@ -156,6 +156,21 @@ def apply(wallpaper: Path, dry_run: bool, log) -> None:
     theme = build_theme()
     _run(["apply", str(theme), str(wallpaper)], log)
     save_config_value("system_screens", True)
+    save_config_value("login_wallpaper", login_key(wallpaper))
+
+
+def login_key(wallpaper: Path) -> str:
+    """Qué fondo tiene la pantalla de inicio de sesión (ruta y fecha del archivo)."""
+    try:
+        return f"{wallpaper.resolve()}:{wallpaper.stat().st_mtime_ns}"
+    except OSError:
+        return str(wallpaper)
+
+
+def login_outdated(wallpaper: Path) -> bool:
+    """La pantalla de inicio de sesión de Macify tiene otro fondo que el del escritorio."""
+    config = load_config()
+    return bool(config.get("system_screens")) and config.get("login_wallpaper") != login_key(wallpaper)
 
 
 def revert(dry_run: bool, log) -> None:

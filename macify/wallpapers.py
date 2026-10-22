@@ -1,7 +1,9 @@
 """Catálogo de fondos de pantalla, por secciones, como Ajustes › Fondo de pantalla en macOS.
 
-Los fondos incluidos son originales de Macify (scripts/make_wallpapers.py). Las miniaturas
-se guardan en la caché: la galería no abre las imágenes 4K cada vez.
+Los fondos incluidos son originales de Macify (scripts/make_wallpapers.py), cada uno con su
+versión oscura («nombre-dark.jpg»), que se usa sola con el aspecto oscuro. La carpeta propia
+de la persona puede tener subcarpetas: cada una es una sección de la galería. Las
+miniaturas se guardan en la caché: la galería no abre las imágenes grandes cada vez.
 """
 
 import hashlib
@@ -17,14 +19,16 @@ THUMB_DIR = CACHE_DIR / "thumbnails"
 THUMB_SIZE = (320, 180)
 PHOTO_TYPES = (".jpg", ".jpeg", ".png", ".webp")
 
+MACIFY = "Macify"
 # archivo: (nombre, sección)
 CATALOG = {
-    "sand.jpg": ("Sand", "Ribbons"), "lilac.jpg": ("Lilac", "Ribbons"), "coral.jpg": ("Coral", "Ribbons"),
-    "meadow.jpg": ("Meadow", "Ribbons"), "lagoon.jpg": ("Lagoon", "Ribbons"), "ember.jpg": ("Ember", "Ribbons"),
-    "night.jpg": ("Night", "Ribbons"), "graphite.jpg": ("Graphite", "Ribbons"),
+    "lilac.jpg": ("Lilac", MACIFY), "sand.jpg": ("Sand", MACIFY), "coral.jpg": ("Coral", MACIFY),
+    "meadow.jpg": ("Meadow", MACIFY), "lagoon.jpg": ("Lagoon", MACIFY), "ember.jpg": ("Ember", MACIFY),
+    "night.jpg": ("Night", MACIFY), "graphite.jpg": ("Graphite", MACIFY),
     "dawn.jpg": ("Dawn", "Gradients"), "blue.jpg": ("Blue", "Gradients"), "dusk.jpg": ("Dusk", "Gradients"),
 }
-SECTIONS = ["Ribbons", "Gradients", "Your Folder", "Your Photos"]
+FIRST = [MACIFY, "Gradients"]
+LAST = ["Your Folder", "Your Photos"]
 
 
 @dataclass(frozen=True)
@@ -41,20 +45,37 @@ def _fingerprint(path: Path) -> str:
     return f"{path.stat().st_size}:{hashlib.sha1(head).hexdigest()}"
 
 
+def is_dark_twin(path: Path) -> bool:
+    """«nombre-dark.jpg» con «nombre.jpg» al lado: no es un fondo aparte, es su versión oscura."""
+    return path.stem.endswith("-dark") and path.with_name(path.stem[:-5] + path.suffix).is_file()
+
+
 def _photos(folder: Path) -> list[Path]:
-    return sorted(p for p in folder.iterdir() if p.suffix.lower() in PHOTO_TYPES) if folder.is_dir() else []
+    if not folder.is_dir():
+        return []
+    return sorted(p for p in folder.iterdir()
+                  if p.is_file() and p.suffix.lower() in PHOTO_TYPES and not is_dark_twin(p))
+
+
+def title(path: Path) -> str:
+    words = path.stem.replace("_", " ").replace("-", " ").split()
+    return " ".join("macOS" if w.lower() == "macos" else w[:1].upper() + w[1:] for w in words)
 
 
 def catalog() -> list[Wallpaper]:
-    """Los fondos incluidos, los de la carpeta del proyecto y las fotos que agregó la persona."""
+    """Los fondos incluidos, los de la carpeta propia (y sus subcarpetas) y las fotos agregadas."""
     found = []
     for path in _photos(WALLPAPER_DIR):
-        title, section = CATALOG.get(path.name, (path.stem.replace("-", " ").title(), "Gradients"))
-        found.append(Wallpaper(path, _(title), section))
+        name, section = CATALOG.get(path.name, (title(path), "Gradients"))
+        found.append(Wallpaper(path, _(name), section))
     root = assets_root()
     if root:
-        found += [Wallpaper(p, p.stem.replace("-", " ").title(), "Your Folder") for p in _photos(root / "wallpapers")]
-    found += [Wallpaper(Path(p), Path(p).stem, "Your Photos")
+        folder = root / "wallpapers"
+        found += [Wallpaper(p, title(p), "Your Folder") for p in _photos(folder)]
+        if folder.is_dir():
+            for sub in sorted(d for d in folder.iterdir() if d.is_dir() and not d.name.startswith(".")):
+                found += [Wallpaper(p, title(p), sub.name) for p in _photos(sub)]
+    found += [Wallpaper(Path(p), title(Path(p)), "Your Photos")
               for p in load_config().get("user_wallpapers", []) if Path(p).is_file()]
     unique, seen = [], set()
     for wallpaper in found:
@@ -62,8 +83,16 @@ def catalog() -> list[Wallpaper]:
         if key not in seen:
             seen.add(key)
             unique.append(wallpaper)
-    order = {CATALOG[name][0]: i for i, name in enumerate(CATALOG)}
-    return sorted(unique, key=lambda w: (SECTIONS.index(w.section), order.get(w.title, len(order)), w.title))
+    order = sections(unique)
+    known = {CATALOG[name][0]: i for i, name in enumerate(CATALOG)}
+    return sorted(unique, key=lambda w: (order.index(w.section), known.get(w.title, len(known)), w.title))
+
+
+def sections(items: list[Wallpaper]) -> list[str]:
+    """Macify y Degradados primero; luego las carpetas propias por nombre; al final lo suelto."""
+    present = {w.section for w in items}
+    folders = sorted(present - set(FIRST) - set(LAST), key=str.casefold)
+    return [s for s in FIRST if s in present] + folders + [s for s in LAST if s in present]
 
 
 def thumbnail(path: Path) -> Path:

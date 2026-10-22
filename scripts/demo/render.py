@@ -24,7 +24,7 @@ REPO = HERE.parents[1]
 CAPTURES = Path(sys.argv[1])
 OUT = Path(sys.argv[2])
 APP_SHOTS, SHELL_SHOTS = CAPTURES / "app", CAPTURES / "shell"
-WALLPAPER = REPO / "macify" / "data" / "wallpapers" / "lilac.jpg"     # fondo original, no de Apple
+WALLPAPER = REPO / "macify" / "data" / "wallpapers" / "lilac-dark.jpg"     # fondo original, no de Apple
 BOOT = Path.home() / ".cache" / "macify" / "plymouth"
 FONTS = Path.home() / ".local" / "share" / "fonts" / "macify-sf"
 W, H, FPS = 1920, 1080, 30
@@ -57,16 +57,17 @@ def cover(image, size):
 # ---------- recursos preparados una vez ----------
 
 _wall = Image.open(WALLPAPER).convert("RGB")
-BLURRED = cover(_wall, (int(W * 1.15), int(H * 1.15))).filter(ImageFilter.GaussianBlur(40))
-BLURRED = Image.blend(BLURRED, Image.new("RGB", BLURRED.size, (8, 8, 16)), 0.45)
+# Nítido, como un escritorio de verdad; sólo algo más oscuro para que se lean los títulos.
+BACKDROP = cover(_wall, (int(W * 1.08), int(H * 1.08)))
+BACKDROP = Image.blend(BACKDROP, Image.new("RGB", BACKDROP.size, (8, 8, 16)), 0.3)
 ICON = svg(REPO / "docs" / "icon.svg", 280)
 
 
 def background(t):
-    """Fondo difuminado que se mueve despacio."""
-    dx = (BLURRED.width - W) * (0.5 + 0.5 * math.sin(t * 0.05))
-    dy = (BLURRED.height - H) * (0.5 + 0.5 * math.cos(t * 0.04))
-    return BLURRED.crop((int(dx), int(dy), int(dx) + W, int(dy) + H)).convert("RGBA")
+    """El fondo, que se desplaza muy despacio."""
+    dx = (BACKDROP.width - W) * (0.5 + 0.5 * math.sin(t * 0.05))
+    dy = (BACKDROP.height - H) * (0.5 + 0.5 * math.cos(t * 0.04))
+    return BACKDROP.crop((int(dx), int(dy), int(dx) + W, int(dy) + H)).convert("RGBA")
 
 
 def rounded(img, radius):
@@ -145,14 +146,18 @@ def shot_scene(path, title, sub="", crop=None, max_w=1500, max_h=800):
     return draw
 
 
+def _open(path, crop=None):
+    image = Image.open(path).convert("RGB")
+    return image.crop(crop) if crop else image
+
+
 def pair_scene(paths_crops, title, sub=""):
-    """Dos o tres recortes lado a lado (por ejemplo, los menús de batería, Wi‑Fi y sonido)."""
+    """Dos a cuatro recortes lado a lado (por ejemplo, los menús de batería, Bluetooth, Wi‑Fi y sonido)."""
     def draw(t, dur):
         frame = background(t)
         caption(frame, t, title, sub)
         count = len(paths_crops)
-        layers = [card(f"{p}{c}", lambda p=p, c=c: Image.open(p).convert("RGB").crop(c), 1700 // count - 40, 760)
-                  for p, c in paths_crops]
+        layers = [card(f"{p}{c}", lambda p=p, c=c: _open(p, c), 1700 // count - 40, 760) for p, c in paths_crops]
         total = sum(layer.width - 2 * pad for layer, pad in layers) + 40 * (count - 1)
         x = (W - total) / 2
         for i, (layer, pad) in enumerate(layers):
@@ -376,6 +381,8 @@ def outro(t, dur):
 
 
 S = SHELL_SHOTS
+WALLPAPERS = REPO / "macify" / "data" / "wallpapers"
+FIRST_DISPLAY = (0, 0, 1920, 1080)       # la sesión de la demo tiene dos pantallas
 SCENES = [
     (4.4, coming),
     (4.5, intro),
@@ -390,16 +397,21 @@ SCENES = [
     (2.8, app_scene("08-done", "Restart", "One restart and the whole system looks like a Mac")),
     (4.4, shutdown),
     (6.0, startup),
-    (4.6, shot_scene(S / "desktop.png", "Your new desktop", "Menu bar, floating glass dock and macOS icons")),
+    (4.6, shot_scene(S / "desktop.png", "Your new desktop", "Menu bar, floating glass dock and macOS icons",
+                     crop=FIRST_DISPLAY)),
     (4.4, shot_scene(S / "menu-edit.png", "Menus for every app", "File, Edit, View, Window and Help work in any app",
                      crop=(0, 0, 760, 560), max_h=780)),
     (3.8, shot_scene(S / "menu-window.png", "Window, like on a Mac", "Minimize, Zoom, tile, move to another display",
                      crop=(0, 0, 900, 480), max_h=780)),
-    (4.6, pair_scene([(S / "menu-battery.png", (1180, 0, 1720, 330)), (S / "menu-wifi.png", (1230, 0, 1770, 330)),
-                      (S / "menu-sound.png", (1270, 0, 1810, 330))],
-                     "Every icon has its own menu", "Battery and Energy Mode, Wi‑Fi networks, sound output")),
+    (5.0, pair_scene([(S / "menu-battery.png", (1100, 0, 1640, 330)), (S / "menu-bluetooth.png", (1116, 0, 1656, 330)),
+                      (S / "menu-wifi.png", (1150, 0, 1690, 330)), (S / "menu-sound.png", (1256, 0, 1796, 330))],
+                     "Every icon has its own menu", "Battery and Energy Mode, Bluetooth devices, Wi‑Fi networks, sound")),
     (4.4, pair_scene([(S / "control-center.png", (1380, 0, 1920, 330)), (S / "osd.png", (1380, 0, 1920, 330))],
-                     "Control Center, the Apple way", "Only what has no menu of its own · volume at the top right")),
+                     "Control Center, the Apple way", "Airplane Mode, Do Not Disturb, styles · volume at the top right")),
+    (3.8, shot_scene(S / "display-switcher.png", "Two displays, one Mac", "Super+P: mirror or join · the dock "
+                     "follows every change", crop=(560, 360, 1360, 740), max_h=600)),
+    (4.4, pair_scene([(WALLPAPERS / "lilac.jpg", None), (WALLPAPERS / "lilac-dark.jpg", None)],
+                     "Light and dark, together", "Each wallpaper has both · windows, dock glass and menu bar follow")),
     (4.0, shot_scene(S / "date-menu.png", "Calendar like the macOS widget", "Today and the month in red, on glass cards",
                      crop=(1160, 0, 1920, 600), max_h=780)),
     (4.0, shot_scene(S / "screenshot-preview.png", "Screenshots, like on a Mac",
@@ -407,7 +419,8 @@ SCENES = [
                      max_h=700)),
     (4.8, shot_scene(S / "now-playing.png", "Live Activities", "Music, charging, connection — click for Now Playing",
                      crop=(560, 0, 1360, 420), max_h=780)),
-    (4.2, shot_scene(S / "app-grid.png", "Apps on frosted glass", "Show Apps works like the Apps view in macOS 27")),
+    (4.2, shot_scene(S / "app-grid.png", "Apps on frosted glass", "Show Apps works like the Apps view in macOS 27",
+                     crop=FIRST_DISPLAY)),
     (3.6, shot_scene(S / "badge.png", "Notification badges", "A red count on the app's dock icon, like on a Mac",
                      crop=(360, 880, 1560, 1080), max_h=500)),
     (3.0, app_scene("09-manage", "Macify stays with you", "Customize live, check for problems, restore or uninstall")),

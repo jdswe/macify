@@ -1,5 +1,5 @@
 // Lado derecho de la barra como en macOS: cada icono es su propio botón con su menú.
-//     Batería · Wi‑Fi · Sonido · Spotlight · Centro de control · Reloj
+//     Batería · Bluetooth · Wi‑Fi · Sonido · Spotlight · Centro de control · Reloj
 // Los iconos son los indicadores de GNOME, prestados de sus ajustes rápidos: así siempre
 // muestran el estado real. El Centro de control son esos ajustes rápidos.
 // Lo que macOS no pone en la barra (modo de energía, luz nocturna…) queda dentro del Centro
@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import {BatteryMenu} from './batteryMenu.js';
+import {BluetoothMenu} from './bluetoothMenu.js';
 import {_} from './i18n.js';
 import {SoundMenu} from './soundMenu.js';
 import {WifiMenu} from './wifiMenu.js';
@@ -24,6 +25,7 @@ const SETUP_TRIES = 20;         // los indicadores de GNOME se crean un poco des
 // [indicador de GNOME, nombre en la barra, menú, nombre accesible]
 const EXTRAS = [
     ['_system', 'macify-battery', BatteryMenu, 'Battery'],
+    ['_bluetooth', 'macify-bluetooth', BluetoothMenu, 'Bluetooth'],
     ['_network', 'macify-wifi', WifiMenu, 'Wi‑Fi'],
     ['_volumeOutput', 'macify-sound', SoundMenu, 'Sound'],
 ];
@@ -79,10 +81,17 @@ export class StatusBar {
             if (!indicator)
                 continue;
             const button = new StatusExtra(_(name));
-            const menu = new Menu(button.menu);
-            this._lend(indicator, button);
-            // Sin batería o sin audio, GNOME oculta su indicador: el botón también.
-            indicator.bind_property('visible', button, 'visible', GObject.BindingFlags.SYNC_CREATE);
+            const menu = new Menu(button.menu, indicator, button);
+            if (menu.icon) {
+                // Icono propio (Bluetooth: GNOME sólo lo muestra con algo conectado); el
+                // menú decide cuándo se ve. El indicador de GNOME queda guardado.
+                button.add_child(menu.icon);
+                this._lend(indicator, this._tucked);
+            } else {
+                this._lend(indicator, button);
+                // Sin batería o sin audio, GNOME oculta su indicador: el botón también.
+                indicator.bind_property('visible', button, 'visible', GObject.BindingFlags.SYNC_CREATE);
+            }
             this._addBeforeControlCenter(role, button);
             this._extras.push({button, menu});
         }

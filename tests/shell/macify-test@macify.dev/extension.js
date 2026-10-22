@@ -14,6 +14,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Screenshot from 'resource:///org/gnome/shell/ui/screenshot.js';
+import * as SwitchMonitor from 'resource:///org/gnome/shell/ui/switchMonitor.js';
 
 const OUT = GLib.getenv('MACIFY_TEST_OUT') ?? '/tmp';
 const results = [];
@@ -197,7 +198,7 @@ function testParts() {
     const macify = Main.extensionManager.lookup('macify-menubar@macify.dev');
     const parts = (macify?.stateObj?._parts ?? []).map(p => p.constructor.name);
     check('extension active', macify?.state === 1, `state ${macify?.state}`);
-    for (const name of ['Gnome50Fixes', 'AppMenus', 'StatusBar', 'ControlCenter', 'LiveActivities', 'MacOsd',
+    for (const name of ['Gnome50Fixes', 'BarLook', 'AppMenus', 'StatusBar', 'ControlCenter', 'LiveActivities', 'MacOsd',
         'ScreenshotPreview', 'FullscreenDock'])
         check(`part ${name}`, parts.includes(name));
     const right = Main.panel._rightBox.get_children();
@@ -274,8 +275,7 @@ async function testLiveActivities(macify) {
     check('Live Activity shows the playing song', button.visible && button.label.text.includes('Blinding Lights'),
         button.label.text);
     await sleep(6000);
-    const resting = button.barActors.every(b => !b._moving);
-    check('audio bars rest after a few seconds (no constant redraw)', resting);
+    check('audio bars keep moving while the song plays', button.barActors.some(b => b._moving));
     button.menu.open();
     await sleep(1600);
     const np = live._nowPlaying;
@@ -292,6 +292,8 @@ async function testLiveActivities(macify) {
     check('Next and Pause reach the player', player.calls.includes('Next') && player.calls.includes('PlayPause'),
         player.calls.join(','));
     await until(() => np._play.child.icon_name === 'media-playback-start-symbolic', 3000);
+    await sleep(800);
+    check('audio bars rest while paused (no redraw)', button.barActors.every(b => !b._moving));
     check('play button shows Play when paused', np._play.child.icon_name === 'media-playback-start-symbolic',
         np._play.child.icon_name);
     button.menu.close();
@@ -370,13 +372,19 @@ async function testStatusExtras() {
     const area = Main.panel.statusArea;
     const qs = area.quickSettings;
     const right = Main.panel._rightBox.get_children();
-    const order = ['macify-battery', 'macify-wifi', 'macify-sound', 'macify-spotlight']
+    const order = ['macify-battery', 'macify-bluetooth', 'macify-wifi', 'macify-sound', 'macify-spotlight']
         .map(role => right.indexOf(area[role]?.container));
     order.push(right.indexOf(qs.container), right.indexOf(area.dateMenu.container));
-    check('right side in macOS order (battery, Wi‑Fi, sound, Spotlight, Control Center, clock)',
+    check('right side in macOS order (battery, Bluetooth, Wi‑Fi, sound, Spotlight, Control Center, clock)',
         order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1])), order.join(','));
     check('battery icon lives in its own button', qs._system.get_parent() === area['macify-battery']);
     check('power mode icon tucked into Control Center', !qs._indicators.contains(qs._powerProfiles));
+    const bluetooth = area['macify-bluetooth'];
+    const client = qs._bluetooth._client;
+    const hasAdapter = client.available || client.adapter_state !== 0;
+    check('Bluetooth icon in the bar only when there is Bluetooth', bluetooth.visible === hasAdapter,
+        `adapter ${hasAdapter}, icon ${bluetooth.visible}`);
+    check('GNOME Bluetooth indicator tucked (no double icon)', !qs._indicators.contains(qs._bluetooth));
     check('privacy indicators stay in the bar', qs._indicators.contains(qs._camera) &&
         qs._indicators.contains(qs._volumeInput) && qs._indicators.contains(qs._location));
     for (const role of ['macify-battery', 'macify-wifi', 'macify-sound']) {
@@ -399,12 +407,13 @@ async function testControlCenter() {
         !(qs._system?.quickSettingsItems ?? []).some(shown));
     check('Control Center: no volume slider (Sound menu)', !(qs._volumeOutput?.quickSettingsItems ?? []).some(shown));
     check('Control Center: no power mode tile (Battery menu)', !(qs._powerProfiles?.quickSettingsItems ?? []).some(shown));
+    check('Control Center: no Bluetooth tile (Bluetooth menu)', !(qs._bluetooth?.quickSettingsItems ?? []).some(shown));
     check('Control Center: no Wi‑Fi tile (Wi‑Fi menu)',
         !(qs._network?.quickSettingsItems ?? []).some(i => i.constructor.name === 'NMWirelessToggle' && shown(i)));
-    const order = ['_bluetooth', '_rfkill', '_doNotDisturb', '_brightness', '_darkMode', '_nightLight']
+    const order = ['_rfkill', '_doNotDisturb', '_brightness', '_darkMode', '_nightLight']
         .flatMap(key => qs[key]?.quickSettingsItems ?? []).filter(shown)
         .map(item => grid.get_children().indexOf(item));
-    check('Control Center: Apple order (connections, focus, display)',
+    check('Control Center: Apple order (Airplane Mode and Do Not Disturb, brightness, styles)',
         order.every((v, i) => i === 0 || v > order[i - 1]), order.join(','));
     await captureMenu('quickSettings', 'control-center');
 }
@@ -440,6 +449,22 @@ async function testEnergyModes() {
         labels.filter(Boolean).join(' | '));
     menu.close();
     await sleep(200);
+}
+
+// La barra pone texto oscuro sobre un fondo claro (lo que Macify deja en look.json).
+async function testBarLook() {
+    const dir = GLib.build_filenamev([GLib.get_user_config_dir(), 'macify']);
+    GLib.mkdir_with_parents(dir, 0o755);
+    const file = Gio.File.new_for_path(GLib.build_filenamev([dir, 'look.json']));
+    const write = look => file.replace_contents(JSON.stringify(look), null, false, Gio.FileCreateFlags.NONE, null);
+    write({appearance: 'none', bar: {light: 'dark-text', dark: 'dark-text'}});
+    await until(() => Main.panel.has_style_class_name('macify-bar-dark-text'), 3000);
+    check('menu bar text turns dark on a light wallpaper', Main.panel.has_style_class_name('macify-bar-dark-text'));
+    await screenshot('bar-dark-text');
+    write({appearance: 'none', bar: {light: 'light-text', dark: 'light-text'}});
+    await until(() => !Main.panel.has_style_class_name('macify-bar-dark-text'), 3000);
+    check('and light again on a dark one', !Main.panel.has_style_class_name('macify-bar-dark-text'));
+    file.delete(null);
 }
 
 // El indicador de volumen sale arriba a la derecha con su nombre, como en macOS.
@@ -511,6 +536,37 @@ async function applyScale(wanted) {
     return logical.map(l => l[2]);
 }
 
+// Deja encendidas sólo las primeras `count` pantallas (como desconectar una o Super+P).
+async function useDisplays(count) {
+    const [serial, monitors] = await displayCall('GetCurrentState');
+    let x = 0;
+    const logical = monitors.slice(0, count).map(([[connector], modes], i) => {
+        const mode = modes.find(m => m[6]['is-current']?.deepUnpack()) ??
+            modes.find(m => m[6]['is-preferred']?.deepUnpack()) ?? modes[0];
+        const [id, width] = mode;
+        const entry = [x, 0, 1, 0, i === 0, [[connector, id, {}]]];
+        x += width;
+        return entry;
+    });
+    await displayCall('ApplyMonitorsConfig', new GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})', [serial, 1, logical, {}]));
+}
+
+// Quitar una pantalla y volver a ponerla no debe dejar el dock roto (pasó con HDMI y Super+P).
+async function testDisplayChanges() {
+    const all = Main.layoutManager.monitors.length;
+    if (all < 2)
+        return;
+    const docks = () => Main.extensionManager.lookup('dash2dock-lite@icedman.github.com')?.stateObj?.docks ?? [];
+    const healthy = () => docks().length > 0 && docks().every(d => d.dash && d.width > 0 && d.height > 0);
+    const describe = () => docks().map(d => `${Math.round(d.width)}x${Math.round(d.height)}${d.dash ? '' : ' no dash'}`).join(', ');
+    await useDisplays(1);
+    await sleep(5000);
+    check('dock works after a display is removed', healthy() && docks().length === 1, describe());
+    await useDisplays(all);
+    await sleep(5000);
+    check('dock works after the display comes back', healthy() && docks().length === all, describe());
+}
+
 function testLayout() {
     const monitors = Main.layoutManager.monitors;
     check(`layout: ${monitors.length} monitor(s)`, monitors.length >= 1,
@@ -554,6 +610,17 @@ async function captureMenu(role, name) {
     await sleep(300);
 }
 
+// El selector de pantallas (Super+P): Duplicar, Unir, Sólo la externa, Sólo la del portátil.
+async function captureDisplaySwitcher() {
+    const popup = new SwitchMonitor.SwitchMonitorPopup();
+    const shown = popup.show(false, 'switch-monitor', 0);
+    await sleep(900);
+    check('display switcher opens', shown !== false && popup.visible, `${popup._items?.length ?? '?'} options`);
+    await screenshot('display-switcher');
+    popup.fadeAndDestroy?.() ?? popup.destroy();
+    await sleep(400);
+}
+
 // Capturas para el video de presentación (scripts/demo/make_video.sh).
 // En el video no deben salir las redes Wi‑Fi reales que hay cerca: se muestran de ejemplo.
 function sampleWifiNetworks() {
@@ -573,17 +640,48 @@ function sampleWifiNetworks() {
     };
 }
 
+// La sesión invisible no tiene antenas: en el video se muestran un Bluetooth y un modo avión
+// de ejemplo, como se ven en un portátil.
+function sampleRadios() {
+    const macify = Main.extensionManager.lookup('macify-menubar@macify.dev').stateObj;
+    const status = macify._parts.find(p => p.constructor.name === 'StatusBar');
+    const bt = status._extras.map(e => e.menu).find(m => m.constructor.name === 'BluetoothMenu');
+    if (bt) {
+        bt._sync = () => {};
+        bt._button.visible = true;
+        bt.icon.icon_name = 'bluetooth-active-symbolic';
+        bt._refresh = function () {
+            this._switch.setToggleState(true);
+            this._devices.removeAll();
+            for (const [name, icon, connected] of [['AirPods Pro', 'audio-headphones-symbolic', true],
+                ['Magic Keyboard', 'input-keyboard-symbolic', false], ['MX Master 3', 'input-mouse-symbolic', false]]) {
+                const item = new PopupMenu.PopupImageMenuItem(name, icon);
+                if (connected)
+                    item.setOrnament(PopupMenu.Ornament.CHECK);
+                this._devices.addMenuItem(item);
+            }
+            this._devicesTitle.visible = true;
+            this._empty.visible = false;
+        };
+    }
+    for (const item of Main.panel.statusArea.quickSettings._rfkill?.quickSettingsItems ?? [])
+        item.visible = true;
+}
+
 async function captureDemo(macify) {
     sampleWifiNetworks();
+    sampleRadios();
     await sleep(1500);
     await screenshot('desktop');
     await openApp('org.gnome.TextEditor.desktop');
     for (const [role, name] of [['macify-menu-edit', 'menu-edit'], ['macify-menu-window', 'menu-window'],
-        ['macify-battery', 'menu-battery'], ['macify-wifi', 'menu-wifi'], ['macify-sound', 'menu-sound']])
+        ['macify-battery', 'menu-battery'], ['macify-bluetooth', 'menu-bluetooth'], ['macify-wifi', 'menu-wifi'],
+        ['macify-sound', 'menu-sound']])
         await captureMenu(role, name);
     global.display.focus_window?.minimize();
     await captureMenu('quickSettings', 'control-center');
     await captureMenu('dateMenu', 'date-menu');
+    await captureDisplaySwitcher();
     await testOsd();
     await testScreenshotPreview(macify);
     const player = fakePlayer('demo', 'Golden Hour', 'Macify Radio');
@@ -629,6 +727,7 @@ async function run() {
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'date') {
             await captureMenu('dateMenu', 'date-menu');
             await captureMenu('quickSettings', 'control-center');
+            await captureDisplaySwitcher();
             throw new Error('only date and Control Center requested');
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'menus') {
@@ -644,6 +743,7 @@ async function run() {
         await testSoundAmplification();
         await testEnergyModes();
         await testOsd();
+        await testBarLook();
         await testScreenshotPreview(macify);
         await captureMenu('dateMenu', 'date-menu');
         await testLiveActivities(macify);
@@ -651,6 +751,7 @@ async function run() {
         await testBadges();
         await testEditor();
         await testTerminal();
+        await testDisplayChanges();
     } catch (e) {
         check('unexpected error', false, `${e.message} ${e.stack}`);
     }

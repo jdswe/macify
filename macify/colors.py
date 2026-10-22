@@ -8,7 +8,7 @@ import colorsys
 import functools
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageStat
 
 ACCENTS = [
     (345, 360, "red"), (0, 15, "red"), (15, 45, "orange"), (45, 70, "yellow"),
@@ -52,6 +52,28 @@ def accent_name(rgb: tuple[int, int, int]) -> str:
 
 def accent_for_wallpaper(path: Path) -> str:
     return accent_name(dominant_rgb(path))
+
+
+def glass_tint(path: Path, dark: bool) -> tuple[float, float, float, float]:
+    """Cristal del dock: claro u oscuro según el aspecto, con un toque del color del fondo."""
+    base, amount = ((0.12, 0.12, 0.14), 0.18) if dark else ((1.0, 1.0, 1.0), 0.12)
+    tint = tuple(round(c * (1 - amount) + v / 255 * amount, 3) for c, v in zip(base, dominant_rgb(path)))
+    return (*tint, 0.35)
+
+
+def top_brightness(path: Path) -> float:
+    """Brillo (0–1) de la franja de arriba, donde va la barra de menús."""
+    stat = path.stat()
+    return _top_brightness(str(path), stat.st_size, stat.st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=16)
+def _top_brightness(path: str, _size: int, _mtime: int) -> float:
+    with Image.open(path) as source:
+        source.draft("RGB", (640, 640))
+        image = source.convert("L")
+    strip = image.crop((0, 0, image.width, max(1, image.height // 25)))
+    return ImageStat.Stat(strip).mean[0] / 255
 
 
 

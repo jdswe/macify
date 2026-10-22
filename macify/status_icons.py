@@ -1,7 +1,7 @@
 """Iconos de la barra superior al estilo de macOS, dibujados por Macify.
 
-Batería horizontal con nivel y rayo de carga, abanico de Wi‑Fi por niveles, Centro de
-control y lupa. Son iconos simbólicos de 16 px (GNOME los colorea como el resto de la
+Batería horizontal con nivel y rayo de carga, abanico de Wi‑Fi por niveles, altavoz con
+ondas según el volumen (y tachado al silenciarlo), Centro de control y lupa. Son iconos simbólicos de 16 px (GNOME los colorea como el resto de la
 barra) con los nombres que usa GNOME, así que sustituyen a los del sistema sin tocar nada
 más. Sólo se usan formas rellenas: el coloreado simbólico ignora los trazos.
 """
@@ -108,6 +108,50 @@ def wifi_icons() -> dict[str, str]:
     return icons
 
 
+# ---------- sonido ----------
+
+SPEAKER = "M1.0,6.0 Q1.0,5.4 1.6,5.4 H3.8 L7.2,2.6 Q7.8,2.2 7.8,2.9 V13.1 Q7.8,13.8 7.2,13.4 L3.8,10.6 H1.6 Q1.0,10.6 1.0,10.0 Z"
+SOUND_CENTER = (6.4, 8.0)
+SOUND_WAVES = [(2.6, 3.8), (4.7, 5.9), (6.8, 8.0)]
+MUTE_SLASH = "M1.6,1.2 L14.8,14.4 L13.7,15.5 L0.5,2.3 Z"
+
+
+def _wave(cx: float, cy: float, inner: float, outer: float, half_angle: float = 42) -> str:
+    """Onda del altavoz: trozo de anillo que abre hacia la derecha."""
+    a0, a1 = math.radians(-half_angle), math.radians(half_angle)
+
+    def point(r, a):
+        return f"{cx + r * math.cos(a):.2f},{cy + r * math.sin(a):.2f}"
+    return (f"M{point(inner, a0)}L{point(outer, a0)}A{outer:.2f},{outer:.2f} 0 0 1 {point(outer, a1)}"
+            f"L{point(inner, a1)}A{inner:.2f},{inner:.2f} 0 0 0 {point(inner, a0)}Z")
+
+
+def speaker(waves: int, muted: bool = False) -> str:
+    cx, cy = SOUND_CENTER
+    parts = [f'<path d="{SPEAKER}"/>']
+    for i, (inner, outer) in enumerate(SOUND_WAVES):
+        if muted:
+            break
+        opacity = "" if i < waves else f' opacity="{DIM}"'
+        parts.append(f'<path{opacity} d="{_wave(cx, cy, inner, outer)}"/>')
+    if not muted:
+        return _svg("".join(parts))
+    # Tachado, con un hueco alrededor para que se lea sobre el altavoz.
+    defs = ('<defs><mask id="m"><rect width="16" height="16" fill="#fff"/>'
+            f'<path d="{MUTE_SLASH}" fill="#000" stroke="#000" stroke-width="2.2"/></mask></defs>')
+    return _svg(f'<g mask="url(#m)">{"".join(parts)}</g><path d="{MUTE_SLASH}"/>', defs)
+
+
+def sound_icons() -> dict[str, str]:
+    return {
+        "audio-volume-muted-symbolic": speaker(0, muted=True),
+        "audio-volume-low-symbolic": speaker(1),
+        "audio-volume-medium-symbolic": speaker(2),
+        "audio-volume-high-symbolic": speaker(3),
+        "audio-volume-overamplified-symbolic": speaker(3),
+    }
+
+
 # ---------- Centro de control y Spotlight ----------
 
 def control_center() -> str:
@@ -127,7 +171,7 @@ def spotlight() -> str:
 
 
 def all_icons() -> dict[str, str]:
-    icons = {**battery_icons(), **wifi_icons()}
+    icons = {**battery_icons(), **wifi_icons(), **sound_icons()}
     icons["macify-control-center-symbolic"] = control_center()
     icons["macify-spotlight-symbolic"] = spotlight()
     return icons

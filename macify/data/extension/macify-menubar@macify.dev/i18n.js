@@ -95,6 +95,12 @@ const SPANISH = {
     'Sound': 'Sonido',
     'Output': 'Salida',
     'Sound Settings…': 'Ajustes de sonido…',
+    'Input': 'Entrada',
+    'Bluetooth': 'Bluetooth',
+    'Devices': 'Dispositivos',
+    'Bluetooth Settings…': 'Ajustes de Bluetooth…',
+    'No devices': 'Sin dispositivos',
+    'Turn on Bluetooth to connect devices': 'Activa el Bluetooth para conectar dispositivos',
     // Live Activities
     'Charging': 'Cargando',
     'Fully Charged': 'Carga completa',

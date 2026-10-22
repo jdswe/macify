@@ -2,9 +2,10 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 from .i18n import _
-from . import doctor, icons, installer, profile, session, system
+from . import boot, doctor, icons, installer, profile, session, system
 from .uninstall import uninstall
 
 
@@ -21,6 +22,10 @@ def cli(argv: list[str]) -> int:
     p_doctor.add_argument("--offline", action="store_true", help="Skip update checks.")
     p_refresh = sub.add_parser("refresh", help="Upkeep: icons for new apps (and dock switch at login).")
     p_refresh.add_argument("--login", action="store_true")
+    p_look = sub.add_parser("look", help="Apply the look again (appearance, wallpaper, dock) without reinstalling.")
+    p_look.add_argument("--appearance", choices=["light", "dark"])
+    p_look.add_argument("--wallpaper", help="An image to use as wallpaper (its -dark twin is used in dark mode).")
+    p_look.add_argument("--login", action="store_true", help="Also put it on the login screen (asks for a password).")
     p_restore = sub.add_parser("restore", help="Restore the original GNOME settings.")
     p_restore.add_argument("--dry-run", action="store_true")
     p_uninstall = sub.add_parser("uninstall", help="Revert everything and remove what Macify installed.")
@@ -51,6 +56,19 @@ def cli(argv: list[str]) -> int:
         return 0 if all(c.status == doctor.OK for c in checks) else 1
     elif args.command == "refresh":
         session.refresh(print, login=args.login)
+    elif args.command == "look":
+        if args.appearance:
+            choices.appearance = args.appearance
+        if args.wallpaper:
+            wallpaper = Path(args.wallpaper).expanduser().resolve()
+            if not wallpaper.is_file():
+                print(_("Not found: {path}").format(path=wallpaper))
+                return 1
+            choices.wallpaper = str(wallpaper)
+        profile.save_choices(choices)
+        installer.apply_look(choices, print)
+        if args.login:
+            boot.apply(profile.desktop_wallpaper(choices), False, print)
     elif args.command == "restore":
         system.restore(args.dry_run, print)
     elif args.command == "uninstall":

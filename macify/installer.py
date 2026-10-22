@@ -44,6 +44,8 @@ def _settings(choices: Choices, dry_run: bool, log: Log) -> None:
     values = profile.settings(choices)
     values.update(extensions.enabled_settings(magic_lamp=choices.magic_lamp))
     system.apply_settings(values, dry_run, log)
+    if not dry_run:
+        profile.write_look(choices)      # la barra ajusta su texto al fondo, al momento
 
 
 def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
@@ -75,7 +77,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
     if choices.login_screen:
         result.append(Step(_("Startup and login screens"),
                            _("macOS style from the moment you turn on your computer. Asks for your password once."),
-                           lambda log: boot.apply(profile.wallpaper_path(choices), dry_run, log)))
+                           lambda log: boot.apply(profile.desktop_wallpaper(choices), dry_run, log)))
     return result
 
 

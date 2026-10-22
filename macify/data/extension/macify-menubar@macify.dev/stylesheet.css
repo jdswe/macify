@@ -17,6 +17,10 @@
 #panel .panel-button .system-status-icon {
   icon-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
+/* Sobre un fondo claro (lo decide Macify con el brillo de arriba del fondo): texto oscuro. */
+#panel.macify-bar-dark-text { background-color: rgba(255, 255, 255, 0.16); }
+#panel.macify-bar-dark-text .panel-button { color: #1d1d1f; text-shadow: none; }
+#panel.macify-bar-dark-text .panel-button .system-status-icon { icon-shadow: none; }
 
 .macify-logo-button { padding: 0 6px 0 10px; }
 .macify-logo { icon-size: 15px; }
@@ -187,3 +191,20 @@
 }
 .datemenu-popover #calendarArea .calendar .calendar-day.calendar-today:hover,
 .datemenu-popover #calendarArea .calendar .calendar-day.calendar-today:focus { background-color: #ff5147 !important; }
+
+/* ---------- selectores (Alt+Tab y pantallas con Super+P): cristal como en macOS ----------
+ * El fondo lo pone el tema o el desenfoque de Blur My Shell; aquí la forma de Apple: esquinas
+ * grandes, un filo de luz y la elección marcada con un cuadro gris suave, no de color. */
+
+.switcher-list {
+  border-radius: 26px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+.switcher-list .item-box { border-radius: 18px; padding: 18px 14px; }
+/* Las opciones son cuadradas: un poco más altas, para que «Join Displays» quepa entero. */
+.switcher-list .alt-tab-app { spacing: 8px; }
+.switcher-list .alt-tab-app StLabel { font-size: 12px; }
+.switcher-list .item-box:outlined { background-color: rgba(128, 128, 128, 0.18); }
+.switcher-list .item-box:selected { background-color: rgba(128, 128, 128, 0.34); }

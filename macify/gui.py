@@ -10,7 +10,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import __version__, doctor, info, installer, launcher, profile, system, updates, wallpapers  # noqa: E402
+from . import __version__, boot, doctor, info, installer, launcher, profile, system, updates, wallpapers  # noqa: E402
 from .assets import install_bundled_data, load_config, save_config_value  # noqa: E402
 from .colors import accent_for_wallpaper, accent_label, dominant_rgb  # noqa: E402
 from .i18n import _, language  # noqa: E402
@@ -106,7 +106,15 @@ class MacifyWindow(Adw.ApplicationWindow):
         if current == "summary" and delta > 0:
             self._apply_look() if self.quick else self._start_install()
             return
-        if current == "appearance" and delta < 0 and self.quick:
+        # «Wallpaper» va directo: elegir el fondo y aplicar, sin pasar por el dock.
+        if self.quick and getattr(self, "first_page", "") == "wallpaper":
+            if current == "wallpaper" and delta > 0:
+                self._show("summary")
+                return
+            if current == "summary" and delta < 0:
+                self._show("wallpaper")
+                return
+        if current == getattr(self, "first_page", "appearance") and delta < 0 and self.quick:
             self._show("manage")
             return
         index = PAGES.index(current) + delta
@@ -177,6 +185,10 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _on_appearance(self, button: Gtk.ToggleButton, value: str) -> None:
         if button.get_active():
             self.choices.appearance = value
+            # Los fondos con versión oscura se muestran (y se aplican) en la del aspecto elegido.
+            if hasattr(self, "wallpaper_sections"):
+                self._fill_wallpapers()
+                self._update_backdrop()
             self._live()
 
     def _update_dock_preview(self) -> None:
@@ -185,7 +197,7 @@ class MacifyWindow(Adw.ApplicationWindow):
         (self.dock_preview.add_css_class if self.choices.magnify else self.dock_preview.remove_css_class)("mf-magnify")
 
     def _update_backdrop(self) -> None:
-        wallpaper = profile.wallpaper_path(self.choices)
+        wallpaper = profile.desktop_wallpaper(self.choices)
         if wallpaper.exists():
             self.backdrop.set_filename(str(wallpaper))
 
@@ -234,7 +246,8 @@ class MacifyWindow(Adw.ApplicationWindow):
         current = profile.wallpaper_path(self.choices).resolve()
         items = wallpapers.catalog()
         pending = []
-        for section in wallpapers.SECTIONS:
+        dark = self.choices.appearance == "dark"
+        for section in wallpapers.sections(items):
             members = [w for w in items if w.section == section]
             if not members:
                 continue
@@ -252,7 +265,7 @@ class MacifyWindow(Adw.ApplicationWindow):
                 flow.append(tile)
                 if wallpaper.path.resolve() == current:
                     flow.select_child(tile.get_parent())
-                pending.append((picture, wallpaper.path))
+                pending.append((picture, profile.dark_variant(wallpaper.path) if dark else wallpaper.path))
             self.wallpaper_sections.append(text(_(section), "mf-section"))
             self.wallpaper_sections.append(flow)
             self.wallpaper_flows.append(flow)
@@ -275,7 +288,7 @@ class MacifyWindow(Adw.ApplicationWindow):
         self._live()
 
     def _update_accent(self) -> None:
-        wallpaper = profile.wallpaper_path(self.choices)
+        wallpaper = profile.desktop_wallpaper(self.choices)
         if not wallpaper.exists():
             return
         r, g, b = dominant_rgb(wallpaper)
@@ -369,6 +382,10 @@ class MacifyWindow(Adw.ApplicationWindow):
             self.summary_detail.set_label(_("You're seeing the changes live. Press Apply to keep them."))
             self.summary.append(Adw.ActionRow(title=_("Apply your look"),
                                               subtitle=_("Appearance, wallpaper and dock. Nothing is downloaded or reinstalled.")))
+            if self._login_outdated():
+                self.summary.append(Adw.ActionRow(
+                    title=_("Login screen"),
+                    subtitle=_("It takes your new wallpaper too. Asks for your password; then restart.")))
             return
         self.summary_title.set_label(_("Ready to begin"))
         self.summary_detail.set_label(_("Takes a few minutes. You'll be asked to restart at the end."))
@@ -424,7 +441,10 @@ class MacifyWindow(Adw.ApplicationWindow):
         tiles = Gtk.Grid(column_spacing=14, row_spacing=14, column_homogeneous=True, margin_top=10)
         tiles.attach(self._tile("preferences-desktop-appearance-symbolic", _("Customize"),
                                 _("Look, wallpaper and dock, live."), lambda: self._start_flow(quick=True),
-                                "mf-tile-primary"), 0, 0, 2, 1)
+                                "mf-tile-primary"), 0, 0, 1, 1)
+        tiles.attach(self._tile("preferences-desktop-wallpaper-symbolic", _("Wallpaper"),
+                                _("Pick one or add yours. Nothing is reinstalled."),
+                                lambda: self._start_flow(quick=True, page="wallpaper"), "mf-tile-primary"), 1, 0, 1, 1)
         self.update_tile = self._tile("software-update-available-symbolic", _("Software Update"),
                                       _("Version {version}").format(version=__version__), self._check_updates)
         tiles.attach(self.update_tile, 0, 1, 1, 1)
@@ -727,17 +747,30 @@ class MacifyWindow(Adw.ApplicationWindow):
                                              "You can retry or restore your settings."))
         return GLib.SOURCE_REMOVE
 
-    def _start_flow(self, quick: bool) -> None:
+    def _start_flow(self, quick: bool, page: str = "appearance") -> None:
         self.quick = quick
-        self._show("appearance")
+        self.first_page = page
+        self._show(page)
+
+    def _login_outdated(self) -> bool:
+        """La pantalla de inicio de sesión de Macify se queda con otro fondo si no se actualiza."""
+        return self.choices.login_screen and boot.login_outdated(profile.desktop_wallpaper(self.choices))
 
     def _apply_look(self) -> None:
         profile.save_choices(self.choices)
+        login = self._login_outdated()
 
         def action(log) -> None:
             installer.apply_look(self.choices, log)
+            if login:
+                boot.apply(profile.desktop_wallpaper(self.choices), False, log)
 
-        self._run_maintenance(_("Apply your look"), action, _("Applied"), _("Your new look is ready. No restart needed."))
+        if login:
+            self._run_maintenance(_("Apply your look"), action, _("Applied"),
+                                  _("Restart to see your wallpaper on the login screen too."))
+        else:
+            self._run_maintenance(_("Apply your look"), action, _("Applied"),
+                                  _("Your new look is ready. No restart needed."))
 
     def _run_maintenance(self, title: str, action, done_title: str | None = None, done_detail: str | None = None) -> None:
         if self.busy:

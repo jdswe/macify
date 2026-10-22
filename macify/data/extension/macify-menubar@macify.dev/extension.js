@@ -17,6 +17,7 @@ import {AppMenus} from './appMenus.js';
 import {ControlCenter} from './controlCenter.js';
 import {FullscreenDock, Gnome50Fixes} from './dock.js';
 import {LiveActivities} from './liveActivities.js';
+import {BarLook} from './look.js';
 import {MacOsd} from './osd.js';
 import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
@@ -73,6 +74,7 @@ class LogoMenu extends PanelMenu.Button {
 // Cada parte arranca por separado: si una falla en alguna versión de GNOME, el resto sigue.
 const PARTS = [
     ['fixes', () => new Gnome50Fixes()],
+    ['look', () => new BarLook()],
     ['menus', () => new AppMenus()],
     ['status', () => new StatusBar()],
     ['control', () => new ControlCenter()],

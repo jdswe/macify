@@ -23,7 +23,6 @@ import {NowPlaying} from './nowPlaying.js';
 import {SystemVolume} from './systemVolume.js';
 
 const EVENT_MS = 3500;          // lo que dura un aviso (carga, conexión)
-const BARS_MS = 5000;           // las barras se mueven al empezar una canción y luego descansan
 const QUIET_START_MS = 6000;    // al iniciar sesión no se avisa de lo que ya estaba así
 const VOLUME_STEP = 0.05;
 const MAX_TEXT = 44;
@@ -74,11 +73,10 @@ export class LiveActivities {
         this._button.visible = false;
         this._nowPlaying = new NowPlaying(this._button.menu, this._volume, player => this._players.select(player));
         this._button.connect('scroll-event', (_a, event) => this._onScroll(event));
-        this._button.connect('notify::hover', () => {
-            if (this._button.hover)
-                this._wakeBars();
-        });
         Main.panel.addToStatusArea('macify-live', this._button, 0, 'center');
+        // Las barras descansan mientras la barra no se ve (pantalla completa o bloqueo).
+        global.display.connectObject('in-fullscreen-changed', () => this._wakeBars(), this);
+        Main.screenShield?.connectObject?.('locked-changed', () => this._wakeBars(), this);
 
         this._players.connectObject('changed', () => this._render(), this);
         this._watchPower();
@@ -99,8 +97,7 @@ export class LiveActivities {
             this._nowPlaying.show(player, this._players.visible);
             const text = [player.title, player.artist].filter(Boolean).join(' — ') || player.appName;
             this._show(player.art ?? 'audio-x-generic-symbolic', text, player.status === 'Playing');
-            if (player.trackChanged || this._lastPlaying !== player)
-                this._wakeBars();
+            this._wakeBars();
             this._lastPlaying = player;
         } else {
             this._lastPlaying = null;
@@ -152,11 +149,19 @@ export class LiveActivities {
     }
 
     // ---------- barras de audio ----------
+    // Se mueven todo el tiempo que suena algo, como en macOS (también con otra app delante).
+    // Sólo se repinta su pequeña zona; con la barra oculta (pantalla completa o bloqueo) o en
+    // pausa descansan, así no gastan nada.
+
+    get _barsLive() {
+        const button = this._button;
+        return button.visible && button.bars.visible && !Main.screenShield?.locked &&
+            !Main.layoutManager.primaryMonitor?.inFullscreen;
+    }
 
     _wakeBars() {
-        if (!this._button.bars.visible)
+        if (!this._barsLive)
             return;
-        this._barsUntil = GLib.get_monotonic_time() + BARS_MS * 1000;
         for (const bar of this._button.barActors) {
             if (!bar._moving)
                 this._moveBar(bar);
@@ -164,7 +169,7 @@ export class LiveActivities {
     }
 
     _moveBar(bar) {
-        if (GLib.get_monotonic_time() > (this._barsUntil ?? 0) || !this._button.bars.visible) {
+        if (!this._barsLive) {
             bar._moving = false;
             bar.ease({scale_y: RESTING_BARS[this._button.barActors.indexOf(bar)], duration: 300,
                 mode: Clutter.AnimationMode.EASE_OUT_QUAD});
@@ -173,14 +178,13 @@ export class LiveActivities {
         bar._moving = true;
         bar.ease({
             scale_y: 0.25 + Math.random() * 0.75,
-            duration: 160 + Math.floor(Math.random() * 220),
+            duration: 220 + Math.floor(Math.random() * 240),
             mode: Clutter.AnimationMode.EASE_IN_OUT_SINE,
             onComplete: () => this._moveBar(bar),
         });
     }
 
     _restBars() {
-        this._barsUntil = 0;
         this._button.barActors.forEach((bar, i) => {
             bar.remove_all_transitions();
             bar._moving = false;
@@ -292,6 +296,8 @@ export class LiveActivities {
             if (id)
                 GLib.source_remove(id);
         }
+        global.display.disconnectObject(this);
+        Main.screenShield?.disconnectObject?.(this);
         this._powerCancellable.cancel();
         this._power?.disconnectObject(this);
         this._monitor.disconnectObject(this);
