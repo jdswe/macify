@@ -12,6 +12,7 @@ import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const OUT = GLib.getenv('MACIFY_TEST_OUT') ?? '/tmp';
 const results = [];
@@ -460,7 +461,26 @@ async function captureMenu(role, name) {
 }
 
 // Capturas para el video de presentación (scripts/demo/make_video.sh).
+// En el video no deben salir las redes Wi‑Fi reales que hay cerca: se muestran de ejemplo.
+function sampleWifiNetworks() {
+    const macify = Main.extensionManager.lookup('macify-menubar@macify.dev').stateObj;
+    const status = macify._parts.find(p => p.constructor.name === 'StatusBar');
+    const wifi = status._extras.map(e => e.menu).find(m => m.constructor.name === 'WifiMenu');
+    wifi._refresh = function () {
+        this._switch.setToggleState(true);
+        this._networks.removeAll();
+        for (const [name, level, current] of [['Home', 'excellent', true], ['Studio 5G', 'good', false],
+            ['Café Guest', 'ok', false]]) {
+            const item = new PopupMenu.PopupImageMenuItem(name, `network-wireless-signal-${level}-symbolic`);
+            if (current)
+                item.setOrnament(PopupMenu.Ornament.CHECK);
+            this._networks.addMenuItem(item);
+        }
+    };
+}
+
 async function captureDemo() {
+    sampleWifiNetworks();
     await sleep(1500);
     await screenshot('desktop');
     await openApp('org.gnome.TextEditor.desktop');

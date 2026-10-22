@@ -9,6 +9,9 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 export function header(menu, title) {
     const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, style_class: 'macify-extra-header'});
+    // Es información, no una opción: sin el gris de «no disponible» que le pone el tema.
+    item.remove_style_class_name('popup-inactive-menu-item');
+    item.remove_style_pseudo_class('insensitive');
     const label = new St.Label({text: title, style_class: 'macify-extra-title', x_expand: true});
     const value = new St.Label({style_class: 'macify-extra-value', x_align: Clutter.ActorAlign.END});
     item.add_child(label);

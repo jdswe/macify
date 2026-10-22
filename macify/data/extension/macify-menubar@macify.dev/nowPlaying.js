@@ -94,6 +94,9 @@ export class NowPlaying {
 
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
         item.add_style_class_name('macify-np');
+        // Es información, no una opción: sin el gris de «no disponible» que le pone el tema.
+        item.remove_style_class_name('popup-inactive-menu-item');
+        item.remove_style_pseudo_class('insensitive');
         const box = new St.BoxLayout({orientation: VERTICAL, x_expand: true, style_class: 'macify-np-box'});
 
         // Con varias apps sonando (un curso y la música), se elige cuál controlar.
