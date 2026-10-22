@@ -9,7 +9,7 @@ api="https://api.github.com/repos/$REPO/releases/latest"
 
 command -v apt-get >/dev/null || { echo "Macify needs Ubuntu (apt)."; exit 1; }
 
-release="$(curl -fsSL "$api")"
+release="$(curl -fsSL --proto '=https' "$api")"
 read -r url digest < <(python3 -c '
 import json, sys
 release = json.load(sys.stdin)
@@ -21,11 +21,11 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 chmod 755 "$tmp"
 echo "Downloading $url"
-curl -fsSL --proto '=https' "$url" -o "$tmp/macify.deb"
+curl -fsSL --proto '=https' --proto-redir '=https' "$url" -o "$tmp/macify.deb"
 
-if [ "$digest" != "none" ]; then
-  echo "$digest  $tmp/macify.deb" | sha256sum -c --quiet || { echo "Fingerprint mismatch: not installing."; exit 1; }
-fi
+# Sin huella publicada no se instala nada (nunca un paquete sin verificar).
+[ "$digest" != "none" ] || { echo "GitHub published no fingerprint for this package: not installing."; exit 1; }
+echo "$digest  $tmp/macify.deb" | sha256sum -c --quiet || { echo "Fingerprint mismatch: not installing."; exit 1; }
 [ "$(dpkg-deb -f "$tmp/macify.deb" Package)" = "macify" ] || { echo "Not the Macify package: not installing."; exit 1; }
 
 chmod 644 "$tmp/macify.deb"

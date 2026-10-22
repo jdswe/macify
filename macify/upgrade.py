@@ -16,12 +16,13 @@ import shutil
 import time
 from pathlib import Path
 
-from . import __version__, doctor, icons, installer, profile, system, wallpapers
+from . import __version__, doctor, extensions, icons, installer, profile, system, wallpapers
 from .assets import CACHE_DIR, busy, load_config, save_config_value
 from .i18n import _
 
 THUMBNAIL_MAX_AGE = 60 * 24 * 3600          # miniaturas sin usar en dos meses
-LEFTOVERS = ["debug-whitesur"]              # carpetas de versiones anteriores que ya no se usan
+# Restos de versiones anteriores que ya no se usan (el ayudante de root sólo se usa desde /usr).
+LEFTOVERS = ["debug-whitesur", "macify-root.sh"]
 
 
 def needed() -> bool:
@@ -70,6 +71,9 @@ def clean(log) -> None:
             freed += _remove(thumb)
     for name in LEFTOVERS:
         freed += _remove(CACHE_DIR / name)
+    for archive in extensions.EXTENSIONS_DIR.glob("*.zip") if extensions.EXTENSIONS_DIR.exists() else []:
+        if archive.name.removesuffix(".shell-extension.zip") not in extensions.PINS:
+            freed += _remove(archive)          # extensiones que Macify ya no usa
     if freed:
         log(_("Cleaned up {size} MB of old files.").format(size=round(freed / 1048576, 1)))
 

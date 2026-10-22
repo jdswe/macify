@@ -5,6 +5,7 @@ se instalan en la carpeta del usuario. Al desinstalar, se borran solo las de Mac
 """
 
 import ast
+import hashlib
 import json
 import re
 import shutil
@@ -19,7 +20,7 @@ from .assets import CACHE_DIR
 
 EXTENSIONS_DIR = CACHE_DIR / "extensions"
 INSTALL_DIR = Path.home() / ".local" / "share" / "gnome-shell" / "extensions"
-BASE_URL = "https://extensions.gnome.org/download-extension/{uuid}.shell-extension.zip?shell_version=50"
+DOWNLOAD_URL = "https://extensions.gnome.org/download-extension/{uuid}.shell-extension.zip?version_tag={tag}"
 
 # UUID -> descripción
 EXTENSIONS = {
@@ -28,6 +29,22 @@ EXTENSIONS = {
     "just-perfection-desktop@just-perfection": "Just Perfection",
     "dash2dock-lite@icedman.github.com": "Dash2Dock Animated",
     "compiz-alike-magic-lamp-effect@hermes83.github.com": "Magic Lamp",
+}
+# Cada extensión se fija a la versión probada con Macify (su version_tag en
+# extensions.gnome.org) y el zip se comprueba con su huella SHA-256, igual que los temas:
+# corren dentro de GNOME con todos los permisos de la persona, así que una versión nueva llega
+# sólo con una versión nueva de Macify, después de probarla. UUID -> (versión, tag, sha256)
+PINS = {
+    "user-theme@gnome-shell-extensions.gcampax.github.com":
+        (79, 75092, "d002bcd7d5bf780b1b943fa3617d4bc067a2174be576ec5438fcb76467390c05"),
+    "blur-my-shell@aunetx":
+        (76, 76770, "0dfde0d3575b4c7e32647e94010fa37f15ac933f4fe61c46bfe200e772114d85"),
+    "just-perfection-desktop@just-perfection":
+        (37, 74466, "c54ccd627540d86e6baf06c699f624ba7d5229aedfc8b00b0dc7182c6538eda8"),
+    "dash2dock-lite@icedman.github.com":
+        (92, 71180, "14db6849ba6edcb63f25032007e182d2b7d842568e9c1386587d7a08c6c53abe"),
+    "compiz-alike-magic-lamp-effect@hermes83.github.com":
+        (25, 76122, "a3a445a0f0329b581fec6edd2c33f143eec9b267cbb9b028bb6d7bff990cc420"),
 }
 MAGIC_LAMP = "compiz-alike-magic-lamp-effect@hermes83.github.com"
 # Extensión propia de Macify: viaja dentro de la app, no se descarga.
@@ -42,15 +59,22 @@ def zip_path(uuid: str) -> Path:
     return EXTENSIONS_DIR / f"{uuid}.shell-extension.zip"
 
 
+def _verified(path: Path, uuid: str) -> bool:
+    return path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == PINS[uuid][2]
+
+
 def fetch(log) -> None:
-    """Descarga cada zip si falta y comprueba que su UUID coincida."""
+    """Descarga la versión fijada de cada extensión (si no está ya) y comprueba su huella y su UUID."""
     EXTENSIONS_DIR.mkdir(parents=True, exist_ok=True)
     for uuid, name in EXTENSIONS.items():
         target = zip_path(uuid)
-        if not target.exists():
+        if not _verified(target, uuid):
             log(_("Downloading {name} from {source}").format(name=name, source="extensions.gnome.org"))
-            with urllib.request.urlopen(BASE_URL.format(uuid=uuid), timeout=120) as response:
-                target.write_bytes(response.read())
+            with urllib.request.urlopen(DOWNLOAD_URL.format(uuid=uuid, tag=PINS[uuid][1]), timeout=120) as response:
+                data = response.read()
+            if hashlib.sha256(data).hexdigest() != PINS[uuid][2]:
+                raise RuntimeError(_("The {name} download does not match its fingerprint: not installed.").format(name=name))
+            target.write_bytes(data)
         with zipfile.ZipFile(target) as archive:
             metadata = json.loads(archive.read("metadata.json"))
         if metadata.get("uuid") != uuid:

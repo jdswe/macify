@@ -275,6 +275,8 @@ SPANISH = {
     "Snap apps: macOS window buttons": "Apps snap: botones de ventana de macOS",
     "Snap apps: restore their window buttons": "Apps snap: restaurar sus botones de ventana",
     "Gradients": "Degradados",
+    "The {name} download does not match its fingerprint: not installed.":
+        "La descarga de {name} no coincide con su huella: no se instaló.",
     "Macify has not been applied yet: nothing to update.": "Macify aún no se ha aplicado: no hay nada que actualizar.",
     "an earlier version": "una versión anterior",
     "Updating from {old} to {new}: only what changed.": "Actualizando de {old} a {new}: sólo lo que cambió.",

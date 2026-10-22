@@ -64,7 +64,8 @@ def install(release: dict, log, progress=None) -> None:
             done += len(chunk)
             if progress and total:
                 progress(min(done / total, 1.0))
-    if release["sha256"] and hashlib.sha256(package.read_bytes()).hexdigest() != release["sha256"]:
+    # Sin huella publicada no se instala (nunca un paquete sin verificar).
+    if not release["sha256"] or hashlib.sha256(package.read_bytes()).hexdigest() != release["sha256"]:
         package.unlink()
         raise RuntimeError(_("The download does not match its published fingerprint."))
     name = subprocess.run(["dpkg-deb", "-f", str(package), "Package"], capture_output=True, text=True).stdout.strip()

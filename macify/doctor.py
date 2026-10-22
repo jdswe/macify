@@ -67,15 +67,6 @@ def _shell_state(uuid: str) -> str:
     return SHELL_STATES.get(int(info["state"]), "NOT LOADED") if "state" in info else "NOT LOADED"
 
 
-def _remote_extension_version(uuid: str) -> int | None:
-    url = f"https://extensions.gnome.org/extension-info/?uuid={uuid}&shell_version=50"
-    try:
-        with urllib.request.urlopen(url, timeout=15) as response:
-            return int(json.load(response)["version"])
-    except (OSError, ValueError, KeyError):
-        return None
-
-
 def _local_extension_version(uuid: str) -> int | None:
     metadata = extensions.INSTALL_DIR / uuid / "metadata.json"
     try:
@@ -152,7 +143,6 @@ def check_themes() -> list[Check]:
 def check_extensions(online: bool) -> list[Check]:
     result = []
     wanted = list(extensions.EXTENSIONS) + [extensions.MENUBAR]
-    remote_versions = _parallel(_remote_extension_version, list(extensions.EXTENSIONS)) if online else {}
     for uuid in wanted:
         name = extensions.EXTENSIONS.get(uuid, "Macify Menubar")
         if not (extensions.INSTALL_DIR / uuid).exists():
@@ -171,15 +161,16 @@ def check_extensions(online: bool) -> list[Check]:
             result.append(Check(name, WARN, _("Update available (active after you log in again)."),
                                 lambda log: extensions.install_menubar(False, log)))
             continue
-        remote = remote_versions.get(uuid)
+        # La versión que esta versión de Macify fijó y probó (no la última publicada).
+        pinned = extensions.PINS[uuid][0] if uuid in extensions.PINS else None
         local = _local_extension_version(uuid)
-        if remote and local and remote > local:
+        if pinned and local != pinned:
             def update(log, uuid=uuid) -> None:
                 extensions.zip_path(uuid).unlink(missing_ok=True)
                 extensions.fetch(log)
                 extensions.install(False, log)
             result.append(Check(name, WARN, _("Update available: version {local} → {remote}.").format(
-                local=local, remote=remote), update))
+                local=local, remote=pinned), update))
         else:
             result.append(Check(name, OK, _("Running.")))
     return result

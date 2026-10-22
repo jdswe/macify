@@ -13,6 +13,8 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 const DARK_TEXT = 'macify-bar-dark-text';
 const FOLLOW_DELAY_MS = 600;    // un cambio rápido de ida y vuelta no aplica nada
+// Ruta fija (no se busca en el PATH): sólo el Macify instalado por el paquete, de root.
+const MACIFY = '/usr/bin/macify';
 
 export class BarLook {
     constructor() {
@@ -61,9 +63,9 @@ export class BarLook {
             GLib.source_remove(this._followId);
         this._followId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, FOLLOW_DELAY_MS, () => {
             this._followId = 0;
-            const macify = GLib.find_program_in_path('macify');
-            if (macify && this._look.appearance && this._look.appearance !== this._scheme)
-                Util.spawn([macify, 'look', '--appearance', this._scheme]);
+            if (GLib.file_test(MACIFY, GLib.FileTest.IS_EXECUTABLE) && this._look.appearance &&
+                this._look.appearance !== this._scheme)
+                Util.spawn([MACIFY, 'look', '--appearance', this._scheme]);
             return GLib.SOURCE_REMOVE;
         });
     }

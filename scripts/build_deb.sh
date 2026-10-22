@@ -56,10 +56,20 @@ Description: One-click macOS look for Ubuntu
  backed up first and can be restored or uninstalled without a trace.
 CTRL
 
+# Al instalar, las carpetas que ya existían (de versiones viejas) también quedan sólo para root:
+# dpkg no cambia los permisos de una carpeta existente.
+cat > "$ROOT/DEBIAN/postinst" <<'POST'
+#!/bin/sh
+set -e
+if [ "$1" = configure ] && [ -d /usr/lib/macify ]; then
+    chmod -R go-w /usr/lib/macify
+fi
+POST
+
 # Permisos limpios: nada escribible salvo por root; sólo los programas son ejecutables.
 chmod -R u=rwX,go=rX "$ROOT"
 find "$ROOT/usr" -type f -exec chmod 644 {} +
-chmod 755 "$ROOT/usr/bin/macify" "$ROOT/usr/lib/macify/macify/data/root/macify-root.sh"
+chmod 755 "$ROOT/usr/bin/macify" "$ROOT/usr/lib/macify/macify/data/root/macify-root.sh" "$ROOT/DEBIAN/postinst"
 
 install -d "$APP_DIR/dist"
 dpkg-deb --build --root-owner-group "$ROOT" "$APP_DIR/dist/${PKG}.deb"

@@ -243,6 +243,63 @@ class UpgradeTests(unittest.TestCase):
             save.assert_called_once()
 
 
+class SupplyChainTests(unittest.TestCase):
+    """Todo lo que se descarga va fijado y verificado; nada se instala sin huella."""
+
+    def test_every_extension_is_pinned(self):
+        from macify import extensions
+        self.assertEqual(set(extensions.PINS), set(extensions.EXTENSIONS))
+        for version, tag, sha256 in extensions.PINS.values():
+            self.assertGreater(version, 0)
+            self.assertGreater(tag, 0)
+            self.assertRegex(sha256, r"^[0-9a-f]{64}$")
+
+    def test_extension_with_wrong_fingerprint_is_rejected(self):
+        import io
+        import tempfile
+        from unittest import mock
+        from macify import extensions
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(extensions, "EXTENSIONS_DIR", Path(tmp)), \
+             mock.patch.object(extensions.urllib.request, "urlopen",
+                               return_value=mock.MagicMock(__enter__=lambda s: io.BytesIO(b"evil"),
+                                                           __exit__=lambda *a: False)):
+            with self.assertRaises(RuntimeError):
+                extensions.fetch(lambda _m: None)
+            self.assertEqual(list(Path(tmp).iterdir()), [])     # nada guardado
+
+    def test_update_without_fingerprint_is_refused(self):
+        import tempfile
+        from unittest import mock
+        from macify import updates
+        release = {"version": "9.9.9", "url": "https://example.invalid/macify_9.9.9_all.deb",
+                   "name": "macify_9.9.9_all.deb", "size": 3, "sha256": None}
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(updates, "CACHE_DIR", Path(tmp)), \
+             mock.patch.object(updates.urllib.request, "urlopen",
+                               return_value=mock.MagicMock(__enter__=lambda s: mock.MagicMock(
+                                   headers={}, read=mock.MagicMock(side_effect=[b"deb", b""])),
+                                   __exit__=lambda *a: False)), \
+             mock.patch.object(updates.subprocess, "run") as run:
+            with self.assertRaises(RuntimeError):
+                updates.install(release, lambda _m: None)
+            run.assert_not_called()                             # ni dpkg ni pkexec
+
+    def test_installer_refuses_unverified_packages(self):
+        script = (APP / "docs" / "install.sh").read_text()
+        self.assertIn("published no fingerprint", script)
+        self.assertIn("--proto-redir '=https'", script)
+
+    def test_website_has_a_content_security_policy(self):
+        page = (APP / "docs" / "index.html").read_text()
+        self.assertIn("Content-Security-Policy", page)
+        self.assertIn("object-src 'none'", page)
+
+    def test_package_keeps_install_folders_root_only(self):
+        build = (APP / "scripts" / "build_deb.sh").read_text()
+        self.assertIn("chmod -R go-w /usr/lib/macify", build)
+
+
 class InstallerTests(unittest.TestCase):
     def test_steps_have_titles_and_details(self):
         for login in (False, True):

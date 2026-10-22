@@ -65,7 +65,7 @@ More in the [guide](docs/GUIDE.md).
 
 ## Security
 
-Everything runs as your user except the startup and login screens, which use one administrator password (pkexec) for a small packaged helper. That helper only runs code from root-owned folders, reads your files with your own permissions, accepts only images and text of limited size, and installs a pinned WhiteSur version whose SHA‑256 is checked before anything runs. Updates are verified against the fingerprint GitHub publishes. Macify opens no network ports and loads no kernel modules.
+Everything runs as your user except the startup and login screens, which use one administrator password (pkexec) for a small packaged helper. That helper only runs code from root-owned folders, reads your files with your own permissions, accepts only images and text of limited size, and installs a pinned WhiteSur version whose SHA‑256 is checked before anything runs. The GNOME extensions it installs are pinned to tested versions and checked against their SHA‑256 too. Updates are verified against the fingerprint GitHub publishes, and nothing is installed without one. The installed files are writable only by root. Macify opens no network ports, runs no system services and loads no kernel modules.
 
 ## Development
 
