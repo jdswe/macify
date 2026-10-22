@@ -35,7 +35,10 @@ def run(log) -> None:
         log(_("Macify has not been applied yet: nothing to update."))
         return
     previous = load_config().get("applied_version") or _("an earlier version")
-    log(_("Updating from {old} to {new}: only what changed.").format(old=previous, new=__version__))
+    if previous == __version__:
+        log(_("Macify {version}: checking that everything is in place.").format(version=__version__))
+    else:
+        log(_("Updating from {old} to {new}: only what changed.").format(old=previous, new=__version__))
     with busy():
         # Lo mismo que revisa «Buscar problemas», salvo los ajustes (se aplican enteros justo
         # después), las herramientas del sistema (las instala apt con el paquete) y las

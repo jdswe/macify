@@ -281,6 +281,7 @@ SPANISH = {
     "an earlier version": "una versión anterior",
     "Updating from {old} to {new}: only what changed.": "Actualizando de {old} a {new}: sólo lo que cambió.",
     "Updating: {name}": "Actualizando: {name}",
+    "Macify {version}: checking that everything is in place.": "Macify {version}: comprobando que todo esté en su sitio.",
     "Macify {version} is ready. Log out and back in to see everything new.":
         "Macify {version} está listo. Cierra sesión y vuelve a entrar para verlo todo.",
     "Cleaned up {size} MB of old files.": "Se liberaron {size} MB de archivos viejos.",

@@ -25,6 +25,27 @@ HAS_GSETTINGS = shutil.which("gsettings") is not None
 HAS_DISPLAY = bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
 
 
+# Guardián: ninguna prueba puede cambiar la configuración real de Macify (pasó dos veces: una
+# prueba instaló la extensión y otra corrió una actualización en el equipo de verdad).
+_REAL_CONFIG = Path.home() / ".config" / "macify" / "config.json"
+_REAL_LOOK = Path.home() / ".config" / "macify" / "look.json"
+
+
+def _snapshot():
+    return {path: path.read_bytes() if path.exists() else None for path in (_REAL_CONFIG, _REAL_LOOK)}
+
+
+def setUpModule():
+    global _BEFORE
+    _BEFORE = _snapshot()
+
+
+def tearDownModule():
+    changed = [str(path) for path, data in _snapshot().items() if data != _BEFORE[path]]
+    if changed:
+        raise AssertionError(f"tests changed the real Macify configuration: {changed}")
+
+
 class CodeTests(unittest.TestCase):
     def test_every_module_compiles(self):
         for path in PACKAGE.glob("*.py"):
@@ -566,6 +587,7 @@ class IconTests(unittest.TestCase):
              mock.patch.object(session.extensions, "menubar_outdated", return_value=False), \
              mock.patch.object(session.extensions, "install_menubar") as install, \
              mock.patch.object(session.snaps, "sync"), \
+             mock.patch("macify.upgrade.needed", return_value=False), \
              mock.patch.object(icons, "mac_theme_ready", return_value=False), \
              mock.patch.object(doctor, "run", side_effect=lambda online: calls.append(online) or []), \
              mock.patch.object(doctor, "notify_if_needed"):
