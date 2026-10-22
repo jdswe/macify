@@ -30,5 +30,13 @@ fi
 
 chmod 644 "$tmp/macify.deb"
 sudo apt-get install -y "$tmp/macify.deb"
-echo
-echo "Macify is installed. Open it from your apps."
+# Si Macify ya estaba aplicado, deja lista ya la extensión nueva (y lo demás): al cerrar y
+# abrir sesión GNOME carga la nueva, sin esperar a un segundo inicio de sesión.
+if [ -f "$HOME/.config/macify/config.json" ]; then
+  /usr/bin/macify refresh --login > /dev/null 2>&1 || true
+  echo
+  echo "Macify is updated. Log out and back in to see everything new."
+else
+  echo
+  echo "Macify is installed. Open it from your apps."
+fi

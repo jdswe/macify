@@ -75,4 +75,7 @@ def install(release: dict, log, progress=None) -> None:
     result = subprocess.run(["pkexec", "apt-get", "install", "-y", str(package)], capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(_("Could not install dependencies (cancelled or apt error)."))
+    # La extensión nueva, los iconos y lo demás quedan listos ya: si se esperara al inicio de
+    # sesión, GNOME cargaría antes la extensión vieja y harían falta dos reinicios de sesión.
+    subprocess.run(["/usr/bin/macify", "refresh", "--login"], capture_output=True, text=True, timeout=600)
     log(_("Macify {version} installed. Open it again to use the new version.").format(version=release["version"]))
