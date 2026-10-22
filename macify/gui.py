@@ -21,20 +21,47 @@ from .uninstall import uninstall  # noqa: E402
 APP_ID = launcher.APP_ID
 GREETINGS = ["Hello", "Hola", "Bonjour", "Ciao", "Olá", "Hallo", "こんにちは", "안녕하세요"]
 PAGES = ["welcome", "appearance", "wallpaper", "dock", "summary"]
+DOCK_PREVIEW_ICONS = ["firefox", "org.gnome.Nautilus", "org.gnome.Ptyxis", "org.gnome.Settings",
+                      "org.gnome.TextEditor", "org.gnome.Calculator"]
+STEP_ICONS = ["emblem-system-symbolic", "preferences-desktop-font-symbolic", "preferences-desktop-appearance-symbolic",
+              "view-app-grid-symbolic", "input-mouse-symbolic", "view-grid-symbolic", "emblem-ok-symbolic",
+              "applications-system-symbolic", "view-refresh-symbolic", "preferences-desktop-wallpaper-symbolic",
+              "computer-symbolic"]
 
 CSS = """
 window { background: transparent; }
-.mf-page { background: rgba(24, 20, 34, 0.82); }
-.mf-hello { font-family: "SF Pro Display", sans-serif; font-size: 76px; font-weight: 700; color: #ffffff; }
-.mf-title { font-family: "SF Pro Display", sans-serif; font-size: 30px; font-weight: 700; color: #ffffff; }
-.mf-subtitle { font-family: "SF Pro Text", sans-serif; font-size: 15px; color: rgba(255, 255, 255, 0.78); }
+headerbar { background: transparent; box-shadow: none; }
+.mf-backdrop { filter: blur(56px) saturate(150%); }
+.mf-tint { background: linear-gradient(180deg, rgba(12, 10, 22, 0.52), rgba(12, 10, 22, 0.80)); }
+.mf-hello { font-family: "SF Pro Display", sans-serif; font-size: 92px; font-weight: 800; color: #ffffff;
+  letter-spacing: -2px; text-shadow: 0 8px 36px rgba(0, 0, 0, 0.35); }
+.mf-title { font-family: "SF Pro Display", sans-serif; font-size: 32px; font-weight: 700; color: #ffffff;
+  letter-spacing: -0.5px; }
+.mf-subtitle { font-family: "SF Pro Text", sans-serif; font-size: 16px; color: rgba(255, 255, 255, 0.82); }
 .mf-small { font-family: "SF Pro Text", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
-.mf-cta { padding: 10px 34px; border-radius: 999px; font-weight: 600; font-size: 15px; }
+.mf-pill { padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16); font-size: 12px; color: rgba(255, 255, 255, 0.78); }
+button.mf-cta { padding: 12px 40px; border-radius: 999px; font-weight: 700; font-size: 16px; color: #ffffff;
+  border: none; background: linear-gradient(135deg, #4f86ff, #9b5cff);
+  box-shadow: 0 10px 30px rgba(110, 90, 255, 0.45); transition: all 180ms ease-out; }
+button.mf-cta:hover { background: linear-gradient(135deg, #6697ff, #ab70ff); box-shadow: 0 14px 40px rgba(110, 90, 255, 0.6); }
+button.mf-cta:active { transform: scale(0.97); }
+button.mf-ghost { padding: 8px 22px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; transition: all 180ms ease-out; }
+button.mf-ghost:hover { background: rgba(255, 255, 255, 0.18); }
+@keyframes mf-float { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
+.mf-float { animation: mf-float 4s ease-in-out infinite; -gtk-icon-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); }
+list.boxed-list, .mf-glass { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+list.boxed-list row { background: transparent; color: #ffffff; }
+list.boxed-list row:hover { background: rgba(255, 255, 255, 0.06); }
+progressbar trough { min-height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+progressbar progress { min-height: 10px; border-radius: 999px; background: linear-gradient(90deg, #4f86ff, #9b5cff); }
 button.mf-choice, button.mf-choice:hover { padding: 14px; border-radius: 20px;
   background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.10);
-  box-shadow: none; color: #ffffff; }
+  box-shadow: none; color: #ffffff; transition: all 180ms ease-out; }
 button.mf-choice:checked, button.mf-choice:checked:hover { background: rgba(255, 255, 255, 0.14);
-  border: 2px solid @accent_color; box-shadow: 0 0 0 3px alpha(@accent_color, 0.35); color: #ffffff; }
+  border: 2px solid @accent_color; box-shadow: 0 0 0 4px alpha(@accent_color, 0.35); color: #ffffff; }
 .mf-preview { border-radius: 12px; min-width: 200px; min-height: 120px; }
 .mf-preview-dark { background: linear-gradient(160deg, #2b2440, #4b2f55); }
 .mf-preview-light { background: linear-gradient(160deg, #f4ede6, #d9d4f2); }
@@ -42,12 +69,26 @@ button.mf-choice:checked, button.mf-choice:checked:hover { background: rgba(255,
 .mf-preview-dark .mf-preview-window { background: rgba(30, 30, 36, 0.92); }
 .mf-preview-light .mf-preview-window { background: rgba(255, 255, 255, 0.95); }
 .mf-thumb { border-radius: 14px; }
-flowboxchild { border-radius: 16px; padding: 4px; }
+flowboxchild { border-radius: 18px; padding: 4px; transition: all 180ms ease-out; }
+flowboxchild:hover { background: rgba(255, 255, 255, 0.10); }
 flowboxchild:selected { background: @accent_color; }
-.mf-dot { border-radius: 999px; min-width: 8px; min-height: 8px; background: rgba(255, 255, 255, 0.28); }
-.mf-dot-on { background: #ffffff; }
+.mf-dot { border-radius: 999px; min-width: 8px; min-height: 8px; background: rgba(255, 255, 255, 0.28);
+  transition: all 250ms ease-out; }
+.mf-dot-on { background: #ffffff; min-width: 22px; }
 .mf-step { font-family: "SF Pro Text", sans-serif; font-size: 15px; color: #ffffff; }
-.mf-log { background: rgba(0, 0, 0, 0.25); border-radius: 12px; font-size: 12px; }
+.mf-log { background: rgba(0, 0, 0, 0.30); border-radius: 12px; font-size: 12px; }
+.mf-dock-preview { padding: 10px 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.26); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28); }
+.mf-dock-icon { transition: all 160ms ease-out; }
+.mf-magnify .mf-dock-icon:hover { transform: scale(1.35) translateY(-10px); }
+button.mf-tile { padding: 18px; border-radius: 20px; background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14); color: #ffffff; transition: all 180ms ease-out; }
+button.mf-tile:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28); }
+button.mf-tile:active { transform: scale(0.98); }
+button.mf-tile-primary { background: linear-gradient(135deg, rgba(79, 134, 255, 0.60), rgba(155, 92, 255, 0.60)); }
+button.mf-tile-primary:hover { background: linear-gradient(135deg, rgba(102, 151, 255, 0.75), rgba(171, 112, 255, 0.75)); }
+button.mf-tile-danger:hover { background: rgba(255, 80, 80, 0.22); }
 """
 
 
@@ -103,19 +144,25 @@ class MacifyWindow(Adw.ApplicationWindow):
                            ("doctor", self._doctor_page())):
             self.stack.add_named(page, name)
 
-        self.back = Gtk.Button(label=_("Back"), css_classes=["pill"])
+        self.back = Gtk.Button(label=_("Back"), css_classes=["mf-ghost"])
         self.back.connect("clicked", lambda _b: self._go(-1))
-        self.next = Gtk.Button(label=_("Continue"), css_classes=["suggested-action", "pill", "mf-cta"])
+        self.next = Gtk.Button(label=_("Continue"), css_classes=["mf-cta"])
         self.next.connect("clicked", lambda _b: self._go(+1))
         self.dots = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER, hexpand=True)
         self.nav = Gtk.Box(spacing=12, margin_start=28, margin_end=28, margin_bottom=22, margin_top=8)
         for widget in (self.back, self.dots, self.next):
             self.nav.append(widget)
 
-        body = vbox(0, css_classes=["mf-page"])
+        body = vbox(0)
         body.append(self.stack)
         body.append(self.nav)
-        toolbar = Adw.ToolbarView(content=body, top_bar_style=Adw.ToolbarStyle.FLAT)
+        self.backdrop = Gtk.Picture(content_fit=Gtk.ContentFit.COVER, can_shrink=True, css_classes=["mf-backdrop"])
+        self._update_backdrop()
+        overlay = Gtk.Overlay(child=self.backdrop)
+        overlay.add_overlay(Gtk.Box(css_classes=["mf-tint"]))
+        overlay.add_overlay(body)
+        toolbar = Adw.ToolbarView(content=overlay, top_bar_style=Adw.ToolbarStyle.FLAT,
+                                  extend_content_to_top_edge=True)
         toolbar.add_top_bar(Adw.HeaderBar(title_widget=Gtk.Label(label="")))
         self.set_content(toolbar)
 
@@ -149,7 +196,7 @@ class MacifyWindow(Adw.ApplicationWindow):
             self._show(PAGES[index])
 
     def _page(self, *children: Gtk.Widget, center: bool = False) -> Gtk.Widget:
-        box = vbox(18, margin_top=10, margin_bottom=10, margin_start=28, margin_end=28,
+        box = vbox(18, margin_top=56, margin_bottom=10, margin_start=28, margin_end=28,
                    valign=Gtk.Align.CENTER if center else Gtk.Align.START)
         for child in children:
             box.append(child)
@@ -171,14 +218,18 @@ class MacifyWindow(Adw.ApplicationWindow):
             self.hello.add_named(text(word, "mf-hello", center=True), word)
         GLib.timeout_add(1800, self._next_greeting)
         system_info = info.summary()
-        start = Gtk.Button(label=_("Get Started"), halign=Gtk.Align.CENTER, css_classes=["suggested-action", "pill", "mf-cta"])
-        start.connect("clicked", lambda _b: self._show("appearance"))
+        start = Gtk.Button(label=_("Get Started"), halign=Gtk.Align.CENTER, margin_top=12, css_classes=["mf-cta"])
+        start.connect("clicked", lambda _b: self._start_flow(quick=False))
+        icon = Gtk.Image.new_from_icon_name(APP_ID)
+        icon.set_pixel_size(112)
+        icon.add_css_class("mf-float")
+        system_line = Gtk.Label(label=f"{system_info['os']}  ·  {system_info['desktop']}  ·  {system_info['session']}",
+                                halign=Gtk.Align.CENTER, css_classes=["mf-pill"])
         content = vbox(14, halign=Gtk.Align.CENTER)
-        for widget in (self.hello,
+        for widget in (icon, self.hello,
                        text(_("Goodbye, Ubuntu style. Hello, macOS style."), "mf-subtitle", center=True),
-                       text(f"{system_info['os']} · {system_info['desktop']} · {_('session')} {system_info['session']}",
-                            "mf-small", center=True),
-                       start):
+                       system_line, start,
+                       text(_("Everything can be undone from Macify."), "mf-small", center=True)):
             content.append(widget)
         self._fade_in(content)
         return self._page(content, center=True)
@@ -209,6 +260,16 @@ class MacifyWindow(Adw.ApplicationWindow):
         if button.get_active():
             self.choices.appearance = value
             self._live()
+
+    def _update_dock_preview(self) -> None:
+        for image in self.dock_icons:
+            image.set_pixel_size(self.choices.dock_size)
+        (self.dock_preview.add_css_class if self.choices.magnify else self.dock_preview.remove_css_class)("mf-magnify")
+
+    def _update_backdrop(self) -> None:
+        wallpaper = profile.wallpaper_path(self.choices)
+        if wallpaper.exists():
+            self.backdrop.set_filename(str(wallpaper))
 
     def _set_choice(self, name: str, value) -> None:
         setattr(self.choices, name, value)
@@ -241,7 +302,7 @@ class MacifyWindow(Adw.ApplicationWindow):
         accent_row = Gtk.Box(spacing=10)
         accent_row.append(self.accent_dot)
         accent_row.append(self.accent_label)
-        add = Gtk.Button(label=_("Add Photos…"), halign=Gtk.Align.START, css_classes=["pill"])
+        add = Gtk.Button(label=_("Add Photos…"), halign=Gtk.Align.START, css_classes=["mf-ghost"])
         add.connect("clicked", self._on_add_photos)
         install_bundled_data()
         self._fill_wallpapers()
@@ -266,6 +327,7 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _on_wallpaper(self, _flow: Gtk.FlowBox, child: Gtk.FlowBoxChild) -> None:
         self.choices.wallpaper = str(child.get_child().wallpaper_path)
         self._update_accent()
+        self._update_backdrop()
         self._live()
 
     def _update_accent(self) -> None:
@@ -322,8 +384,21 @@ class MacifyWindow(Adw.ApplicationWindow):
         group = Adw.PreferencesGroup()
         for row in (size_row, magnify, lamp, autohide):
             group.add(row)
+        self.dock_preview = Gtk.Box(spacing=10, halign=Gtk.Align.CENTER, margin_top=6, margin_bottom=6,
+                                    css_classes=["mf-dock-preview"])
+        self.dock_icons = []
+        for name in DOCK_PREVIEW_ICONS:
+            image = Gtk.Image.new_from_icon_name(name)
+            image.add_css_class("mf-dock-icon")
+            self.dock_preview.append(image)
+            self.dock_icons.append(image)
+        self._update_dock_preview()
+        for widget, signal in ((size, "value-changed"), (magnify, "notify::active")):
+            widget.connect(signal, lambda *_a: self._update_dock_preview())
         return self._page(text(_("Your Dock"), "mf-title"),
-                          text(_("Bottom, floating and glass, like on macOS."), "mf-subtitle"), group)
+                          text(_("Bottom, floating and glass, like on macOS."), "mf-subtitle"),
+                          self.dock_preview, text(_("Try it: move the pointer over the icons."), "mf-small", center=True),
+                          group)
 
     def _summary_page(self) -> Gtk.Widget:
         self.summary = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"])
@@ -353,8 +428,10 @@ class MacifyWindow(Adw.ApplicationWindow):
             return
         self.summary_title.set_label(_("Ready to begin"))
         self.summary_detail.set_label(_("Takes a few minutes. You'll be asked to restart at the end."))
-        for number, step in enumerate(installer.steps(self.choices, dry_run=True), 1):
-            self.summary.append(Adw.ActionRow(title=f"{number}. {step.title}", subtitle=step.detail))
+        for number, step in enumerate(installer.steps(self.choices, dry_run=True)):
+            row = Adw.ActionRow(title=step.title, subtitle=step.detail)
+            row.add_prefix(Gtk.Image.new_from_icon_name(STEP_ICONS[number % len(STEP_ICONS)]))
+            self.summary.append(row)
 
     def _progress_page(self) -> Gtk.Widget:
         self.progress_title = text(_("Preparing…"), "mf-title")
@@ -373,9 +450,9 @@ class MacifyWindow(Adw.ApplicationWindow):
         icon = Gtk.Image.new_from_icon_name(APP_ID)
         icon.set_pixel_size(128)
         reboot = Gtk.Button(label=_("Restart Now"), halign=Gtk.Align.CENTER,
-                            css_classes=["suggested-action", "pill", "mf-cta"])
+                            css_classes=["mf-cta"])
         reboot.connect("clicked", lambda _b: subprocess.Popen(["gnome-session-quit", "--reboot"]))
-        later = Gtk.Button(label=_("Later"), halign=Gtk.Align.CENTER, css_classes=["pill"])
+        later = Gtk.Button(label=_("Later"), halign=Gtk.Align.CENTER, css_classes=["mf-ghost"])
         later.connect("clicked", lambda _b: self.close())
         self.done_title = text(_("Welcome to your new Mac"), "mf-title", center=True)
         self.done_detail = text(_("Restart your computer to see all the changes."), "mf-subtitle", center=True)
@@ -384,25 +461,44 @@ class MacifyWindow(Adw.ApplicationWindow):
             content.append(widget)
         return self._page(content, center=True)
 
+    def _tile(self, icon: str, title: str, subtitle: str, action, *classes: str) -> Gtk.Button:
+        box = vbox(6, halign=Gtk.Align.START)
+        image = Gtk.Image.new_from_icon_name(icon)
+        image.set_pixel_size(28)
+        image.set_halign(Gtk.Align.START)
+        box.append(image)
+        box.append(text(title, "mf-step"))
+        box.append(text(subtitle, "mf-small"))
+        button = Gtk.Button(child=box, hexpand=True, css_classes=["mf-tile", *classes])
+        button.connect("clicked", lambda _b: action())
+        return button
+
     def _manage_page(self) -> Gtk.Widget:
         icon = Gtk.Image.new_from_icon_name(APP_ID)
         icon.set_pixel_size(96)
-        again = Gtk.Button(label=_("Customize"), halign=Gtk.Align.CENTER,
-                           css_classes=["suggested-action", "pill", "mf-cta"])
-        again.connect("clicked", lambda _b: self._start_flow(quick=True))
-        reinstall = Gtk.Button(label=_("Reinstall Everything"), halign=Gtk.Align.CENTER, css_classes=["pill"])
-        reinstall.connect("clicked", lambda _b: self._start_flow(quick=False))
-        restore = Gtk.Button(label=_("Restore Original Settings"), halign=Gtk.Align.CENTER, css_classes=["pill"])
-        restore.connect("clicked", lambda _b: self._run_maintenance(_("Restoring…"), lambda log: system.restore(False, log)))
-        check = Gtk.Button(label=_("Check for Problems"), halign=Gtk.Align.CENTER, css_classes=["pill"])
-        check.connect("clicked", lambda _b: self._run_doctor())
-        remove = Gtk.Button(label=_("Uninstall Everything"), halign=Gtk.Align.CENTER, css_classes=["pill", "destructive-action"])
-        remove.connect("clicked", lambda _b: self._run_maintenance(_("Uninstalling…"), lambda log: uninstall(False, log)))
-        content = vbox(14, halign=Gtk.Align.CENTER)
+        icon.add_css_class("mf-float")
+        tiles = Gtk.Grid(column_spacing=14, row_spacing=14, column_homogeneous=True, margin_top=10)
+        tiles.attach(self._tile("preferences-desktop-appearance-symbolic", _("Customize"),
+                                _("Look, wallpaper and dock, live."), lambda: self._start_flow(quick=True),
+                                "mf-tile-primary"), 0, 0, 2, 1)
+        tiles.attach(self._tile("emblem-ok-symbolic", _("Check for Problems"),
+                                _("Updates, errors and repairs."), self._run_doctor), 0, 1, 1, 1)
+        tiles.attach(self._tile("view-refresh-symbolic", _("Reinstall Everything"),
+                                _("Every step again, from the start."), lambda: self._start_flow(quick=False)), 1, 1, 1, 1)
+        tiles.attach(self._tile("edit-undo-symbolic", _("Restore Original Settings"),
+                                _("Ubuntu settings as they were."),
+                                lambda: self._run_maintenance(_("Restoring…"), lambda log: system.restore(False, log))), 0, 2, 1, 1)
+        tiles.attach(self._tile("user-trash-symbolic", _("Uninstall Everything"),
+                                _("Remove all of Macify's changes."),
+                                lambda: self._run_maintenance(_("Uninstalling…"), lambda log: uninstall(False, log)),
+                                "mf-tile-danger"), 1, 2, 1, 1)
+        content = vbox(14)
+        header = vbox(10, halign=Gtk.Align.CENTER)
         for widget in (icon, text(_("Macify is active"), "mf-title", center=True),
-                       text(_("Change your style, go back to the original, or remove everything."), "mf-subtitle", center=True),
-                       again, check, reinstall, restore, remove):
-            content.append(widget)
+                       text(_("Change your style, go back to the original, or remove everything."), "mf-subtitle", center=True)):
+            header.append(widget)
+        content.append(header)
+        content.append(tiles)
         return self._page(content, center=True)
 
     # ----- diagnóstico -----
@@ -411,9 +507,9 @@ class MacifyWindow(Adw.ApplicationWindow):
         self.doctor_title = text(_("Checking your Mac…"), "mf-title")
         self.doctor_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"])
         self.doctor_fix = Gtk.Button(label=_("Fix All"), halign=Gtk.Align.START,
-                                     css_classes=["suggested-action", "pill", "mf-cta"])
+                                     css_classes=["mf-cta"])
         self.doctor_fix.connect("clicked", lambda _b: self._fix_doctor())
-        back = Gtk.Button(label=_("Back"), halign=Gtk.Align.START, css_classes=["pill"])
+        back = Gtk.Button(label=_("Back"), halign=Gtk.Align.START, css_classes=["mf-ghost"])
         back.connect("clicked", lambda _b: self._show("manage"))
         buttons = Gtk.Box(spacing=12)
         buttons.append(back)

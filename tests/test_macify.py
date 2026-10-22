@@ -75,6 +75,22 @@ class ProfileTests(unittest.TestCase):
                     with self.subTest(schema=schema, key=key):
                         self.assertTrue(system.has_key(schema, key))
 
+    def test_version_comparison(self):
+        from macify import updates
+
+        self.assertTrue(updates.is_newer("0.10.0", "0.9.9"))
+        self.assertFalse(updates.is_newer("0.5.2", "0.6.0"))
+        self.assertFalse(updates.is_newer("v0.6.0", "0.6.0"))
+
+    def test_whitesur_css_repair(self):
+        from macify import themes
+
+        broken = "a { border-color: color-mix(in srgb, black 6% #2E7CF7); }"
+        fixed = themes._COLOR_MIX_WITHOUT_COMMA.sub(r"\1, ", broken)
+        self.assertEqual(fixed, "a { border-color: color-mix(in srgb, black 6%, #2E7CF7); }")
+        valid = "a { color: color-mix(in srgb, black 6%, #fff); }"
+        self.assertEqual(themes._COLOR_MIX_WITHOUT_COMMA.sub(r"\1, ", valid), valid)
+
     def test_values_compare_without_format_noise(self):
         self.assertTrue(doctor._same("uint32 48", "48"))
         self.assertTrue(doctor._same("(0.12, 0.12, 0.14, 0.34999999999999998)", "(0.12, 0.12, 0.14, 0.35)"))

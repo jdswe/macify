@@ -1,1 +1,3 @@
-"""Macify: configura Ubuntu con estilo macOS."""
+"""Macify: convierte el escritorio GNOME de Ubuntu al estilo macOS."""
+
+__version__ = "0.6.0"

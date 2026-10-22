@@ -6,6 +6,8 @@
 
 <p align="center">A one-click macOS look for Ubuntu — from the boot screen to the dock. Fully reversible.</p>
 
+<p align="center"><a href="https://jdswe.github.io/macify/"><b>Website</b></a> · <a href="../../releases/latest"><b>Download</b></a></p>
+
 <p align="center">
   <img src="docs/welcome.png" width="720" alt="Macify welcome screen">
 </p>
@@ -28,11 +30,11 @@
 
 ## Install
 
-Download the `.deb` from [Releases](../../releases/latest), then:
-
 ```bash
-sudo apt install ./macify_*_all.deb
+curl -fsSL https://jdswe.github.io/macify/install.sh | bash
 ```
+
+Or download the `.deb` from [Releases](../../releases/latest) and run `sudo apt install ./macify_*_all.deb`.
 
 Open **Macify**, follow the steps, press **Install** and restart.
 
@@ -40,9 +42,9 @@ Built for Ubuntu with GNOME 45–50. Tested on Ubuntu 26.04 (GNOME 50, Wayland).
 
 ## Screenshots
 
-| Appearance | Dock |
+| Dock, live preview | Manage |
 |---|---|
-| ![](docs/appearance.png) | ![](docs/dock.png) |
+| ![](docs/dock.png) | ![](docs/manage.png) |
 | **Doctor** | **Boot** |
 | ![](docs/doctor.png) | ![](docs/boot.png) |
 

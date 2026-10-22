@@ -4,7 +4,7 @@
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="0.5.2"
+VERSION="$(python3 -c "import re,sys; print(re.search(r'__version__ = \"(.+)\"', open(sys.argv[1]).read()).group(1))" "$APP_DIR/macify/__init__.py")"
 PKG="macify_${VERSION}_all"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT

@@ -8,6 +8,7 @@ salvo la pantalla de inicio de sesión, que necesita permisos de administrador.
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -97,6 +98,8 @@ def install_gtk(appearance: str, dry_run: bool, log) -> None:
         log(_("Install: {options}").format(options=" ".join(cmd[1:])))
         if not dry_run:
             _run(cmd, fetch("gtk", log), log)
+    if not dry_run:
+        repair_css(log)
 
 
 def install_icons(dry_run: bool, log) -> None:
@@ -137,3 +140,31 @@ def link_libadwaita(appearance: str, log) -> None:
 def variant_installed(appearance: str) -> bool:
     variant = "Dark" if appearance == "dark" else "Light"
     return (Path.home() / ".themes" / f"WhiteSur-{variant}-alt").is_dir()
+
+
+# WhiteSur claro escribe «color-mix(in srgb, black 6% #2E7CF7)», sin la coma antes del
+# segundo color; GTK 4 descarta esas reglas (bordes de los botones). Se repara aquí.
+_COLOR_MIX_WITHOUT_COMMA = re.compile(r"(color-mix\(in \w+, [^,()]+? \d+(?:\.\d+)?%) (?=[#@\w])")
+
+
+def _css_files() -> list[Path]:
+    home = Path.home()
+    files = list((home / ".config" / "gtk-4.0").glob("gtk-*.css"))
+    files += list((home / ".themes").glob("WhiteSur-*/gtk-4.0/*.css"))
+    return [f for f in files if f.is_file() and not f.is_symlink()]
+
+
+def broken_css() -> list[Path]:
+    """Archivos del tema con el error de color-mix de WhiteSur."""
+    return [f for f in _css_files() if _COLOR_MIX_WITHOUT_COMMA.search(f.read_text(errors="ignore"))]
+
+
+def repair_css(log) -> int:
+    fixed = 0
+    for path in broken_css():
+        text, count = _COLOR_MIX_WITHOUT_COMMA.subn(r"\1, ", path.read_text())
+        path.write_text(text)
+        fixed += count
+    if fixed:
+        log(_("Theme: {count} style rules repaired").format(count=fixed))
+    return fixed

@@ -86,6 +86,22 @@ def _local_extension_version(uuid: str) -> int | None:
 
 # ----- revisiones -----
 
+def check_macify(online: bool) -> Check:
+    from . import __version__, updates
+
+    name = "Macify"
+    if not online:
+        return Check(name, OK, _("Version {version} (update check skipped).").format(version=__version__))
+    try:
+        release = updates.latest()
+    except (OSError, ValueError, KeyError):
+        return Check(name, WARN, _("Could not reach GitHub to check for updates."))
+    if release and updates.is_newer(release["version"]):
+        return Check(name, WARN, _("Version {version} is available.").format(version=release["version"]),
+                     lambda log: updates.install(release, log))
+    return Check(name, OK, _("Version {version}, the latest.").format(version=__version__))
+
+
 def check_tools() -> Check:
     missing = deps.missing_packages()
     if not missing:
@@ -191,6 +207,14 @@ def check_settings() -> Check:
                  lambda log: system.apply_settings(drifted, False, log))
 
 
+def check_theme_css() -> Check:
+    broken = themes.broken_css()
+    if not broken:
+        return Check(_("Theme styles"), OK, _("No style errors."))
+    return Check(_("Theme styles"), WARN, _("{count} files with style errors from WhiteSur.").format(count=len(broken)),
+                 lambda log: themes.repair_css(log))
+
+
 def check_icons() -> Check:
     if not icons.THEME_DIR.exists():
         return Check(_("Icons"), FAIL, _("Macify icon theme missing."),
@@ -238,7 +262,7 @@ def check_boot() -> Check | None:
 
 
 def run(online: bool = True) -> list[Check]:
-    checks = [check_tools(), *check_themes(online), *check_extensions(online), check_settings(),
+    checks = [check_macify(online), check_tools(), *check_themes(online), check_theme_css(), *check_extensions(online), check_settings(),
               check_icons(), check_fonts(), check_upkeep()]
     boot = check_boot()
     if boot:

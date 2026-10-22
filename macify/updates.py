@@ -1,0 +1,59 @@
+"""Actualizaciones de Macify desde los releases oficiales de GitHub.
+
+La descarga se verifica antes de instalar: debe ser el paquete «macify» y, si
+GitHub publica la huella SHA-256 del archivo, debe coincidir.
+"""
+
+import hashlib
+import json
+import subprocess
+import urllib.request
+from pathlib import Path
+
+from . import __version__
+from .assets import CACHE_DIR
+from .i18n import _
+
+REPO = "jdswe/macify"
+API = f"https://api.github.com/repos/{REPO}/releases/latest"
+
+
+def _parse(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in version.lstrip("v").split(".") if part.isdigit())
+
+
+def latest() -> dict | None:
+    """Última versión publicada: {"version", "url", "name", "sha256"} o None."""
+    with urllib.request.urlopen(API, timeout=15) as response:
+        release = json.load(response)
+    asset = next((a for a in release.get("assets", []) if a["name"].endswith("_all.deb")), None)
+    if asset is None:
+        return None
+    digest = asset.get("digest") or ""
+    return {"version": release["tag_name"].lstrip("v"), "url": asset["browser_download_url"],
+            "name": asset["name"], "sha256": digest.split(":", 1)[1] if digest.startswith("sha256:") else None}
+
+
+def is_newer(remote: str, local: str = __version__) -> bool:
+    return _parse(remote) > _parse(local)
+
+
+def install(release: dict, log) -> None:
+    folder = CACHE_DIR / "updates"
+    folder.mkdir(parents=True, exist_ok=True)
+    package = folder / Path(release["name"]).name
+    log(_("Downloading {name} from {source}").format(name=release["name"], source="GitHub"))
+    with urllib.request.urlopen(release["url"], timeout=300) as response:
+        package.write_bytes(response.read())
+    if release["sha256"] and hashlib.sha256(package.read_bytes()).hexdigest() != release["sha256"]:
+        package.unlink()
+        raise RuntimeError(_("The download does not match its published fingerprint."))
+    name = subprocess.run(["dpkg-deb", "-f", str(package), "Package"], capture_output=True, text=True).stdout.strip()
+    if name != "macify":
+        package.unlink()
+        raise RuntimeError(_("The download is not the Macify package."))
+    log(_("Installing Macify {version}").format(version=release["version"]))
+    result = subprocess.run(["pkexec", "apt-get", "install", "-y", str(package)], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(_("Could not install dependencies (cancelled or apt error)."))
+    log(_("Macify {version} installed. Open it again to use the new version.").format(version=release["version"]))

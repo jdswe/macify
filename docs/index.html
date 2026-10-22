@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macify — a macOS look for Ubuntu</title>
+<meta name="description" content="One-click macOS look for Ubuntu: boot, login, dock, menu bar, icons and fonts. Fully reversible.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta property="og:title" content="Macify — a macOS look for Ubuntu">
+<meta property="og:description" content="One-click macOS look for Ubuntu. Fully reversible.">
+<meta property="og:image" content="welcome.png">
+<style>
+:root {
+  --bg: #120f1d;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.72);
+  --faint: rgba(255, 255, 255, 0.5);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-strong: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.14);
+  --accent-a: #4f86ff;
+  --accent-b: #9b5cff;
+  --radius: 22px;
+  --max: 1080px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; color: var(--text); background: var(--bg);
+  font-family: -apple-system, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: ""; position: fixed; inset: -20%; z-index: -1;
+  background:
+    radial-gradient(40% 35% at 20% 20%, rgba(255, 168, 110, 0.45), transparent 70%),
+    radial-gradient(45% 40% at 80% 25%, rgba(155, 92, 255, 0.45), transparent 70%),
+    radial-gradient(50% 45% at 50% 85%, rgba(79, 134, 255, 0.35), transparent 70%);
+  filter: blur(60px);
+}
+a { color: inherit; }
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+h1, h2, h3 { font-family: -apple-system, "SF Pro Display", "Inter", system-ui, sans-serif; letter-spacing: -0.02em; }
+h2 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 12px; }
+section { padding: 72px 0; }
+.lead { color: var(--muted); font-size: 18px; max-width: 640px; }
+
+/* barra de navegación */
+nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%); background: rgba(18, 15, 29, 0.55);
+  border-bottom: 1px solid var(--border); }
+nav .wrap { display: flex; align-items: center; gap: 24px; height: 56px; }
+nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+nav .brand img { width: 28px; height: 28px; }
+nav .links { display: flex; gap: 20px; margin-left: auto; font-size: 14px; }
+nav .links a { color: var(--muted); text-decoration: none; }
+nav .links a:hover { color: var(--text); }
+@media (max-width: 760px) { nav .links a.optional { display: none; } }
+
+/* portada */
+.hero { text-align: center; padding: 96px 0 64px; }
+.hero img.icon { width: 132px; height: 132px; filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+  animation: float 4s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-10px); } }
+.hero h1 { font-size: clamp(56px, 10vw, 104px); margin: 18px 0 6px; line-height: 1; }
+.hero p { font-size: clamp(18px, 2.4vw, 22px); color: var(--muted); margin: 0 auto 28px; max-width: 620px; }
+.badge { display: inline-flex; gap: 8px; align-items: center; padding: 6px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+.badge b { color: var(--text); }
+.actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 28px 0 14px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 30px; border-radius: 999px;
+  font-weight: 700; font-size: 16px; text-decoration: none; border: 1px solid transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  box-shadow: 0 12px 34px rgba(110, 90, 255, 0.45); }
+.btn-primary:hover { box-shadow: 0 16px 44px rgba(110, 90, 255, 0.62); transform: translateY(-2px); }
+.btn-ghost { background: var(--glass); border-color: var(--border); }
+.btn-ghost:hover { background: var(--glass-strong); }
+.fine { color: var(--faint); font-size: 13px; }
+.hero .shot { margin: 48px auto 0; max-width: 920px; border-radius: 18px; overflow: hidden;
+  border: 1px solid var(--border); box-shadow: 0 40px 90px rgba(0, 0, 0, 0.5); }
+.hero .shot img { display: block; width: 100%; }
+
+/* tarjetas */
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-top: 28px; }
+.card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); transition: transform 180ms ease, background 180ms ease; }
+.card:hover { transform: translateY(-3px); background: var(--glass-strong); }
+.card .emoji { font-size: 26px; }
+.card h3 { margin: 10px 0 6px; font-size: 18px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+/* instalación */
+.code { position: relative; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border); border-radius: 16px;
+  padding: 18px 64px 18px 20px; font-family: "SF Mono", ui-monospace, "JetBrains Mono", monospace; font-size: 15px;
+  overflow-x: auto; white-space: nowrap; }
+.code button { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: 1px solid var(--border);
+  background: var(--glass-strong); color: var(--text); border-radius: 10px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+@media (max-width: 600px) {
+  .code { white-space: normal; word-break: break-all; padding-right: 20px; }
+  .code button { position: static; transform: none; display: block; margin-top: 12px; }
+}
+.steps { counter-reset: step; display: grid; gap: 14px; margin-top: 18px; }
+.steps li { list-style: none; counter-increment: step; position: relative; padding-left: 46px; color: var(--muted); }
+.steps li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 30px; height: 30px;
+  border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--text);
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); }
+.two { display: grid; gap: 24px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+
+/* capturas */
+.gallery { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 28px; }
+.gallery figure { margin: 0; background: var(--glass); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+.gallery img { display: block; width: 100%; aspect-ratio: 16 / 11; object-fit: cover; object-position: top; }
+.gallery figcaption { padding: 10px 14px; color: var(--muted); font-size: 14px; }
+
+/* tabla */
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 24px; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 18px; background: var(--glass); }
+th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+.yes { color: #6ee7a8; font-weight: 700; } .part { color: #ffd479; font-weight: 700; } .no { color: #ff8a8a; font-weight: 700; }
+
+/* versiones */
+.release { padding: 18px 22px; }
+.release header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.release h3 { margin: 0; }
+.release time { color: var(--faint); font-size: 13px; }
+.release ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+.release code { font-family: "SF Mono", ui-monospace, monospace; background: rgba(0, 0, 0, 0.3); padding: 1px 6px; border-radius: 6px; }
+.release .latest { font-size: 12px; padding: 3px 10px; border-radius: 999px; margin-left: 8px;
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); vertical-align: middle; }
+
+/* preguntas */
+details { background: var(--glass); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; margin-top: 12px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { color: var(--muted); margin: 10px 0 0; }
+
+footer { padding: 48px 0 64px; color: var(--faint); font-size: 14px; border-top: 1px solid var(--border); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="icon.svg" alt="">Macify</a>
+    <div class="links">
+      <a href="#features" class="optional">Features</a>
+      <a href="#install">Install</a>
+      <a href="#screenshots" class="optional">Screenshots</a>
+      <a href="#safety" class="optional">Safety</a>
+      <a href="#releases" class="optional">Releases</a>
+      <a href="https://github.com/jdswe/macify">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero wrap">
+  <img class="icon" src="icon.svg" alt="Macify icon">
+  <h1>Macify</h1>
+  <p>A one-click macOS look for Ubuntu — from the boot screen to the dock. Everything can be undone.</p>
+  <span class="badge">Latest version <b id="version">…</b> <span id="released"></span></span>
+  <div class="actions">
+    <a class="btn btn-primary" id="download" href="https://github.com/jdswe/macify/releases/latest">Download .deb</a>
+    <a class="btn btn-ghost" href="#install">Install with one command</a>
+  </div>
+  <div class="fine">Ubuntu with GNOME 45–50 · tested on Ubuntu 26.04 · free and open source (GPL-3.0)</div>
+  <div class="shot"><img src="welcome.png" alt="Macify welcome screen"></div>
+</header>
+
+<main>
+<section id="features">
+  <div class="wrap">
+    <h2>Everything a Mac looks like</h2>
+    <p class="lead">Macify installs and configures each piece for you, shows real-time progress, and keeps a backup of your original settings.</p>
+    <div class="grid">
+      <div class="card"><div class="emoji">🖥️</div><h3>Boot and login</h3><p>Black boot screen with a smooth progress bar and a macOS-style login screen.</p></div>
+      <div class="card"><div class="emoji">🔴🟡🟢</div><h3>Windows</h3><p>Traffic-light buttons and macOS title bars, light or dark, for GTK 3 and GTK 4 apps.</p></div>
+      <div class="card"><div class="emoji">⌘</div><h3>Menu bar</h3><p>Transparent bar with a system menu and the name of the app you're using.</p></div>
+      <div class="card"><div class="emoji">🚀</div><h3>Animated dock</h3><p>Floating glass dock with magnification, bounce on launch and the magic-lamp minimize.</p></div>
+      <div class="card"><div class="emoji">🎨</div><h3>Icons</h3><p>A macOS icon set. Apps without one get a new icon in the macOS shape — automatically, even later.</p></div>
+      <div class="card"><div class="emoji">🔤</div><h3>San Francisco fonts</h3><p>Uses your SF fonts or downloads them from Apple's developer site. Never bundled.</p></div>
+      <div class="card"><div class="emoji">🌅</div><h3>Wallpaper colors</h3><p>The system accent color follows your wallpaper. Add your own photos.</p></div>
+      <div class="card"><div class="emoji">🩺</div><h3>Doctor</h3><p>Finds outdated or broken pieces — and new Macify versions — and fixes them in one click.</p></div>
+      <div class="card"><div class="emoji">✨</div><h3>Customize, live</h3><p>Change look, wallpaper and dock and see it on your desktop instantly. No reinstall.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lead">One command downloads the latest release, checks its fingerprint, and installs it with apt.</p>
+    <div class="code"><span id="cmd">curl -fsSL https://jdswe.github.io/macify/install.sh | bash</span><button type="button" data-copy="cmd">Copy</button></div>
+    <div class="two" style="margin-top:32px">
+      <div class="card">
+        <h3>Or install it by hand</h3>
+        <ol class="steps">
+          <li>Download <a id="download2" href="https://github.com/jdswe/macify/releases/latest">the latest .deb</a>.</li>
+          <li>In a terminal, in the download folder: <code>sudo apt install ./macify_*_all.deb</code></li>
+          <li>Open <b>Macify</b> from your apps, follow the steps and press <b>Install</b>.</li>
+          <li>Restart when asked.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Staying up to date</h3>
+        <ol class="steps">
+          <li>Macify checks GitHub for new versions once a day.</li>
+          <li>Open Macify → <b>Check for Problems</b>.</li>
+          <li>Press <b>Fix All</b>: it downloads, verifies and installs the new version.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="wrap">
+    <h2>Take a look</h2>
+    <div class="gallery">
+      <figure><img src="dock.png" alt="Dock settings with live preview" loading="lazy"><figcaption>Your dock, previewed live</figcaption></figure>
+      <figure><img src="manage.png" alt="Macify management screen" loading="lazy"><figcaption>Customize, check, restore or remove</figcaption></figure>
+      <figure><img src="summary.png" alt="Installation summary" loading="lazy"><figcaption>Every step, explained</figcaption></figure>
+      <figure><img src="doctor.png" alt="Doctor results" loading="lazy"><figcaption>The doctor</figcaption></figure>
+      <figure><img src="boot.png" alt="Boot screen" loading="lazy"><figcaption>Boot screen</figcaption></figure>
+      <figure><img src="dock-icons.png" alt="Dock icons" loading="lazy"><figcaption>macOS icons in the dock</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="safety">
+  <div class="wrap">
+    <h2>Safe by design</h2>
+    <div class="grid">
+      <div class="card"><h3>Backup first</h3><p>Every GNOME setting is saved before it changes. <b>Restore</b> puts them back.</p></div>
+      <div class="card"><h3>Clean removal</h3><p><b>Uninstall Everything</b> removes themes, icons, extensions, fonts and the boot and login screens.</p></div>
+      <div class="card"><h3>One password, root-only code</h3><p>System screens run through a root-owned helper that only executes code from root folders.</p></div>
+      <div class="card"><h3>Verified downloads</h3><p>Over HTTPS from official sources; updates are checked against GitHub's SHA-256 fingerprint.</p></div>
+      <div class="card"><h3>No kernel changes</h3><p>No modules or boot parameters. Only the boot image is refreshed to include the boot theme.</p></div>
+      <div class="card"><h3>Nothing exposed</h3><p>Macify opens no network ports and runs no system services — only two small user services.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="apps">
+  <div class="wrap">
+    <h2>Which apps take the macOS style</h2>
+    <p class="lead">Apps follow the system look in different ways depending on how they are built and packaged.</p>
+    <table>
+      <tr><th>Kind of app</th><th>Window buttons &amp; theme</th><th>Icon</th></tr>
+      <tr><td>GTK apps from apt (Files, Settings, Terminal…)</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+      <tr><td>Flatpak apps</td><td class="yes">Yes — Macify grants read access to the theme</td><td class="yes">Yes</td></tr>
+      <tr><td>Snap apps</td><td class="part">Buttons yes; theme no (snaps can't read your themes)</td><td class="yes">Yes</td></tr>
+      <tr><td>VS Code, Firefox</td><td class="yes">Yes — set up by Macify</td><td class="yes">Yes</td></tr>
+      <tr><td>Chromium browsers, Electron and Flutter apps</td><td class="no">They draw their own buttons</td><td class="yes">Yes</td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="releases">
+  <div class="wrap">
+    <h2>What's new</h2>
+    <p class="lead">Read live from GitHub Releases.</p>
+    <div id="release-list" class="grid" style="grid-template-columns:1fr"><div class="card">Loading releases…</div></div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Questions</h2>
+    <details><summary>Does it slow Ubuntu down?</summary><p>The animated dock costs about 5% of one CPU core while idle. Macify's background upkeep runs in under a second, only at login and when apps are installed.</p></details>
+    <details><summary>Can I go back to plain Ubuntu?</summary><p>Yes. Open Macify and choose <b>Restore Original Settings</b> or <b>Uninstall Everything</b>, then <code>sudo apt remove macify</code>.</p></details>
+    <details><summary>Do I need my own Apple fonts?</summary><p>No. If you don't have them, Macify downloads San Francisco from Apple's developer site at install time.</p></details>
+    <details><summary>My login screen looks wrong — how do I recover?</summary><p>Press Ctrl+Alt+F3, sign in, run <code>sudo /usr/lib/macify/macify/data/root/macify-root.sh revert</code> and restart.</p></details>
+    <details><summary>Is it affiliated with Apple or Canonical?</summary><p>No. macOS is a trademark of Apple Inc. Macify is an independent open-source project.</p></details>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Macify · GPL-3.0 · built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a> and <a href="https://extensions.gnome.org">GNOME extensions</a></span>
+    <a href="https://github.com/jdswe/macify">github.com/jdswe/macify</a>
+  </div>
+</footer>
+
+<script>
+const REPO = "jdswe/macify";
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Markdown mínimo para las notas de versión: listas, negrita, código y bloques de código.
+function renderNotes(markdown) {
+  const out = [];
+  let inList = false, inCode = false;
+  for (const raw of (markdown || "").split("\n")) {
+    if (raw.trim().startsWith("```")) { inCode = !inCode; continue; }
+    if (inCode) { out.push(`<p><code>${escapeHtml(raw)}</code></p>`); continue; }
+    let line = escapeHtml(raw.trim())
+      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+      .replace(/`(.+?)`/g, "<code>$1</code>");
+    if (/^[-*] /.test(raw.trim())) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push(`<li>${line.slice(2)}</li>`);
+    } else {
+      if (inList) { out.push("</ul>"); inList = false; }
+      if (line && !line.startsWith("|")) out.push(`<p>${line}</p>`);
+    }
+  }
+  if (inList) out.push("</ul>");
+  return out.join("");
+}
+
+async function loadReleases() {
+  const list = document.getElementById("release-list");
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=6`);
+    const releases = (await response.json()).filter(r => !r.draft && !r.prerelease);
+    if (!releases.length) throw new Error("no releases");
+    const latest = releases[0];
+    const deb = latest.assets.find(a => a.name.endsWith("_all.deb"));
+    document.getElementById("version").textContent = latest.tag_name;
+    document.getElementById("released").textContent =
+      "· " + new Date(latest.published_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    if (deb) {
+      for (const id of ["download", "download2"]) document.getElementById(id).href = deb.browser_download_url;
+      document.getElementById("download").textContent = `Download ${latest.tag_name} (.deb)`;
+    }
+    list.innerHTML = releases.map((r, i) => `
+      <article class="card release">
+        <header><h3>${escapeHtml(r.name || r.tag_name)}${i === 0 ? '<span class="latest">Latest</span>' : ""}</h3>
+        <time>${new Date(r.published_at).toLocaleDateString()}</time></header>
+        ${renderNotes(r.body)}
+      </article>`).join("");
+  } catch (error) {
+    document.getElementById("version").textContent = "on GitHub";
+    list.innerHTML = '<div class="card">See all versions on <a href="https://github.com/jdswe/macify/releases">GitHub Releases</a>.</div>';
+  }
+}
+
+document.querySelectorAll("[data-copy]").forEach(button => {
+  button.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent);
+    button.textContent = "Copied";
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+});
+
+loadReleases();
+</script>
+</body>
+</html>
