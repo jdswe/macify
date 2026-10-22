@@ -6,7 +6,7 @@
 
 <p align="center">A one-click macOS look for Ubuntu — from the boot screen to the dock. Fully reversible.</p>
 
-<p align="center"><a href="https://jdswe.github.io/macify/"><b>Website</b></a> · <a href="../../releases/latest"><b>Download</b></a></p>
+<p align="center"><a href="https://jdswe.github.io/macify/"><b>Website</b></a> · <a href="https://jdswe.github.io/macify/#demo"><b>Watch the demo</b></a> · <a href="../../releases/latest"><b>Download</b></a></p>
 
 <p align="center">
   <img src="docs/welcome.png" width="720" alt="Macify welcome screen">
