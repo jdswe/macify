@@ -181,22 +181,43 @@ class SystemPiecesTests(unittest.TestCase):
         self.assertEqual(updates.notes(release), ["Dock fix", "Boot bar"])
 
     def test_menubar_extension_javascript_parses(self):
+        import re
         import shutil
         import tempfile
 
         if shutil.which("gjs") is None:
             self.skipTest("sin gjs")
-        source = (PACKAGE / "data" / "extension" / "macify-menubar@macify.dev" / "extension.js").read_text()
-        body = "\n".join(line for line in source.splitlines() if not line.startswith("import "))
-        body = body.replace("export default class", "class")
-        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as f:
-            f.write(body)
-        check = (f"const [, b] = imports.gi.GLib.file_get_contents({f.name!r}); "
-                 "new Function(new TextDecoder().decode(b));")
-        result = subprocess.run(["gjs", "-c", check], capture_output=True, text=True)
-        Path(f.name).unlink()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("in-fullscreen-changed", source)
+        folder = PACKAGE / "data" / "extension" / "macify-menubar@macify.dev"
+        modules = sorted(folder.glob("*.js"))
+        self.assertGreaterEqual(len(modules), 6)
+        for module in modules:
+            source = module.read_text()
+            body = "\n".join(line for line in source.splitlines() if not line.startswith("import "))
+            body = re.sub(r"^export (default )?", "", body, flags=re.MULTILINE)
+            with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as f:
+                f.write(body)
+            check = (f"const [, b] = imports.gi.GLib.file_get_contents({f.name!r}); "
+                     "new Function(new TextDecoder().decode(b));")
+            result = subprocess.run(["gjs", "-c", check], capture_output=True, text=True)
+            Path(f.name).unlink()
+            self.assertEqual(result.returncode, 0, f"{module.name}: {result.stderr}")
+            # Cada import local apunta a un módulo que existe.
+            for name in re.findall(r"from '\./([\w.]+)'", source):
+                self.assertTrue((folder / name).is_file(), f"{module.name} → {name}")
+        self.assertIn("in-fullscreen-changed", (folder / "dock.js").read_text())
+
+    def test_status_icons_are_valid_svg(self):
+        import xml.etree.ElementTree as ET
+
+        from macify import status_icons
+
+        icons = status_icons.all_icons()
+        for name in ("battery-level-50-symbolic", "battery-level-80-charging-symbolic",
+                     "network-wireless-signal-good-symbolic", "macify-control-center-symbolic"):
+            self.assertIn(name, icons)
+        for name, svg in icons.items():
+            ET.fromstring(svg)                      # XML bien formado
+            self.assertNotIn("stroke=\"#", svg.replace('stroke="#000"', ""), name)   # sólo rellenos
 
     def test_menubar_logo_is_white_and_without_background(self):
         svg = extensions.menubar_logo_svg()

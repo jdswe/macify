@@ -18,6 +18,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from . import status_icons
 from .i18n import _
 
 HOME = Path.home()
@@ -58,14 +59,20 @@ def ensure_theme(dry_run: bool, log) -> None:
     if dry_run:
         return
     (THEME_DIR / "apps" / str(ICON_SIZE)).mkdir(parents=True, exist_ok=True)
-    _write_if_changed(THEME_DIR / "index.theme",
+    changed = _write_if_changed(THEME_DIR / "index.theme",
         "[Icon Theme]\n"
         f"Name={THEME_NAME}\n"
         "Comment=macOS-style icons made by Macify\n"
         f"Inherits={','.join(inherits)}\n"
-        f"Directories=apps/{ICON_SIZE}\n\n"
+        f"Directories=apps/{ICON_SIZE},{status_icons.FOLDER}\n\n"
         f"[apps/{ICON_SIZE}]\n"
-        f"Size={ICON_SIZE}\nMinSize=16\nMaxSize=1024\nType=Scalable\nContext=Applications\n")
+        f"Size={ICON_SIZE}\nMinSize=16\nMaxSize=1024\nType=Scalable\nContext=Applications\n\n"
+        f"[{status_icons.FOLDER}]\n"
+        "Size=16\nMinSize=8\nMaxSize=512\nType=Scalable\nContext=Status\n")
+    # Batería, Wi‑Fi y demás iconos de la barra superior, al estilo de macOS.
+    changed |= status_icons.write(THEME_DIR)
+    if changed and shutil.which("gtk-update-icon-cache"):
+        subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(THEME_DIR)], capture_output=True)
 
 
 def _write_if_changed(path: Path, text: str) -> bool:

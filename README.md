@@ -16,8 +16,9 @@
 
 - **Boot and login** — the progress bar tracks real startup (“Welcome”) and shutdown (“See you soon”); macOS-style login.
 - **Windows** — traffic-light buttons and macOS title bars, light or dark.
-- **Menu bar** — transparent, with a system menu and the active app's name.
-- **Dock** — floating glass, magnification, bounce and magic-lamp minimize.
+- **Menu bar** — transparent, with File, Edit, View, Window and Help menus that work in any app, and macOS-style battery, Wi‑Fi and Control Center icons.
+- **Live Activities** — a bubble at the top that springs open for music playing, charging and connection changes.
+- **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.
 - **Wallpaper colors** — the accent color follows your wallpaper.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.

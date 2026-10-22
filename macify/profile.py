@@ -85,7 +85,7 @@ def settings(choices: Choices) -> dict:
             "clock-show-weekday": "true",
             "clock-show-seconds": "false",
             "clock-format": q("12h"),                  # «mié 21 oct 4:05 p. m.», como macOS
-            "show-battery-percentage": "true",
+            "show-battery-percentage": "false",       # como macOS: sólo el icono
         },
         "org.gnome.desktop.wm.preferences": {
             "button-layout": q("close,minimize,maximize:"),
@@ -119,6 +119,7 @@ def settings(choices: Choices) -> dict:
         "org.gnome.shell.extensions.just-perfection": {
             "activities-button": "false",       # sin la píldora de Ubuntu
             "clock-menu-position": "1",         # reloj a la derecha, como macOS
+            "clock-menu-position-offset": "20",  # y al final, después de los iconos de estado
             "startup-status": "0",              # arrancar en el escritorio
             "workspace-popup": "false",
             "ripple-box": "false",
@@ -151,6 +152,8 @@ def settings(choices: Choices) -> dict:
             "trash-icon": "true",
             "separator-thickness": "1",
             "separator-color": "(1.0, 1.0, 1.0, 0.25)",
+            "notification-badge-style": "0",            # globo rojo con número (lo dibuja Macify Menubar)
+            "notification-badge-color": "(1.0, 0.23, 0.19, 1.0)",
         },
         "org.gnome.shell.extensions.blur-my-shell.applications": {
             "blur": "true",
