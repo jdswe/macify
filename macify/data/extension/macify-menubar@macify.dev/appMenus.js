@@ -309,14 +309,22 @@ class BarMenu extends PanelMenu.Button {
         this.add_child(this._label);
         this.add_style_class_name('macify-menu-button');
         this.menu.actor.add_style_class_name('macify-app-menu');
+        // GNOME no abre un menú vacío: siempre tiene las opciones de la app activa, y al
+        // abrirse se rehace para mostrar el estado del momento (pantalla completa, Alt…).
         this.menu.connect('open-state-changed', (_menu, open) => {
             if (open)
                 this._refill();
         });
+        this._refill();
     }
 
     setTitle(text) {
         this._label.text = text;
+    }
+
+    refresh() {
+        if (!this.menu.isOpen)
+            this._refill();
     }
 
     _refill() {
@@ -353,6 +361,7 @@ export class AppMenus {
         const t = currentTarget();
         this._appMenu.setTitle(t.name);
         this._goMenu.visible = t.kind === 'files';      // «Go» es el menú propio de Archivos
+        this._menus.forEach(menu => menu.refresh());
     }
 
     destroy() {

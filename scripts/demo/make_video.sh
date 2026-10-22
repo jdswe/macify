@@ -10,13 +10,17 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 out=${1:-$repo/docs/demo.mp4}
 work=$(mktemp -d)
-web=$(mktemp -d -p "$HOME" .macify-web.XXXXXX)      # Firefox (snap) no puede escribir en /tmp
+web=$(mktemp -d -p "$HOME" macify-web.XXXXXX)       # Firefox (snap) no escribe en /tmp ni en carpetas ocultas
 trap 'rm -rf "$work" "$web"' EXIT
 wallpaper="file://$repo/macify/data/wallpapers/lilac.jpg"
 
 echo "1/4 app screens"
 PYTHONPATH="$repo" python3 -c "from macify import boot; boot.build_theme()"
-python3 "$here/capture.py" "$work/app" > /dev/null 2>&1
+for try in 1 2; do
+    timeout 120 python3 -u "$here/capture.py" "$work/app" > "$work/capture.log" 2>&1 && break
+    echo "   app capture timed out, retrying"
+done
+[ -f "$work/app/13-doctor.png" ] || { echo "app capture failed:"; tail -5 "$work/capture.log"; exit 1; }
 
 echo "2/4 GNOME screens (hidden test session)"
 MACIFY_TEST_ONLY=demo \

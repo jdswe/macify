@@ -74,16 +74,19 @@ function type(text) {
     }
 }
 
-// Pulsa una opción de un menú de la barra como si se hiciera clic.
+// Abre el menú como un clic y pulsa la opción (un menú que no se abre falla aquí).
 function choose(menuName, label) {
     const button = Main.panel.statusArea[menuName];
-    button._refill();
+    button.menu.open();
+    if (!button.menu.isOpen)
+        throw new Error(`${menuName}: the menu does not open`);
     const item = button.menu._getMenuItems().find(i => i.label?.text === label);
     if (!item)
         throw new Error(`${menuName}: no item «${label}»`);
     if (!item.sensitive)
         throw new Error(`${menuName}: «${label}» disabled`);
     item.emit('activate', null);
+    button.menu.close();
 }
 
 async function openApp(id) {
@@ -128,7 +131,7 @@ async function testEditor() {
     check('Edit › Paste twice + Copy', copied.includes('macify-editmacify-edit'), JSON.stringify(copied));
 
     // Reglas de Apple: lo que no aplica se ve desactivado, no se esconde.
-    Main.panel.statusArea['macify-menu-file']._refill();
+    Main.panel.statusArea['macify-menu-file'].menu.open();
     const fileItems = Main.panel.statusArea['macify-menu-file'].menu._getMenuItems().map(i => i.label?.text).filter(Boolean);
     check('File menu keeps every item', ['New Window', 'New Tab', 'Open…', 'Close Window', 'Save', 'Print…']
         .every(l => fileItems.includes(l)), fileItems.join(','));
@@ -180,7 +183,7 @@ async function testTerminal() {
     const copied = await clipboard();
     check('Terminal: Edit › Select All + Copy (Ctrl+Shift)', copied.includes('macify-term'), JSON.stringify(copied.slice(-80)));
     await screenshot('terminal');
-    Main.panel.statusArea['macify-menu-file']._refill();
+    Main.panel.statusArea['macify-menu-file'].menu.open();
     const save = Main.panel.statusArea['macify-menu-file'].menu._getMenuItems().find(i => i.label?.text === 'Save');
     check('Terminal: Save is shown disabled', save && !save.sensitive);
     choose('macify-app-menu', `Quit ${app.get_name()}`);
@@ -276,6 +279,8 @@ async function testLiveActivities(macify) {
     check('Now Playing opens with title and artist', button.menu.isOpen && np._title.text === 'Blinding Lights'
         && np._artist.text === 'The Weeknd', `${np._title.text} / ${np._artist.text}`);
     check('Now Playing shows the position', np._elapsed.text === '0:42', np._elapsed.text);
+    const [, npHeight] = button.menu.actor.get_preferred_height(-1);
+    check('Now Playing has a sane height', npHeight > 100 && npHeight < 2000, `${Math.round(npHeight)} px`);
     await screenshot('now-playing');
     np._next.emit('clicked', 1);
     await sleep(400);
@@ -283,7 +288,7 @@ async function testLiveActivities(macify) {
     await until(() => player.status === 'Paused', 3000);
     check('Next and Pause reach the player', player.calls.includes('Next') && player.calls.includes('PlayPause'),
         player.calls.join(','));
-    await sleep(500);
+    await until(() => np._play.child.icon_name === 'media-playback-start-symbolic', 3000);
     check('play button shows Play when paused', np._play.child.icon_name === 'media-playback-start-symbolic',
         np._play.child.icon_name);
     button.menu.close();
@@ -445,7 +450,10 @@ async function captureMenu(role, name) {
     button.menu.actor.queue_relayout();
     await sleep(700);
     const [, natural] = button.menu.actor.get_preferred_height(-1);
-    console.log(`MACIFY-TEST menu ${role} height=${Math.round(natural)}`);
+    check(`${role} opens with a sane height`, natural > 40 && natural < 2000, `${Math.round(natural)} px`);
+    const items = button.menu._getMenuItems();
+    console.log(`MACIFY-TEST menu ${role} height=${Math.round(natural)} items=${items.length} open=${button.menu.isOpen} ` +
+        `labels=${items.slice(0, 4).map(i => i.label?.text).join('|')}`);
     await screenshot(name);
     button.menu.close();
     await sleep(300);
@@ -462,6 +470,7 @@ async function captureDemo() {
     global.display.focus_window?.minimize();
     const player = fakePlayer('demo', 'Golden Hour', 'Macify Radio');
     await sleep(2500);
+
     await captureMenu('macify-live', 'now-playing');
     player.stop();
     await captureAppGrid();

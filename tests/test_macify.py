@@ -255,6 +255,13 @@ class SystemPiecesTests(unittest.TestCase):
                     missing.add(text)
         self.assertEqual(missing, set())
 
+    def test_menubar_css_has_no_negative_margins(self):
+        """GNOME Shell (St) desborda los márgenes negativos: el menú mide 4294967296 px."""
+        import re
+
+        css = (PACKAGE / "data" / "extension" / "macify-menubar@macify.dev" / "stylesheet.css").read_text()
+        self.assertEqual(re.findall(r"(?:margin|padding)[\w-]*:\s*[^;]*-\d", css), [])
+
     def test_status_icons_are_valid_svg(self):
         import xml.etree.ElementTree as ET
 

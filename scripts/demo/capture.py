@@ -14,9 +14,12 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk
 
-from macify import doctor, gui, installer, updates
+from macify import __version__, doctor, gui, installer, updates
 
-RELEASE = {"version": "0.7.1", "size": 300_000, "date": "2026-10-22",
+# La pantalla de actualización muestra «la siguiente versión» de la que se está usando.
+_major, _minor, _patch = (int(x) for x in __version__.split("."))
+NEXT_VERSION = f"{_major}.{_minor}.{_patch + 1}"
+RELEASE = {"version": NEXT_VERSION, "size": 300_000, "date": "2026-10-22",
            "notes": "- Startup bar fills in your PC's real boot time and ends with Welcome\n"
                     "- Shutdown bar empties with See you soon\n"
                     "- Software Update inside the app\n"
@@ -68,8 +71,8 @@ def main():
             window.update_button.set_visible(False)
             window.update_bar.set_visible(True)
             window.update_bar.set_fraction(0.62)
-            window.update_title.set_label("Downloading Macify 0.7.1…")
-            window.update_detail.set_label("Downloading macify_0.7.1_all.deb from GitHub")
+            window.update_title.set_label(f"Downloading Macify {NEXT_VERSION}…")
+            window.update_detail.set_label(f"Downloading macify_{NEXT_VERSION}_all.deb from GitHub")
             window._show("update")
 
         def update_installed():
@@ -116,6 +119,7 @@ def main():
     app.connect("activate", activate)
     with mock.patch.object(updates, "latest", return_value=None):
         app.run(None)
+
 
 
 main()

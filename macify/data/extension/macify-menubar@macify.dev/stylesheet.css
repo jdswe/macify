@@ -103,7 +103,7 @@
 .macify-np-title { font-size: 14px; font-weight: bold; color: #ffffff; }
 .macify-np-artist { font-size: 13px; color: rgba(255, 255, 255, 0.75); }
 .macify-np-app { font-size: 11px; color: rgba(255, 255, 255, 0.45); }
-.macify-np-times { margin-top: -6px; }
+.macify-np-times { }
 .macify-np-time { font-size: 11px; color: rgba(255, 255, 255, 0.55); font-feature-settings: "tnum"; }
 .macify-np-controls { spacing: 22px; }
 .macify-np-button {
