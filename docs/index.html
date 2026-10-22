@@ -87,7 +87,14 @@ nav .links a:hover { color: var(--text); }
 .card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); transition: transform 180ms ease, background 180ms ease; }
 .card:hover { transform: translateY(-3px); background: var(--glass-strong); }
-.card .emoji { font-size: 26px; }
+.ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(79, 134, 255, 0.95), rgba(155, 92, 255, 0.95));
+  box-shadow: 0 8px 22px rgba(110, 90, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.ic svg { width: 24px; height: 24px; fill: none; stroke: #ffffff; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.ic-sm { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+.ic-sm svg { width: 17px; height: 17px; }
+.app-kind { display: inline-flex; align-items: center; gap: 12px; }
 .card h3 { margin: 10px 0 6px; font-size: 18px; }
 .card p { margin: 0; color: var(--muted); font-size: 15px; }
 
@@ -176,15 +183,15 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
     <h2>Everything a Mac looks like</h2>
     <p class="lead">Macify installs and configures each piece for you, shows real-time progress, and keeps a backup of your original settings.</p>
     <div class="grid">
-      <div class="card"><div class="emoji">🖥️</div><h3>Boot and login</h3><p>Black boot screen with a smooth progress bar and a macOS-style login screen.</p></div>
-      <div class="card"><div class="emoji">🔴🟡🟢</div><h3>Windows</h3><p>Traffic-light buttons and macOS title bars, light or dark, for GTK 3 and GTK 4 apps.</p></div>
-      <div class="card"><div class="emoji">⌘</div><h3>Menu bar</h3><p>Transparent bar with a system menu and the name of the app you're using.</p></div>
-      <div class="card"><div class="emoji">🚀</div><h3>Animated dock</h3><p>Floating glass dock with magnification, bounce on launch and the magic-lamp minimize.</p></div>
-      <div class="card"><div class="emoji">🎨</div><h3>Icons</h3><p>A macOS icon set. Apps without one get a new icon in the macOS shape — automatically, even later.</p></div>
-      <div class="card"><div class="emoji">🔤</div><h3>San Francisco fonts</h3><p>Uses your SF fonts or downloads them from Apple's developer site. Never bundled.</p></div>
-      <div class="card"><div class="emoji">🌅</div><h3>Wallpaper colors</h3><p>The system accent color follows your wallpaper. Add your own photos.</p></div>
-      <div class="card"><div class="emoji">🩺</div><h3>Doctor</h3><p>Finds outdated or broken pieces — and new Macify versions — and fixes them in one click.</p></div>
-      <div class="card"><div class="emoji">✨</div><h3>Customize, live</h3><p>Change look, wallpaper and dock and see it on your desktop instantly. No reinstall.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></span><h3>Boot and login</h3><p>Black boot screen with a smooth progress bar and a macOS-style login screen.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><circle cx="6.5" cy="8" r="1.2" fill="#ff5f57" stroke="none"/><circle cx="10" cy="8" r="1.2" fill="#febc2e" stroke="none"/><circle cx="13.5" cy="8" r="1.2" fill="#28c840" stroke="none"/></svg></span><h3>Windows</h3><p>Traffic-light buttons and macOS title bars, light or dark, for GTK 3 and GTK 4 apps.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/><path d="M6 6.5h1M9 6.5h3"/></svg></span><h3>Menu bar</h3><p>Transparent bar with a system menu and the name of the app you're using.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="15.5" width="19" height="5" rx="2.5"/><rect x="5" y="9" width="4" height="4" rx="1.2"/><rect x="10" y="6" width="4" height="7" rx="1.2"/><rect x="15" y="9" width="4" height="4" rx="1.2"/></svg></span><h3>Animated dock</h3><p>Floating glass dock with magnification, bounce on launch and the magic-lamp minimize.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span><h3>Icons</h3><p>A macOS icon set. Apps without one get a new icon in the macOS shape — automatically, even later.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 19 8 5l5 14M4.8 14h6.4"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="M21 12v7"/></svg></span><h3>San Francisco fonts</h3><p>Uses your SF fonts or downloads them from Apple's developer site. Never bundled.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.6 0-1-.8-1.4-.8-2.3 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg></span><h3>Wallpaper colors</h3><p>The system accent color follows your wallpaper. Add your own photos.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 8.6a4.9 4.9 0 0 0-8.8-3 4.9 4.9 0 0 0-8.8 3c0 5.4 8.8 10.9 8.8 10.9s8.8-5.5 8.8-10.9z"/><path d="M3.5 11.5h4l2-3 3 6 2-3h6"/></svg></span><h3>Doctor</h3><p>Finds outdated or broken pieces — and new Macify versions — and fixes them in one click.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 3l1.8 4.7 4.7 1.8-4.7 1.8L11 16l-1.8-4.7L4.5 9.5l4.7-1.8z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg></span><h3>Customize, live</h3><p>Change look, wallpaper and dock and see it on your desktop instantly. No reinstall.</p></div>
     </div>
   </div>
 </section>
@@ -234,12 +241,12 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
   <div class="wrap">
     <h2>Safe by design</h2>
     <div class="grid">
-      <div class="card"><h3>Backup first</h3><p>Every GNOME setting is saved before it changes. <b>Restore</b> puts them back.</p></div>
-      <div class="card"><h3>Clean removal</h3><p><b>Uninstall Everything</b> removes themes, icons, extensions, fonts and the boot and login screens.</p></div>
-      <div class="card"><h3>One password, root-only code</h3><p>System screens run through a root-owned helper that only executes code from root folders.</p></div>
-      <div class="card"><h3>Verified downloads</h3><p>Over HTTPS from official sources; updates are checked against GitHub's SHA-256 fingerprint.</p></div>
-      <div class="card"><h3>No kernel changes</h3><p>No modules or boot parameters. Only the boot image is refreshed to include the boot theme.</p></div>
-      <div class="card"><h3>Nothing exposed</h3><p>Macify opens no network ports and runs no system services — only two small user services.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg></span><h3>Backup first</h3><p>Every GNOME setting is saved before it changes. <b>Restore</b> puts them back.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg></span><h3>Clean removal</h3><p><b>Uninstall Everything</b> removes themes, icons, extensions, fonts and the boot and login screens.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h3>One password, root-only code</h3><p>System screens run through a root-owned helper that only executes code from root folders.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><h3>Verified downloads</h3><p>Over HTTPS from official sources; updates are checked against GitHub's SHA-256 fingerprint.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></span><h3>No kernel changes</h3><p>No modules or boot parameters. Only the boot image is refreshed to include the boot theme.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.5a10 10 0 0 1 3-1.9M15.5 10.7a10 10 0 0 1 3.5 1.8M8.5 16a5 5 0 0 1 7 0"/><path d="m3 3 18 18"/></svg></span><h3>Nothing exposed</h3><p>Macify opens no network ports and runs no system services — only two small user services.</p></div>
     </div>
   </div>
 </section>
@@ -250,11 +257,11 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
     <p class="lead">Apps follow the system look in different ways depending on how they are built and packaged.</p>
     <table>
       <tr><th>Kind of app</th><th>Window buttons &amp; theme</th><th>Icon</th></tr>
-      <tr><td>GTK apps from apt (Files, Settings, Terminal…)</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-      <tr><td>Flatpak apps</td><td class="yes">Yes — Macify grants read access to the theme</td><td class="yes">Yes</td></tr>
-      <tr><td>Snap apps</td><td class="part">Buttons yes; theme no (snaps can't read your themes)</td><td class="yes">Yes</td></tr>
-      <tr><td>VS Code, Firefox</td><td class="yes">Yes — set up by Macify</td><td class="yes">Yes</td></tr>
-      <tr><td>Chromium browsers, Electron and Flutter apps</td><td class="no">They draw their own buttons</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><circle cx="6.5" cy="8" r="1.2" fill="#ff5f57" stroke="none"/><circle cx="10" cy="8" r="1.2" fill="#febc2e" stroke="none"/><circle cx="13.5" cy="8" r="1.2" fill="#28c840" stroke="none"/></svg></span><span>GTK apps from apt (Files, Settings, Terminal…)</span></span></td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></span><span>Flatpak apps</span></span></td><td class="yes">Yes — Macify grants read access to the theme</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span>Snap apps</span></span></td><td class="part">Buttons yes; theme no (snaps can't read your themes)</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg></span><span>VS Code, Firefox</span></span></td><td class="yes">Yes — set up by Macify</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span>Chromium browsers, Electron and Flutter apps</span></span></td><td class="no">They draw their own buttons</td><td class="yes">Yes</td></tr>
     </table>
   </div>
 </section>
@@ -281,7 +288,13 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
 
 <footer>
   <div class="wrap">
-    <span>Macify · GPL-3.0 · built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a> and <a href="https://extensions.gnome.org">GNOME extensions</a></span>
+    <div>
+      <div>© 2026 Jose David Carranza Angarita. Macify is free software under the
+        <a href="https://github.com/jdswe/macify/blob/main/LICENSE">GNU GPL v3</a>.</div>
+      <div style="margin-top:6px">Built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a>
+        and <a href="https://extensions.gnome.org">GNOME extensions</a>, each under its own license.
+        macOS is a trademark of Apple Inc. Not affiliated with Apple or Canonical.</div>
+    </div>
     <a href="https://github.com/jdswe/macify">github.com/jdswe/macify</a>
   </div>
 </footer>

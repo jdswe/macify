@@ -60,4 +60,6 @@ More in the [guide](docs/GUIDE.md).
 
 ## Credits
 
+© 2026 Jose David Carranza Angarita · [GPL-3.0](LICENSE).
+
 Built on [WhiteSur](https://github.com/vinceliuice/WhiteSur-gtk-theme) by vinceliuice and GNOME extensions from [extensions.gnome.org](https://extensions.gnome.org). Apple fonts are never bundled. Not affiliated with Apple or Canonical.
