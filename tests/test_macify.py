@@ -161,15 +161,17 @@ class SystemPiecesTests(unittest.TestCase):
     def test_boot_script_gets_this_pc_values(self):
         from macify import boot
 
-        script = boot.script_text(5.5)
+        script = boot.script_text(5.5, 10.5)
         self.assertIn("config.shutdown_seconds = 5.5;", script)
+        self.assertIn("config.boot_seconds = 10.5;", script)
+        self.assertGreaterEqual(boot.boot_seconds(), 4.0)
         self.assertIn('config.welcome = "', script)
         self.assertIn("Plymouth.SetQuitFunction", script)
         self.assertGreaterEqual(boot.shutdown_seconds(), 2.5)
         self.assertLessEqual(boot.shutdown_seconds(), 12.0)
         # El Doctor no debe pedir actualizar sólo porque cambió el tiempo medido.
         packaged = (PACKAGE / "data" / "plymouth" / "macify.script").read_text()
-        self.assertTrue(boot.same_script(boot.script_text(9.9), packaged))
+        self.assertTrue(boot.same_script(boot.script_text(9.9, 20.0), packaged))
         self.assertFalse(boot.same_script(script + "\n# cambio", packaged))
 
     def test_release_notes_are_plain_items(self):

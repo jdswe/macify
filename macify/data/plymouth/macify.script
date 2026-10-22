@@ -3,6 +3,7 @@
 # «See you soon» en el tiempo que tarda de verdad este equipo en apagarse.
 
 # Valores que Macify escribe al instalar el tema (ver boot.py).
+config.boot_seconds = 11;
 config.shutdown_seconds = 4;
 config.welcome = "Welcome";
 config.goodbye = "See you soon";
@@ -77,14 +78,15 @@ fun refresh_callback() {
         target = (1 - t) * (1 - t);
         progress.shown += (target - progress.shown) * 0.25;
     } else {
-        # Al encender sigue el progreso que estima Plymouth con los arranques anteriores;
-        # mientras tanto nunca se queda quieta (mínimo por tiempo).
-        timed = 0.85 * seconds / (seconds + 8);
-        target = progress.real;
-        if (timed > target) target = timed;
+        # Al encender se llena en lo que tarda de verdad este equipo en arrancar,
+        # con frenada suave al final, y termina con el saludo.
+        t = seconds / config.boot_seconds;
+        if (t > 1) t = 1;
+        target = t * (2 - t);
+        if (progress.real > target) target = progress.real;
         if (progress.done) target = 1;
-        if (target > progress.shown) progress.shown += (target - progress.shown) * 0.1;
-        if (progress.real > 0.96 && !greeting.visible) show_greeting(config.welcome);
+        if (target > progress.shown) progress.shown += (target - progress.shown) * 0.25;
+        if (t > 0.85 && !greeting.visible) show_greeting(config.welcome);
     }
     draw_bar(progress.shown);
     if (greeting.visible && greeting.opacity < 1) {

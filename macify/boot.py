@@ -24,8 +24,9 @@ LOGO_SIZE = 112
 BAR_SIZE = (220, 6)
 SCRIPT = "macify.script"
 DEFAULT_SHUTDOWN_SECONDS = 4.0
+DEFAULT_BOOT_SECONDS = 11.0
 # Líneas del script que Macify ajusta a cada equipo e idioma (ver macify.script).
-_CONFIG_LINE = re.compile(r'^config\.(shutdown_seconds|welcome|goodbye) = .*;$', re.MULTILINE)
+_CONFIG_LINE = re.compile(r'^config\.(boot_seconds|shutdown_seconds|welcome|goodbye) = .*;$', re.MULTILINE)
 
 
 def _helper() -> Path:
@@ -80,14 +81,42 @@ def shutdown_seconds() -> float:
     return round(min(max(statistics.median(durations), 2.5), 12.0), 1)
 
 
+def boot_seconds() -> float:
+    """Lo que dura la pantalla de arranque en este equipo: de que aparece a que el
+    sistema termina de arrancar, mediana de los últimos arranques."""
+    try:
+        lines = subprocess.run(["journalctl", "-o", "json", "--no-pager", "--output-fields=_BOOT_ID,MESSAGE",
+                                "-u", "plymouth-start.service", "-u", "plymouth-quit-wait.service"],
+                               capture_output=True, text=True, timeout=10).stdout.splitlines()
+    except (OSError, subprocess.SubprocessError):
+        return DEFAULT_BOOT_SECONDS
+    started, finished = {}, {}
+    for line in lines:
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        message, boot = str(entry.get("MESSAGE", "")), entry.get("_BOOT_ID")
+        if message.startswith("Starting plymouth-start"):
+            started.setdefault(boot, int(entry["__REALTIME_TIMESTAMP"]))
+        elif message.startswith("Finished plymouth-quit-wait"):
+            finished.setdefault(boot, int(entry["__REALTIME_TIMESTAMP"]))
+    durations = [(finished[b] - started[b]) / 1e6 for b in started if b in finished]
+    durations = [d for d in durations if 0 < d < 120][-5:]
+    if not durations:
+        return DEFAULT_BOOT_SECONDS
+    # Un poco antes del final real, para que la barra se vea completa con el saludo.
+    return round(min(max(statistics.median(durations) * 0.95, 4.0), 40.0), 1)
+
+
 def _quote(text: str) -> str:
     return '"' + text.replace("\\", "").replace('"', "") + '"'
 
 
-def script_text(seconds: float | None = None) -> str:
+def script_text(seconds: float | None = None, boot: float | None = None) -> str:
     """El script de arranque con el tiempo de apagado de este equipo y los textos en su idioma."""
     text = resources.files("macify").joinpath("data", "plymouth", SCRIPT).read_text()
-    values = {"shutdown_seconds": str(seconds or shutdown_seconds()),
+    values = {"shutdown_seconds": str(seconds or shutdown_seconds()), "boot_seconds": str(boot or boot_seconds()),
               "welcome": _quote(_("Welcome")), "goodbye": _quote(_("See you soon"))}
     return _CONFIG_LINE.sub(lambda m: f"config.{m[1]} = {values[m[1]]};", text)
 
