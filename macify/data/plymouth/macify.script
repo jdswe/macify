@@ -20,12 +20,34 @@ bar.background_sprite.SetPosition(bar.x, bar.y, 1);
 bar.fill_sprite = Sprite();
 bar.fill_sprite.SetPosition(bar.x, bar.y, 2);
 
-fun progress_callback(duration, progress) {
-    width = Math.Int(bar.fill.GetWidth() * progress);
-    if (width < 2) width = 2;
-    bar.fill_sprite.SetImage(bar.fill.Scale(width, bar.fill.GetHeight()));
+# La barra se mueve en cada cuadro, sin saltos: avanza suave hacia el progreso real
+# que informa Plymouth y, mientras tanto, nunca se queda quieta (avance mínimo por tiempo).
+progress.real = 0;
+progress.shown = 0;
+progress.frames = 0;
+progress.last_width = 0;
+
+fun progress_callback(duration, real) {
+    if (real > progress.real) progress.real = real;
 }
 Plymouth.SetBootProgressFunction(progress_callback);
+
+fun refresh_callback() {
+    progress.frames++;
+    seconds = progress.frames / 50;
+    # Avance mínimo: 50 % a los 6 s, 75 % a los 18 s; se acerca a 90 % sin llegar.
+    timed = 0.9 * seconds / (seconds + 6);
+    target = progress.real;
+    if (timed > target) target = timed;
+    if (target > progress.shown) progress.shown += (target - progress.shown) * 0.08;
+    width = Math.Int(bar.fill.GetWidth() * progress.shown);
+    if (width < 2) width = 2;
+    if (width != progress.last_width) {
+        bar.fill_sprite.SetImage(bar.fill.Scale(width, bar.fill.GetHeight()));
+        progress.last_width = width;
+    }
+}
+Plymouth.SetRefreshFunction(refresh_callback);
 
 # Mensajes y contraseña (por ejemplo, si el disco está cifrado).
 message.sprite = Sprite();

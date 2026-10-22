@@ -59,28 +59,30 @@ def _vscode(dry_run: bool, log, backup: dict) -> None:
     VSCODE_SETTINGS.write_text(json.dumps(settings, indent=4))
 
 
-def _chromium_browsers(dry_run: bool, log, backup: dict) -> None:
-    """Navegadores Chromium: modo de apariencia GTK, que dibuja los botones con el tema del sistema."""
+def _undo_chromium_gtk_mode(dry_run: bool, log, backup: dict) -> None:
+    """Deshace el modo GTK que activaba Macify 0.4.2–0.5.0 en navegadores Chromium.
+
+    Ese modo dibuja mal las pestañas en Wayland. Se espera a que el navegador esté
+    cerrado, porque reescribe sus preferencias al salir.
+    """
     for name, process, preferences_path in CHROMIUM_BROWSERS:
-        if not preferences_path.exists():
-            continue
-        preferences = json.loads(preferences_path.read_text())
-        theme = preferences.get("extensions", {}).get("theme", {})
-        frame = preferences.get("browser", {}).get("custom_chrome_frame", MISSING)
-        if theme.get("system_theme") == GTK_THEME and frame in (MISSING, True):
+        saved = backup.get("chromium", {}).get(name)
+        if not saved or not preferences_path.exists():
             continue
         if _running(process):
-            log(_("{name} is open: its buttons will change at your next login.").format(name=name))
+            log(_("{name} is open: its original look comes back at your next login.").format(name=name))
             continue
-        log(_("{name}: use the system theme for its buttons").format(name=name))
+        log(_("{name}: restore its buttons").format(name=name))
         if dry_run:
             continue
-        saved = backup.setdefault("chromium", {}).setdefault(name, {})
-        saved.setdefault("system_theme", theme.get("system_theme", MISSING))
-        saved.setdefault("custom_chrome_frame", frame)
-        preferences.setdefault("extensions", {}).setdefault("theme", {})["system_theme"] = GTK_THEME
-        preferences.get("browser", {}).pop("custom_chrome_frame", None)   # su propia barra, con botones GTK
+        preferences = json.loads(preferences_path.read_text())
+        theme = preferences.setdefault("extensions", {}).setdefault("theme", {})
+        if saved["system_theme"] == MISSING:
+            theme.pop("system_theme", None)
+        else:
+            theme["system_theme"] = saved["system_theme"]
         preferences_path.write_text(json.dumps(preferences))
+        backup["chromium"].pop(name)
 
 
 def _flatpak(dry_run: bool, log, backup: dict) -> None:
@@ -109,12 +111,12 @@ def _firefox(dry_run: bool, log, backup: dict) -> None:
 
 def apply(dry_run: bool, log) -> None:
     backup = _load_backup()
-    for tweak in (_vscode, _chromium_browsers, _firefox, _flatpak):
+    for tweak in (_vscode, _undo_chromium_gtk_mode, _firefox, _flatpak):
         try:
             tweak(dry_run, log, backup)
         except (OSError, ValueError, RuntimeError) as error:
             log(f"{tweak.__name__.strip('_')}: {error}")
-    if not dry_run and backup:
+    if not dry_run:
         _save_backup(backup)
 
 

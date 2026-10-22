@@ -136,8 +136,6 @@ SPANISH = {
     "Theme chain:": "Cadena de temas:",
     "No broken icons.": "Ningún icono roto.",
     "Your apps": "Tus apps",
-    "Browsers, VS Code, Firefox and Flatpak apps use the macOS buttons.":
-        "Navegadores, VS Code, Firefox y apps Flatpak usan los botones de macOS.",
     "Automatic upkeep": "Mantenimiento automático",
     "New apps get their macOS icon on their own; the dock switches at login.":
         "Las apps nuevas reciben su icono estilo Mac solas; el dock cambia al iniciar sesión.",
@@ -211,6 +209,23 @@ SPANISH = {
     "Hide automatically": "Ocultar automáticamente",
     "When a window covers it. Move the pointer to the bottom edge to show it.":
         "Cuando una ventana lo tapa. Lleva el puntero al borde inferior para mostrarlo.",
+    "{name} is open: its original look comes back at your next login.":
+        "{name} está abierto: su aspecto original vuelve en tu próximo inicio de sesión.",
+    "VS Code, Firefox and Flatpak apps use the macOS buttons.":
+        "VS Code, Firefox y apps Flatpak usan los botones de macOS.",
+    "Startup and login screens need Macify installed from the .deb package.":
+        "El arranque y el inicio de sesión necesitan Macify instalado desde el paquete .deb.",
+    "GTK 4 apps: {variant} style": "Apps GTK 4: estilo {variant}",
+    "Customize": "Personalizar",
+    "Reinstall Everything": "Reinstalar todo",
+    "Apply": "Aplicar",
+    "Apply your look": "Aplicar tu estilo",
+    "Appearance, wallpaper and dock. Nothing is downloaded or reinstalled.":
+        "Apariencia, fondo y dock. No se descarga ni reinstala nada.",
+    "You're seeing the changes live. Press Apply to keep them.":
+        "Estás viendo los cambios en vivo. Pulsa Aplicar para conservarlos.",
+    "Applied": "Aplicado",
+    "Your new look is ready. No restart needed.": "Tu nuevo estilo está listo. No hace falta reiniciar.",
     # Colores de acento
     "red": "rojo", "orange": "naranja", "yellow": "amarillo", "green": "verde", "teal": "turquesa",
     "blue": "azul", "purple": "morado", "pink": "rosa", "slate": "grafito",

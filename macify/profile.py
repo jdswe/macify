@@ -30,7 +30,7 @@ class Choices:
     dock_size: int = 48
     magnify: bool = True            # ampliar iconos del dock al pasar el ratón
     magic_lamp: bool = True         # efecto lámpara mágica al minimizar
-    dock_autohide: bool = True      # el dock se esconde si una ventana lo tapa (pantallas pequeñas)
+    dock_autohide: bool = True      # se esconde cuando una ventana lo tapa; reaparece en el borde inferior
     login_screen: bool = True       # arranque e inicio de sesión estilo macOS (pide contraseña)
 
 
@@ -61,7 +61,8 @@ DOCK_RADIUS_24PX = 4        # posición de 24 px en su lista de radios
 
 
 def dock_icon_size(pixels: int) -> str:
-    index = DOCK_ICON_SIZES.index(pixels) if pixels in DOCK_ICON_SIZES else DOCK_ICON_SIZES.index(48)
+    pixels = min(DOCK_ICON_SIZES[1:], key=lambda size: abs(size - pixels))   # el tamaño válido más cercano
+    index = DOCK_ICON_SIZES.index(pixels)
     return f"{(index + 0.5) / len(DOCK_ICON_SIZES):.4f}"
 
 

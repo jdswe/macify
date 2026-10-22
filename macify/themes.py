@@ -120,3 +120,20 @@ def firefox_theme(enable: bool, log) -> None:
     folder = fetch("gtk", log)
     args = ["-f", "alt"] if enable else ["-f", "-r"]
     _run([str(folder / "tweaks.sh"), *args], folder, log)
+
+
+def link_libadwaita(appearance: str, log) -> None:
+    """Apps GTK 4: apunta gtk.css al estilo claro u oscuro que WhiteSur ya dejó instalado."""
+    folder = Path.home() / ".config" / "gtk-4.0"
+    target = folder / f"gtk-{'Dark' if appearance == 'dark' else 'Light'}.css"
+    link = folder / "gtk.css"
+    if not target.exists() or (link.is_symlink() and link.resolve() == target):
+        return
+    log(_("GTK 4 apps: {variant} style").format(variant=target.stem.split("-")[1]))
+    link.unlink(missing_ok=True)
+    link.symlink_to(target)
+
+
+def variant_installed(appearance: str) -> bool:
+    variant = "Dark" if appearance == "dark" else "Light"
+    return (Path.home() / ".themes" / f"WhiteSur-{variant}-alt").is_dir()

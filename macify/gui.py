@@ -90,6 +90,8 @@ class MacifyWindow(Adw.ApplicationWindow):
         super().__init__(application=app, title="Macify", default_width=920, default_height=700)
         self.choices = profile.load_choices()
         self.busy = False
+        self.quick = False          # «Customize»: sólo aspecto, en vivo, sin reinstalar
+        self._live_pending = 0
         self.step_rows: list[Gtk.Stack] = []
 
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
@@ -127,7 +129,7 @@ class MacifyWindow(Adw.ApplicationWindow):
         self.nav.set_visible(in_flow and name != "welcome")
         if in_flow:
             index = PAGES.index(name)
-            self.next.set_label(_("Install") if name == "summary" else _("Continue"))
+            self.next.set_label((_("Apply") if self.quick else _("Install")) if name == "summary" else _("Continue"))
             clear(self.dots)
             for i in range(1, len(PAGES)):
                 self.dots.append(Gtk.Box(css_classes=["mf-dot", "mf-dot-on"] if i == index else ["mf-dot"]))
@@ -137,7 +139,10 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _go(self, delta: int) -> None:
         current = self.stack.get_visible_child_name()
         if current == "summary" and delta > 0:
-            self._start_install()
+            self._apply_look() if self.quick else self._start_install()
+            return
+        if current == "appearance" and delta < 0 and self.quick:
+            self._show("manage")
             return
         index = PAGES.index(current) + delta
         if 0 <= index < len(PAGES):
@@ -203,6 +208,26 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _on_appearance(self, button: Gtk.ToggleButton, value: str) -> None:
         if button.get_active():
             self.choices.appearance = value
+            self._live()
+
+    def _set_choice(self, name: str, value) -> None:
+        setattr(self.choices, name, value)
+        self._live()
+
+    def _live(self) -> None:
+        """En «Customize», cada cambio se ve en el escritorio al momento (con una pequeña espera)."""
+        if not self.quick:
+            return
+        self._live_pending += 1
+        ticket = self._live_pending
+
+        def apply_if_latest() -> bool:
+            if ticket == self._live_pending:
+                choices = profile.Choices(**vars(self.choices))
+                threading.Thread(target=installer.apply_look, args=(choices, lambda _m: None), daemon=True).start()
+            return GLib.SOURCE_REMOVE
+
+        GLib.timeout_add(350, apply_if_latest)
 
     def _wallpaper_page(self) -> Gtk.Widget:
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.SINGLE, max_children_per_line=4,
@@ -241,6 +266,7 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _on_wallpaper(self, _flow: Gtk.FlowBox, child: Gtk.FlowBoxChild) -> None:
         self.choices.wallpaper = str(child.get_child().wallpaper_path)
         self._update_accent()
+        self._live()
 
     def _update_accent(self) -> None:
         wallpaper = profile.wallpaper_path(self.choices)
@@ -279,19 +305,20 @@ class MacifyWindow(Adw.ApplicationWindow):
         size.set_value(self.choices.dock_size)
         size.set_hexpand(True)
         size.set_size_request(220, -1)
-        size.connect("value-changed", lambda s: setattr(self.choices, "dock_size", int(s.get_value())))
+        size.set_round_digits(0)
+        size.connect("value-changed", lambda s: self._set_choice("dock_size", 4 * round(s.get_value() / 4)))
         size_row = Adw.ActionRow(title=_("Icon size"))
         size_row.add_suffix(size)
         magnify = Adw.SwitchRow(title=_("Magnify on hover"), subtitle=_("Icons grow like on macOS"))
         magnify.set_active(self.choices.magnify)
-        magnify.connect("notify::active", lambda r, _p: setattr(self.choices, "magnify", r.get_active()))
+        magnify.connect("notify::active", lambda r, _p: self._set_choice("magnify", r.get_active()))
         lamp = Adw.SwitchRow(title=_("Magic lamp effect"), subtitle=_("Animation when minimizing windows"))
         lamp.set_active(self.choices.magic_lamp)
-        lamp.connect("notify::active", lambda r, _p: setattr(self.choices, "magic_lamp", r.get_active()))
+        lamp.connect("notify::active", lambda r, _p: self._set_choice("magic_lamp", r.get_active()))
         autohide = Adw.SwitchRow(title=_("Hide automatically"),
                                  subtitle=_("When a window covers it. Move the pointer to the bottom edge to show it."))
         autohide.set_active(self.choices.dock_autohide)
-        autohide.connect("notify::active", lambda r, _p: setattr(self.choices, "dock_autohide", r.get_active()))
+        autohide.connect("notify::active", lambda r, _p: self._set_choice("dock_autohide", r.get_active()))
         group = Adw.PreferencesGroup()
         for row in (size_row, magnify, lamp, autohide):
             group.add(row)
@@ -305,11 +332,11 @@ class MacifyWindow(Adw.ApplicationWindow):
                                          "Asks for your password once."))
         login.set_active(self.choices.login_screen)
         login.connect("notify::active", self._on_login_toggle)
-        options = Adw.PreferencesGroup()
-        options.add(login)
-        return self._page(text(_("Ready to begin"), "mf-title"),
-                          text(_("Takes a few minutes. You'll be asked to restart at the end."), "mf-subtitle"),
-                          self.summary, options)
+        self.summary_options = Adw.PreferencesGroup()
+        self.summary_options.add(login)
+        self.summary_title = text(_("Ready to begin"), "mf-title")
+        self.summary_detail = text(_("Takes a few minutes. You'll be asked to restart at the end."), "mf-subtitle")
+        return self._page(self.summary_title, self.summary_detail, self.summary, self.summary_options)
 
     def _on_login_toggle(self, row: Adw.SwitchRow, _param) -> None:
         self.choices.login_screen = row.get_active()
@@ -317,6 +344,15 @@ class MacifyWindow(Adw.ApplicationWindow):
 
     def _fill_summary(self) -> None:
         clear(self.summary)
+        self.summary_options.set_visible(not self.quick)
+        if self.quick:
+            self.summary_title.set_label(_("Apply your look"))
+            self.summary_detail.set_label(_("You're seeing the changes live. Press Apply to keep them."))
+            self.summary.append(Adw.ActionRow(title=_("Apply your look"),
+                                              subtitle=_("Appearance, wallpaper and dock. Nothing is downloaded or reinstalled.")))
+            return
+        self.summary_title.set_label(_("Ready to begin"))
+        self.summary_detail.set_label(_("Takes a few minutes. You'll be asked to restart at the end."))
         for number, step in enumerate(installer.steps(self.choices, dry_run=True), 1):
             self.summary.append(Adw.ActionRow(title=f"{number}. {step.title}", subtitle=step.detail))
 
@@ -351,9 +387,11 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _manage_page(self) -> Gtk.Widget:
         icon = Gtk.Image.new_from_icon_name(APP_ID)
         icon.set_pixel_size(96)
-        again = Gtk.Button(label=_("Customize Again"), halign=Gtk.Align.CENTER,
+        again = Gtk.Button(label=_("Customize"), halign=Gtk.Align.CENTER,
                            css_classes=["suggested-action", "pill", "mf-cta"])
-        again.connect("clicked", lambda _b: self._show("appearance"))
+        again.connect("clicked", lambda _b: self._start_flow(quick=True))
+        reinstall = Gtk.Button(label=_("Reinstall Everything"), halign=Gtk.Align.CENTER, css_classes=["pill"])
+        reinstall.connect("clicked", lambda _b: self._start_flow(quick=False))
         restore = Gtk.Button(label=_("Restore Original Settings"), halign=Gtk.Align.CENTER, css_classes=["pill"])
         restore.connect("clicked", lambda _b: self._run_maintenance(_("Restoring…"), lambda log: system.restore(False, log)))
         check = Gtk.Button(label=_("Check for Problems"), halign=Gtk.Align.CENTER, css_classes=["pill"])
@@ -363,7 +401,7 @@ class MacifyWindow(Adw.ApplicationWindow):
         content = vbox(14, halign=Gtk.Align.CENTER)
         for widget in (icon, text(_("Macify is active"), "mf-title", center=True),
                        text(_("Change your style, go back to the original, or remove everything."), "mf-subtitle", center=True),
-                       again, check, restore, remove):
+                       again, check, reinstall, restore, remove):
             content.append(widget)
         return self._page(content, center=True)
 
@@ -497,7 +535,19 @@ class MacifyWindow(Adw.ApplicationWindow):
                                              "You can retry or restore your settings."))
         return GLib.SOURCE_REMOVE
 
-    def _run_maintenance(self, title: str, action) -> None:
+    def _start_flow(self, quick: bool) -> None:
+        self.quick = quick
+        self._show("appearance")
+
+    def _apply_look(self) -> None:
+        profile.save_choices(self.choices)
+
+        def action(log) -> None:
+            installer.apply_look(self.choices, log)
+
+        self._run_maintenance(_("Apply your look"), action, _("Applied"), _("Your new look is ready. No restart needed."))
+
+    def _run_maintenance(self, title: str, action, done_title: str | None = None, done_detail: str | None = None) -> None:
         if self.busy:
             return
         self.busy = True
@@ -511,7 +561,8 @@ class MacifyWindow(Adw.ApplicationWindow):
         def work() -> None:
             try:
                 action(self._log)
-                GLib.idle_add(self._maintenance_done, _("Done"), _("Restart your computer to see the change."))
+                GLib.idle_add(self._maintenance_done, done_title or _("Done"),
+                              done_detail or _("Restart your computer to see the change."))
             except Exception as error:  # noqa: BLE001
                 self._log(f"ERROR: {error}")
                 GLib.idle_add(self._maintenance_done, _("Something went wrong"), _("Check the details to see the error."))

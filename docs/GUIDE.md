@@ -49,7 +49,7 @@ It checks system tools, theme and extension updates, extensions that fail to loa
 Press `Ctrl` + `Alt` + `F3`, sign in, and run:
 
 ```bash
-sudo /usr/lib/macify/macify/data/root/macify-root.sh revert ~/.cache/macify/WhiteSur-gtk-theme
+sudo /usr/lib/macify/macify/data/root/macify-root.sh revert
 sudo reboot
 ```
 

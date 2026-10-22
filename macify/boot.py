@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from . import extensions, themes
+from . import extensions
 from .assets import CACHE_DIR, load_config, save_config_value
 from .i18n import _
 
@@ -22,15 +22,11 @@ BAR_SIZE = (220, 6)
 
 
 def _helper() -> Path:
-    """El ayudante: el del paquete instalado (carpeta de root) o una copia en la caché."""
+    """El ayudante del paquete instalado. Por seguridad, nunca uno de una carpeta del usuario."""
     packaged = Path(str(resources.files("macify").joinpath("data", "root", "macify-root.sh")))
-    if packaged.is_file() and str(packaged).startswith("/usr/"):
+    if packaged.is_file() and str(packaged).startswith("/usr/") and packaged.stat().st_uid == 0:
         return packaged
-    copy = CACHE_DIR / "macify-root.sh"
-    copy.parent.mkdir(parents=True, exist_ok=True)
-    copy.write_bytes(resources.files("macify").joinpath("data", "root", "macify-root.sh").read_bytes())
-    copy.chmod(0o755)
-    return copy
+    raise RuntimeError(_("Startup and login screens need Macify installed from the .deb package."))
 
 
 def _logo() -> Image.Image:
@@ -80,8 +76,7 @@ def apply(wallpaper: Path, dry_run: bool, log) -> None:
     if dry_run:
         return
     theme = build_theme()
-    whitesur = themes.fetch("gtk", log)
-    _run(["apply", str(theme), str(whitesur), str(wallpaper)], log)
+    _run(["apply", str(theme), str(wallpaper)], log)
     save_config_value("system_screens", True)
 
 
@@ -91,6 +86,5 @@ def revert(dry_run: bool, log) -> None:
     log(_("Startup and login screens: back to the original"))
     if dry_run:
         return
-    whitesur = themes.repo_dir("gtk")
-    _run(["revert", str(whitesur) if whitesur.exists() else ""], log)
+    _run(["revert"], log)
     save_config_value("system_screens", False)

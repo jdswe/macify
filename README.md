@@ -18,6 +18,7 @@
 - **Dock** — floating glass, magnification, bounce and magic-lamp minimize.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.
 - **Wallpaper colors** — the accent color follows your wallpaper.
+- **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Clean removal** — restore or uninstall everything in one click.
 

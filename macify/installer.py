@@ -64,7 +64,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
                           extensions.install_menubar(dry_run, log))),
         Step(_("Checking every icon"), _("Creates missing icons and makes sure none is broken."),
              lambda log: _icons(dry_run, log)),
-        Step(_("Your apps"), _("Browsers, VS Code, Firefox and Flatpak apps use the macOS buttons."),
+        Step(_("Your apps"), _("VS Code, Firefox and Flatpak apps use the macOS buttons."),
              lambda log: apps.apply(dry_run, log)),
         Step(_("Automatic upkeep"), _("New apps get their macOS icon on their own; the dock switches at login."),
              lambda log: session.install(dry_run, log)),
@@ -77,6 +77,14 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
                            _("macOS style from the moment you turn on your computer. Asks for your password once."),
                            lambda log: boot.apply(profile.wallpaper_path(choices), dry_run, log)))
     return result
+
+
+def apply_look(choices: Choices, log: Log) -> None:
+    """Sólo el aspecto (apariencia, fondo, dock): sin descargas ni reinstalaciones."""
+    if not themes.variant_installed(choices.appearance):
+        themes.install_gtk(choices.appearance, False, log)   # sólo si falta esa variante
+    themes.link_libadwaita(choices.appearance, log)
+    _settings(choices, False, log)
 
 
 def run(choices: Choices, dry_run: bool, log: Log) -> None:
