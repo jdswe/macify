@@ -60,6 +60,16 @@ DOCK_DOT_INDICATOR = 2      # opción «dot»: un punto bajo la app abierta, com
 DOCK_RADIUS_24PX = 4        # posición de 24 px en su lista de radios
 
 
+def _blur(name: str, effect: str, radius: int, brightness: float) -> str:
+    params = f"{{'unscaled_radius': <{radius}>, 'brightness': <{brightness}>}}"
+    effects = f"[<{{'type': <'dual_kawase_blur'>, 'id': <'{effect}'>, 'params': <{params}>}}>]"
+    return f"{{'name': <'{name}'>, 'effects': <{effects}>}}"
+
+
+BLUR_PIPELINES = ("{'pipeline_default': " + _blur("Default", "effect_000000000000", 30, 0.6)
+                  + ", 'pipeline_macify': " + _blur("Macify", "effect_macify_overview", 90, 0.8) + "}")
+
+
 def dock_icon_size(pixels: int) -> str:
     pixels = min(DOCK_ICON_SIZES[1:], key=lambda size: abs(size - pixels))   # el tamaño válido más cercano
     index = DOCK_ICON_SIZES.index(pixels)
@@ -124,7 +134,12 @@ def settings(choices: Choices) -> dict:
             "workspace-popup": "false",
             "ripple-box": "false",
             "panel-size": "28",                 # barra delgada, como la de macOS
+            "workspaces-in-app-grid": "false",  # «Apps» de macOS: sólo las apps, sin escritorios
         },
+        # «Apps» (la vista de aplicaciones) sobre vidrio esmerilado, como en macOS 27: un desenfoque
+        # propio más fuerte para la vista general, sin tocar el que usa Blur my Shell en lo demás.
+        "org.gnome.shell.extensions.blur-my-shell": {"pipelines": BLUR_PIPELINES},
+        "org.gnome.shell.extensions.blur-my-shell.overview": {"pipeline": q("pipeline_macify")},
         # La barra superior va transparente e integrada con el fondo (lo pinta Macify Menubar).
         "org.gnome.shell.extensions.blur-my-shell.panel": {"blur": "false"},
         # El dock animado hace su propio desenfoque; el módulo de Blur my Shell para

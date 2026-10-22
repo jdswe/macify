@@ -16,14 +16,15 @@
 
 - **Boot and login** — the progress bar tracks real startup (“Welcome”) and shutdown (“See you soon”); macOS-style login.
 - **Windows** — traffic-light buttons and macOS title bars, light or dark.
-- **Menu bar** — transparent, with File, Edit, View, Window and Help menus that work in any app, and macOS-style battery, Wi‑Fi and Control Center icons.
-- **Live Activities** — a bubble at the top that springs open for music playing, charging and connection changes.
+- **Menu bar** — File, Edit, View, Window and Help menus that work in any app, laid out like Apple's guidelines. Battery, Wi‑Fi and Sound each open their own menu; Control Center holds the rest.
+- **Live Activities** — a bubble at the top for music, charging and connection changes. Click it for Now Playing: cover, progress, controls, volume and the choice of source.
 - **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.
 - **Wallpaper colors** — the accent color follows your wallpaper.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Software Update** — checks GitHub, downloads and installs new versions from inside the app.
+- **Every app type** — traffic-light buttons in apt, Flatpak and snap GTK apps, including ones you install later.
 - **Clean removal** — restore or uninstall everything in one click.
 
 <p align="center">
@@ -59,6 +60,21 @@ macify uninstall           # remove everything
 ```
 
 More in the [guide](docs/GUIDE.md).
+
+## Security
+
+Everything runs as your user except the startup and login screens, which use one administrator password (pkexec) for a small packaged helper. That helper only runs code from root-owned folders, reads your files with your own permissions, accepts only images and text of limited size, and installs a pinned WhiteSur version whose SHA‑256 is checked before anything runs. Updates are verified against the fingerprint GitHub publishes. Macify opens no network ports and loads no kernel modules.
+
+## Development
+
+```bash
+python3 -m unittest discover -s tests                    # unit tests (seconds)
+MACIFY_SHELL_TESTS=1 python3 -m unittest tests.test_shell # real GNOME Shell, 7 monitor layouts
+scripts/build_deb.sh                                      # dist/macify_<version>_all.deb
+scripts/make_wallpapers.py                                # regenerate the bundled wallpapers
+```
+
+The shell tests start a hidden, isolated GNOME Shell (its own bus and settings), open real apps and check every menu, the status menus, Now Playing, the dock and its badges on one, two and three monitors at scales from 1 to 2.
 
 ## Credits
 

@@ -9,9 +9,8 @@ porque los navegadores reescriben sus preferencias al cerrarse.
 import json
 import shutil
 import subprocess
-from pathlib import Path
 
-from . import themes
+from . import profile, snaps, themes
 from .assets import CONFIG_DIR, HOME
 from .i18n import _
 
@@ -109,9 +108,17 @@ def _firefox(dry_run: bool, log, backup: dict) -> None:
     backup["firefox"] = True
 
 
+def _snaps(dry_run: bool, log, backup: dict) -> None:
+    """Apps snap con ventanas GTK: el tema dentro de su carpeta (ver snaps.py)."""
+    if dry_run:
+        log(_("Snap apps: macOS window buttons"))
+        return
+    snaps.sync(profile.load_choices().appearance, log)
+
+
 def apply(dry_run: bool, log) -> None:
     backup = _load_backup()
-    for tweak in (_vscode, _undo_chromium_gtk_mode, _firefox, _flatpak):
+    for tweak in (_vscode, _undo_chromium_gtk_mode, _firefox, _flatpak, _snaps):
         try:
             tweak(dry_run, log, backup)
         except (OSError, ValueError, RuntimeError) as error:
@@ -155,5 +162,7 @@ def restore(dry_run: bool, log) -> None:
         log(_("Firefox: remove the macOS theme"))
         if not dry_run:
             themes.firefox_theme(False, log)
+    log(_("Snap apps: restore their window buttons"))
     if not dry_run:
+        snaps.remove(log)
         BACKUP.unlink(missing_ok=True)

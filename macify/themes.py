@@ -3,31 +3,49 @@
 Se descargan de sus repositorios oficiales de GitHub a la caché de Macify y se
 instalan con sus propios instaladores, siempre en la carpeta del usuario,
 salvo la pantalla de inicio de sesión, que necesita permisos de administrador.
+
+Cada repositorio se fija a una versión probada (un commit) y su descarga se comprueba con
+su huella SHA-256 antes de ejecutar nada: si el repositorio cambiara o lo atacaran, Macify no
+correría código distinto del que se probó. Las versiones nuevas llegan con las de Macify.
 """
 
+import hashlib
 import io
-import json
 import os
 import re
 import shutil
 import subprocess
 import tarfile
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 from .i18n import _
 from .assets import CACHE_DIR
 
 COMMIT_FILE = ".macify-commit"
+
+
+@dataclass(frozen=True)
+class Source:
+    repo: str
+    commit: str
+    sha256: str          # huella del .tar.gz de ese commit en codeload.github.com
+
+
+# El de «gtk» debe coincidir con WHITESUR_COMMIT de data/root/macify-root.sh.
 REPOS = {
-    "gtk": "vinceliuice/WhiteSur-gtk-theme",
-    "icons": "vinceliuice/WhiteSur-icon-theme",
-    "cursors": "vinceliuice/WhiteSur-cursors",
+    "gtk": Source("vinceliuice/WhiteSur-gtk-theme", "d5782652d412137e26fb8ff55b55a5572e4c6995",
+                  "9d8be3dca76f7be36dfb6513aa2c301be1ff265a9c1c4c1006b5ed0f89df29f1"),
+    "icons": Source("vinceliuice/WhiteSur-icon-theme", "73d8040da51a9ed74e47c7366e7e9ff437601a5c",
+                    "96661649071d8a9664b40d42abea75286175234473106156e9a4b25f54e6cb0c"),
+    "cursors": Source("vinceliuice/WhiteSur-cursors", "e190baf618ed95ee217d2fd45589bd309b37672b",
+                      "35c817c2c26bc4d2c06801cfe6c924a068ad771d3846c5203b04d1c893dd5664"),
 }
 
 
 def repo_dir(key: str) -> Path:
-    return CACHE_DIR / REPOS[key].split("/")[1]
+    return CACHE_DIR / REPOS[key].repo.split("/")[1]
 
 
 def fetch(key: str, log) -> Path:
@@ -36,14 +54,16 @@ def fetch(key: str, log) -> Path:
     legacy = CACHE_DIR / f"{target.name}-master"   # nombre usado por versiones anteriores
     if not target.exists() and legacy.exists():
         legacy.rename(target)
-    if target.exists():
+    if target.exists() and installed_commit(key) == REPOS[key].commit:
         return target
-    repo = REPOS[key]
-    branch, commit = latest_commit(key)
-    url = f"https://codeload.github.com/{repo}/tar.gz/refs/heads/{branch}"
-    log(_("Downloading {name} from {source}").format(name=repo, source="GitHub"))
+    shutil.rmtree(target, ignore_errors=True)       # otra versión (o una descarga a medias)
+    source = REPOS[key]
+    url = f"https://codeload.github.com/{source.repo}/tar.gz/{source.commit}"
+    log(_("Downloading {name} from {source}").format(name=source.repo, source="GitHub"))
     with urllib.request.urlopen(url, timeout=300) as response:
         data = response.read()
+    if hashlib.sha256(data).hexdigest() != source.sha256:
+        raise RuntimeError(_("The download does not match its published fingerprint."))
     log(_("Downloaded: {size:.1f} MB").format(size=len(data) / 1_048_576))
     staging = CACHE_DIR / f".descarga-{target.name}"
     shutil.rmtree(staging, ignore_errors=True)
@@ -53,17 +73,8 @@ def fetch(key: str, log) -> Path:
     (top,) = list(staging.iterdir())
     top.rename(target)
     staging.rmdir()
-    (target / COMMIT_FILE).write_text(commit)
+    (target / COMMIT_FILE).write_text(source.commit)
     return target
-
-
-def latest_commit(key: str) -> tuple[str, str]:
-    """Rama principal y último commit del repositorio en GitHub."""
-    repo = REPOS[key]
-    with urllib.request.urlopen(f"https://api.github.com/repos/{repo}", timeout=30) as response:
-        branch = json.load(response)["default_branch"]
-    with urllib.request.urlopen(f"https://api.github.com/repos/{repo}/commits/{branch}", timeout=30) as response:
-        return branch, json.load(response)["sha"]
 
 
 def installed_commit(key: str) -> str | None:

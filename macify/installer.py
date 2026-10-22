@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .i18n import _
-from . import apps, boot, deps, extensions, fonts, icons, profile, session, system, themes
+from . import apps, boot, deps, extensions, fonts, icons, profile, session, snaps, system, themes
 from .assets import busy, install_bundled_data
 from .profile import Choices
 
@@ -84,6 +84,7 @@ def apply_look(choices: Choices, log: Log) -> None:
     if not themes.variant_installed(choices.appearance):
         themes.install_gtk(choices.appearance, False, log)   # sólo si falta esa variante
     themes.link_libadwaita(choices.appearance, log)
+    snaps.sync(choices.appearance, log)
     _settings(choices, False, log)
 
 

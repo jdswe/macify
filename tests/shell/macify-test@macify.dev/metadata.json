@@ -1,0 +1,6 @@
+{
+  "uuid": "macify-test@macify.dev",
+  "name": "Macify shell tests",
+  "description": "Only for tests/shell/run.sh: drives the Macify Menubar extension in an isolated GNOME Shell.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"]
+}

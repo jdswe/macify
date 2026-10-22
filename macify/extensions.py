@@ -15,7 +15,6 @@ from importlib import resources
 from pathlib import Path
 
 from .i18n import _
-from . import system
 from .assets import CACHE_DIR
 
 EXTENSIONS_DIR = CACHE_DIR / "extensions"

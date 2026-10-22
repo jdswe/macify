@@ -5,6 +5,7 @@ dominante (el más frecuente con saturación suficiente).
 """
 
 import colorsys
+import functools
 from pathlib import Path
 
 from PIL import Image
@@ -17,7 +18,16 @@ ACCENTS = [
 
 
 def dominant_rgb(path: Path) -> tuple[int, int, int]:
-    image = Image.open(path).convert("RGB")
+    stat = path.stat()
+    return _dominant_rgb(str(path), stat.st_size, stat.st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=64)
+def _dominant_rgb(path: str, _size: int, _mtime: int) -> tuple[int, int, int]:
+    """El color con más presencia (y saturación); size y mtime invalidan la caché."""
+    with Image.open(path) as source:
+        source.draft("RGB", (320, 320))          # JPEG: se decodifica ya reducido, no en 4K
+        image = source.convert("RGB")
     image.thumbnail((160, 160))
     colors = image.quantize(colors=12).convert("RGB").getcolors(maxcolors=100000)
     best, best_score = (128, 128, 128), -1.0

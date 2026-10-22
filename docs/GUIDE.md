@@ -8,16 +8,20 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 
 | Area | Result |
 |---|---|
-| Boot | Black screen, white logo and a thin progress bar (Plymouth theme *Macify*) |
+| Boot | Black screen, white logo and a progress bar timed to your PC's real startup and shutdown, with “Welcome” and “See you soon” |
 | Login | macOS-style login screen (WhiteSur GDM theme) |
 | Windows | Traffic-light buttons, macOS title bars, light or dark (WhiteSur, GTK 3 and 4) |
-| Menu bar | Transparent bar with the system logo menu and the active app name (Macify Menubar extension) |
-| Dock | Floating glass dock, magnification on hover, bounce on launch, dot indicators (Dash2Dock Animated) |
+| Menu bar | Logo menu, the app's name in bold and File, Edit, View, Window and Help menus for any app, following Apple's guidelines (Macify Menubar extension) |
+| Status menus | Battery (Low Power Mode, time left), Wi‑Fi (networks, connect), Sound (volume, output device) and Control Center, each its own menu |
+| Live Activities | Bubble at the top for music, charging and connection; Now Playing with cover, progress, controls, volume and source choice |
+| Dock | Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated) |
+| Apps view | Show Apps on frosted glass without workspaces, like macOS 27 |
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
 | Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |
 | Cursor & fonts | WhiteSur cursor, San Francisco fonts (SF Pro, SF Mono) |
+| Wallpapers | Eight original 4K wallpapers in sections, plus your own photos |
 | Colors | Accent color taken from your wallpaper |
-| Apps | VS Code, Brave and Firefox use the macOS title bar and buttons |
+| Apps | Traffic-light buttons in apt, Flatpak and snap GTK apps (also ones installed later), VS Code and Firefox |
 | Upkeep | New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login |
 
 ## Install
@@ -68,22 +72,27 @@ app/
 │   ├── themes.py       WhiteSur window theme, icons, cursor, Firefox theme
 │   ├── extensions.py   GNOME extensions, including Macify Menubar
 │   ├── icons.py        Macify icon theme, icon generator and audit
-│   ├── apps.py         VS Code, Brave and Firefox title bars
+│   ├── apps.py         VS Code, Firefox and Flatpak title bars
+│   ├── snaps.py        WhiteSur inside snap apps (hard links, no extra space)
+│   ├── wallpapers.py   wallpaper catalog and cached thumbnails
+│   ├── status_icons.py macOS-style battery, Wi‑Fi and Control Center icons
 │   ├── boot.py         boot (Plymouth) and login (GDM) screens
 │   ├── fonts.py        San Francisco fonts
 │   ├── deps.py         system packages
 │   ├── launcher.py     app menu entry and icon
 │   ├── uninstall.py    clean removal
 │   ├── assets.py, colors.py, info.py, i18n.py
-│   └── data/           app icon, wallpapers, menubar extension, boot theme, root helper
-├── tests/              automated tests
-└── scripts/            build.sh (.pyz) and build_deb.sh (.deb)
+│   └── data/           app icon and style, wallpapers, menubar extension, boot theme, root helper
+├── tests/              unit tests; tests/shell runs a hidden GNOME Shell on several monitor layouts
+├── scripts/            build.sh (.pyz), build_deb.sh (.deb), make_wallpapers.py, demo/ (video)
+└── docs/               website, guide and screenshots
 ```
 
 ## Development
 
 ```bash
 python3 -m unittest discover -s tests -v   # tests (nothing is changed on the system)
+MACIFY_SHELL_TESTS=1 python3 -m unittest tests.test_shell   # real GNOME Shell, 7 monitor layouts
 python3 -m macify install --dry-run        # see every change without applying it
 ./scripts/build.sh                         # dist/macify.pyz
 ./scripts/build_deb.sh                     # dist/macify_<version>_all.deb

@@ -146,6 +146,42 @@ class SystemPiecesTests(unittest.TestCase):
             check.unlink(missing_ok=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_whitesur_pin_matches_root_helper(self):
+        """Root y el usuario instalan exactamente la misma versión verificada de WhiteSur."""
+        from macify import themes
+
+        helper = (PACKAGE / "data" / "root" / "macify-root.sh").read_text()
+        self.assertIn(f"WHITESUR_COMMIT={themes.REPOS['gtk'].commit}", helper)
+        self.assertIn(f"WHITESUR_SHA256={themes.REPOS['gtk'].sha256}", helper)
+        for source in themes.REPOS.values():
+            self.assertRegex(source.commit, r"^[0-9a-f]{40}$")
+            self.assertRegex(source.sha256, r"^[0-9a-f]{64}$")
+
+    def test_root_helper_only_takes_safe_files(self):
+        """El ayudante de root rechaza enlaces, tipos falsos y archivos enormes."""
+        import tempfile
+
+        helper = PACKAGE / "data" / "root" / "macify-root.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            (t / "ok.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 100)
+            (t / "fake.png").write_bytes(b"GIF89a" + b"0" * 100)
+            (t / "photo.jpg").write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 100)
+            (t / "script.txt").write_text("Window.SetBackgroundTopColor(0, 0, 0);")
+            (t / "binary.txt").write_bytes(b"abc\x00def")
+            (t / "big.png").write_bytes(b"\x89PNG" + b"0" * 5000)
+            (t / "link.png").symlink_to(t / "ok.png")
+            cases = {
+                "ok.png png 4096": True, "fake.png png 4096": False, "photo.jpg image 4096": True,
+                "script.txt text 4096": True, "binary.txt text 4096": False, "big.png png 4096": False,
+                "link.png png 4096": False, "missing.png png 4096": False,
+            }
+            for case, expected in cases.items():
+                name, kind, limit = case.split()
+                script = f'source "{helper}"; take "{t / name}" "{t}/out" {kind} {limit}'
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, expected, f"{case}: {result.stderr}")
+
     def test_root_helper_syntax(self):
         result = subprocess.run(["bash", "-n", str(PACKAGE / "data" / "root" / "macify-root.sh")],
                                 capture_output=True, text=True)
@@ -206,6 +242,19 @@ class SystemPiecesTests(unittest.TestCase):
                 self.assertTrue((folder / name).is_file(), f"{module.name} → {name}")
         self.assertIn("in-fullscreen-changed", (folder / "dock.js").read_text())
 
+    def test_menubar_texts_have_spanish(self):
+        """Cada texto que la extensión muestra con _('…') tiene su traducción al español."""
+        import re
+
+        folder = PACKAGE / "data" / "extension" / "macify-menubar@macify.dev"
+        dictionary = (folder / "i18n.js").read_text()
+        missing = set()
+        for module in folder.glob("*.js"):
+            for text in re.findall(r"_\('((?:[^'\\]|\\.)+)'", module.read_text()):
+                if f"'{text}':" not in dictionary:
+                    missing.add(text)
+        self.assertEqual(missing, set())
+
     def test_status_icons_are_valid_svg(self):
         import xml.etree.ElementTree as ET
 
@@ -223,6 +272,50 @@ class SystemPiecesTests(unittest.TestCase):
         svg = extensions.menubar_logo_svg()
         self.assertNotIn("<rect", svg)
         self.assertIn("#ffffff", svg)
+
+
+class SnapThemeTests(unittest.TestCase):
+    """El tema dentro de las apps snap, sobre un sistema de mentira en una carpeta temporal."""
+
+    def test_sync_links_switches_and_removes(self):
+        import os
+        import tempfile
+
+        from macify import snaps
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = {
+                "SNAP_DIR": root / "snap", "SNAP_HOMES": root / "home" / "snap",
+                "SNAP_DESKTOP": root / "desktop", "THEMES": root / "home" / ".themes",
+                "GTK4": root / "home" / ".config" / "gtk-4.0",
+            }
+            meta = paths["SNAP_DIR"] / "editor" / "current" / "meta" / "snap.yaml"
+            meta.parent.mkdir(parents=True)
+            meta.write_text("plugs:\n  gtk-3-themes:\n")
+            paths["SNAP_DESKTOP"].mkdir()
+            (paths["SNAP_DESKTOP"] / "editor_editor.desktop").write_text("[Desktop Entry]\n")
+            (paths["SNAP_HOMES"] / "editor" / "current").mkdir(parents=True)
+            for variant in snaps.VARIANTS:
+                (paths["THEMES"] / variant / "gtk-3.0").mkdir(parents=True)
+                (paths["THEMES"] / variant / "index.theme").write_text("[Desktop Entry]\n")
+                (paths["THEMES"] / variant / "gtk-3.0" / "gtk.css").write_text(variant)
+            (paths["GTK4"] / "assets").mkdir(parents=True)
+            (paths["GTK4"] / "assets" / "close.svg").write_text("<svg/>")
+            for name in snaps.GTK4_FILES:
+                (paths["GTK4"] / name).write_text(name)
+            with mock.patch.multiple(snaps, **paths):
+                self.assertEqual(snaps.sync("dark"), ["editor"])
+                home = paths["SNAP_HOMES"] / "editor" / "current"
+                linked = home / "themes" / "WhiteSur-Dark-alt" / "gtk-3.0" / "gtk.css"
+                self.assertTrue(os.path.samefile(linked, paths["THEMES"] / "WhiteSur-Dark-alt" / "gtk-3.0" / "gtk.css"))
+                self.assertEqual(os.readlink(home / ".config" / "gtk-4.0" / "gtk.css"), "gtk-Dark.css")
+                snaps.sync("light")
+                self.assertEqual(os.readlink(home / ".config" / "gtk-4.0" / "gtk.css"), "gtk-Light.css")
+                snaps.remove()
+                self.assertFalse((home / "themes" / "WhiteSur-Dark-alt").exists())
+                self.assertFalse((home / ".config" / "gtk-4.0" / "gtk.css").exists())
+                self.assertTrue((paths["THEMES"] / "WhiteSur-Dark-alt" / "gtk-3.0" / "gtk.css").exists())
 
 
 class IconTests(unittest.TestCase):

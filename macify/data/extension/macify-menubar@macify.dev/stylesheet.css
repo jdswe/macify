@@ -1,4 +1,9 @@
-/* Barra superior integrada con el fondo, como en macOS. */
+/* Macify Menubar: la barra de menús de macOS 27 sobre GNOME.
+ * «Liquid Glass» se imita con capas translúcidas, un borde claro arriba y sombras suaves:
+ * GNOME Shell no puede desenfocar lo que hay detrás de un menú. */
+
+/* ---------- barra ---------- */
+
 #panel {
   background-color: rgba(0, 0, 0, 0.12);
   box-shadow: none;
@@ -16,17 +21,49 @@
 .macify-logo-button { padding: 0 6px 0 10px; }
 .macify-logo { icon-size: 15px; }
 .macify-app-title { font-weight: bold; padding: 0 8px; }
-
-/* Menús de la app: el nombre en negrita y los menús en texto normal, como macOS. */
-#panel .macify-menu-button { padding: 0 7px; -natural-hpadding: 7px; -minimum-hpadding: 5px; }
+#panel .macify-menu-button { -natural-hpadding: 7px; -minimum-hpadding: 5px; }
 .macify-menu-title { font-weight: 500; }
-.macify-app-menu .popup-menu-item { padding: 5px 14px; spacing: 24px; }
-.macify-menu-shortcut { color: rgba(255, 255, 255, 0.55); font-size: 0.92em; }
-
-/* Iconos de estado: el del Centro de control un poco separado, como en macOS. */
 .macify-control-center { margin-left: 6px; }
 
-/* Live Activities: cápsula oscura de cristal en el centro de la barra. */
+/* ---------- menús de la app (vidrio) ---------- */
+
+.macify-app-menu .popup-menu-content,
+.macify-np-menu .popup-menu-content {
+  background-color: rgba(36, 36, 40, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 5px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.40);
+}
+.macify-app-menu .popup-menu-item {
+  border-radius: 8px;
+  padding: 4px 10px;
+  spacing: 10px;
+  font-size: 13px;
+  color: #ffffff;
+}
+.macify-app-menu .popup-menu-item:hover,
+.macify-app-menu .popup-menu-item:focus { background-color: -st-accent-color; color: #ffffff; }
+.macify-app-menu .popup-menu-item:insensitive { color: rgba(255, 255, 255, 0.35); }
+.macify-app-menu .popup-menu-icon { icon-size: 15px; }
+.macify-app-menu .popup-separator-menu-item { margin: 4px 8px; }
+.macify-app-menu .popup-separator-menu-item-separator { background-color: rgba(255, 255, 255, 0.12); height: 1px; }
+.macify-menu-shortcut { color: rgba(255, 255, 255, 0.50); font-size: 12px; padding-left: 28px; }
+.macify-app-menu .popup-menu-item:hover .macify-menu-shortcut,
+.macify-app-menu .popup-menu-item:focus .macify-menu-shortcut { color: rgba(255, 255, 255, 0.85); }
+
+/* ---------- iconos de estado con su propio menú ---------- */
+
+#panel .macify-extra { -natural-hpadding: 6px; -minimum-hpadding: 4px; }
+.macify-extra-header { padding: 6px 10px 4px; }
+.macify-extra-title { font-size: 13px; font-weight: bold; color: #ffffff; }
+.macify-extra-value { font-size: 13px; color: rgba(255, 255, 255, 0.60); }
+.macify-extra-info.popup-menu-item { color: rgba(255, 255, 255, 0.65); font-size: 12px; padding-top: 2px; padding-bottom: 2px; }
+.macify-extra-section.popup-menu-item { color: rgba(255, 255, 255, 0.50); font-size: 11px; font-weight: bold; padding-bottom: 0; }
+
+/* ---------- Live Activities ---------- */
+
+#panel .macify-live-button { -natural-hpadding: 0; -minimum-hpadding: 0; background-color: transparent; box-shadow: none; }
 .macify-island {
   background-color: rgba(12, 12, 14, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -39,8 +76,50 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   transition-duration: 200ms;
 }
-.macify-island:hover { background-color: rgba(28, 28, 32, 0.92); }
+.macify-live-button:hover .macify-island,
+.macify-live-button:active .macify-island { background-color: rgba(30, 30, 34, 0.92); }
 .macify-island-icon { color: #ffffff; }
-.macify-island-label { font-size: 12px; font-weight: 600; }
+.macify-island-label { font-size: 12px; font-weight: 600; text-shadow: none; }
 .macify-island-bars { spacing: 2px; height: 12px; }
 .macify-island-bar { width: 3px; height: 12px; border-radius: 2px; background-color: #30d158; }
+
+/* ---------- Ahora suena ---------- */
+
+.macify-np-menu .popup-menu-content { padding: 14px; min-width: 300px; }
+.macify-np.popup-menu-item { padding: 0; }
+.macify-np-box { spacing: 10px; }
+.macify-np-header { spacing: 12px; }
+.macify-np-sources { spacing: 6px; }
+.macify-np-source {
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.macify-np-source:hover { background-color: rgba(255, 255, 255, 0.16); }
+.macify-np-source:checked { background-color: -st-accent-color; color: #ffffff; }
+.macify-np-art { border-radius: 10px; color: rgba(255, 255, 255, 0.85); }
+.macify-np-title { font-size: 14px; font-weight: bold; color: #ffffff; }
+.macify-np-artist { font-size: 13px; color: rgba(255, 255, 255, 0.75); }
+.macify-np-app { font-size: 11px; color: rgba(255, 255, 255, 0.45); }
+.macify-np-times { margin-top: -6px; }
+.macify-np-time { font-size: 11px; color: rgba(255, 255, 255, 0.55); font-feature-settings: "tnum"; }
+.macify-np-controls { spacing: 22px; }
+.macify-np-button {
+  border-radius: 999px;
+  padding: 8px;
+  color: #ffffff;
+  transition-duration: 120ms;
+}
+.macify-np-button:hover { background-color: rgba(255, 255, 255, 0.12); }
+.macify-np-button:active { background-color: rgba(255, 255, 255, 0.22); }
+.macify-np-play StIcon { icon-size: 26px; }
+.macify-np-volume { spacing: 8px; color: rgba(255, 255, 255, 0.7); }
+.macify-np-menu .slider {
+  -barlevel-height: 4px;
+  -barlevel-background-color: rgba(255, 255, 255, 0.20);
+  -barlevel-active-background-color: #ffffff;
+  -slider-handle-radius: 6px;
+  color: #ffffff;
+}

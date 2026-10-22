@@ -11,7 +11,6 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 CACHE_DIR = HOME / ".cache" / "macify"
 DATA_DIR = HOME / ".local" / "share" / "macify"
 WALLPAPER_DIR = DATA_DIR / "wallpapers"
-LEGACY_WALLPAPERS = ("amanecer.jpg", "azul.jpg", "atardecer.jpg")   # nombres de versiones anteriores
 
 
 def load_config() -> dict:
@@ -48,24 +47,13 @@ def assets_root() -> Path | None:
     return None
 
 
-def save_assets_dir(path: Path) -> None:
-    save_config_value("assets_dir", str(path))
-
-
 def install_bundled_data() -> None:
     """Copia los fondos incluidos en la app a ~/.local/share/macify (archivos reales)."""
     WALLPAPER_DIR.mkdir(parents=True, exist_ok=True)
-    for name in LEGACY_WALLPAPERS:
-        (WALLPAPER_DIR / name).unlink(missing_ok=True)
     for item in resources.files("macify").joinpath("data", "wallpapers").iterdir():
         target = WALLPAPER_DIR / item.name
         if not target.exists():
             target.write_bytes(item.read_bytes())
-
-
-def user_wallpaper() -> Path | None:
-    value = load_config().get("wallpaper")
-    return Path(value) if value and Path(value).is_file() else None
 
 
 # Mientras instala o repara, Macify deja una marca; el vigilante de apps nuevas

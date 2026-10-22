@@ -123,10 +123,9 @@ def _parallel(function, items) -> dict:
         return dict(zip(items, pool.map(safe, items)))
 
 
-def check_themes(online: bool) -> list[Check]:
+def check_themes() -> list[Check]:
+    """Cada tema debe estar en la versión fijada por esta versión de Macify (sin red)."""
     choices = profile.load_choices()
-    present = [key for key in themes.REPOS if themes.repo_dir(key).exists()]
-    latest_commits = _parallel(lambda key: themes.latest_commit(key)[1], present) if online else {}
     result = []
     installers = {"gtk": lambda log: themes.install_gtk(choices.appearance, False, log),
                   "icons": lambda log: themes.install_icons(False, log),
@@ -143,15 +142,7 @@ def check_themes(online: bool) -> list[Check]:
         if not themes.repo_dir(key).exists():
             result.append(Check(name, FAIL, _("Not downloaded."), refresh))
             continue
-        installed = themes.installed_commit(key)
-        if not online:
-            result.append(Check(name, OK, _("Installed (update check skipped).")))
-            continue
-        latest = latest_commits.get(key)
-        if latest is None:
-            result.append(Check(name, WARN, _("Could not reach GitHub to check for updates.")))
-            continue
-        if installed == latest:
+        if themes.installed_commit(key) == themes.REPOS[key].commit:
             result.append(Check(name, OK, _("Up to date.")))
         else:
             result.append(Check(name, WARN, _("Update available."), refresh))
@@ -240,9 +231,10 @@ def check_fonts() -> Check:
 def check_upkeep() -> Check:
     active = subprocess.run(["systemctl", "--user", "is-active", session.PATH_UNIT],
                             capture_output=True, text=True).stdout.strip() == "active"
-    if active and session.AUTOSTART.exists():
+    if active and session.current():
         return Check(_("Automatic upkeep"), OK, _("Watching for new apps."))
-    return Check(_("Automatic upkeep"), WARN, _("Not running."), lambda log: session.install(False, log))
+    detail = _("Update available.") if active else _("Not running.")
+    return Check(_("Automatic upkeep"), WARN, detail, lambda log: session.install(False, log))
 
 
 def check_boot() -> Check | None:
@@ -273,7 +265,7 @@ def check_boot() -> Check | None:
 
 
 def run(online: bool = True) -> list[Check]:
-    checks = [check_macify(online), check_tools(), *check_themes(online), check_theme_css(), *check_extensions(online), check_settings(),
+    checks = [check_macify(online), check_tools(), *check_themes(), check_theme_css(), *check_extensions(online), check_settings(),
               check_icons(), check_fonts(), check_upkeep()]
     boot = check_boot()
     if boot:

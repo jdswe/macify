@@ -1,0 +1,66 @@
+/* Estilo de la app Macify: vidrio sobre el fondo de pantalla, como los asistentes de macOS. */
+
+window { background: transparent; }
+headerbar { background: transparent; box-shadow: none; }
+.mf-backdrop { filter: blur(56px) saturate(150%); }
+.mf-tint { background: linear-gradient(180deg, rgba(12, 10, 22, 0.52), rgba(12, 10, 22, 0.80)); }
+.mf-hello { font-family: "SF Pro Display", sans-serif; font-size: 92px; font-weight: 800; color: #ffffff;
+  letter-spacing: -2px; text-shadow: 0 8px 36px rgba(0, 0, 0, 0.35); }
+.mf-title { font-family: "SF Pro Display", sans-serif; font-size: 32px; font-weight: 700; color: #ffffff;
+  letter-spacing: -0.5px; }
+.mf-subtitle { font-family: "SF Pro Text", sans-serif; font-size: 16px; color: rgba(255, 255, 255, 0.82); }
+.mf-small { font-family: "SF Pro Text", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.mf-pill { padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16); font-size: 12px; color: rgba(255, 255, 255, 0.78); }
+button.mf-cta { padding: 12px 40px; border-radius: 999px; font-weight: 700; font-size: 16px; color: #ffffff;
+  border: none; background: linear-gradient(135deg, #4f86ff, #9b5cff);
+  box-shadow: 0 10px 30px rgba(110, 90, 255, 0.45); transition: all 180ms ease-out; }
+button.mf-cta:hover { background: linear-gradient(135deg, #6697ff, #ab70ff); box-shadow: 0 14px 40px rgba(110, 90, 255, 0.6); }
+button.mf-cta:active { transform: scale(0.97); }
+button.mf-ghost { padding: 8px 22px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; transition: all 180ms ease-out; }
+button.mf-ghost:hover { background: rgba(255, 255, 255, 0.18); }
+@keyframes mf-float { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
+.mf-float { animation: mf-float 4s ease-in-out infinite; -gtk-icon-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); }
+list.boxed-list, .mf-glass { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+list.boxed-list row { background: transparent; color: #ffffff; }
+list.boxed-list row:hover { background: rgba(255, 255, 255, 0.06); }
+progressbar trough { min-height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+progressbar progress { min-height: 10px; border-radius: 999px; background: linear-gradient(90deg, #4f86ff, #9b5cff); }
+button.mf-choice, button.mf-choice:hover { padding: 14px; border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.10);
+  box-shadow: none; color: #ffffff; transition: all 180ms ease-out; }
+button.mf-choice:checked, button.mf-choice:checked:hover { background: rgba(255, 255, 255, 0.14);
+  border: 2px solid @accent_color; box-shadow: 0 0 0 4px alpha(@accent_color, 0.35); color: #ffffff; }
+.mf-preview { border-radius: 12px; min-width: 200px; min-height: 120px; }
+.mf-preview-dark { background: linear-gradient(160deg, #2b2440, #4b2f55); }
+.mf-preview-light { background: linear-gradient(160deg, #f4ede6, #d9d4f2); }
+.mf-preview-window { border-radius: 8px; min-width: 120px; min-height: 66px; margin: 26px 40px 0 40px; }
+.mf-preview-dark .mf-preview-window { background: rgba(30, 30, 36, 0.92); }
+.mf-preview-light .mf-preview-window { background: rgba(255, 255, 255, 0.95); }
+.mf-thumb { border-radius: 12px; }
+.mf-thumb-title { font-size: 12px; color: rgba(255, 255, 255, 0.85); }
+.mf-section { font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.65); margin-top: 6px; }
+.mf-wallpapers flowboxchild { border-radius: 14px; padding: 4px; background: none; transition: all 180ms ease-out; }
+.mf-wallpapers flowboxchild:hover .mf-thumb { transform: scale(1.03); }
+.mf-wallpapers .mf-thumb { transition: all 180ms ease-out; outline: 3px solid transparent; outline-offset: 2px; }
+.mf-wallpapers flowboxchild:selected { background: none; }
+.mf-wallpapers flowboxchild:selected .mf-thumb { outline-color: @accent_color; }
+.mf-dot { border-radius: 999px; min-width: 8px; min-height: 8px; background: rgba(255, 255, 255, 0.28);
+  transition: all 250ms ease-out; }
+.mf-dot-on { background: #ffffff; min-width: 22px; }
+.mf-step { font-family: "SF Pro Text", sans-serif; font-size: 15px; color: #ffffff; }
+.mf-log { background: rgba(0, 0, 0, 0.30); border-radius: 12px; font-size: 12px; }
+.mf-dock-preview { padding: 10px 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.26); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28); }
+.mf-dock-icon { transition: all 160ms ease-out; }
+.mf-magnify .mf-dock-icon:hover { transform: scale(1.35) translateY(-10px); }
+button.mf-tile { padding: 18px; border-radius: 20px; background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14); color: #ffffff; transition: all 180ms ease-out; }
+button.mf-tile:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28); }
+button.mf-tile:active { transform: scale(0.98); }
+button.mf-tile-primary { background: linear-gradient(135deg, rgba(79, 134, 255, 0.60), rgba(155, 92, 255, 0.60)); }
+button.mf-tile-primary:hover { background: linear-gradient(135deg, rgba(102, 151, 255, 0.75), rgba(171, 112, 255, 0.75)); }
+button.mf-tile-danger:hover { background: rgba(255, 80, 80, 0.22); }

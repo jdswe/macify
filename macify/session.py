@@ -10,7 +10,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import apps, extensions, icons, launcher
+from . import apps, extensions, icons, launcher, profile, snaps
 from .assets import HOME, is_busy, load_config, save_config_value
 from .i18n import _
 
@@ -36,6 +36,8 @@ def refresh(log, login: bool = False) -> None:
     if icons.THEME_DIR.exists() and icons.mac_theme_ready():
         icons.ensure_theme(False, log)
         icons.generate(False, log)
+    # Apps snap abiertas por primera vez: también reciben el tema (enlaces, sin copiar).
+    snaps.sync(profile.load_choices().appearance, log)
     if login:
         from . import doctor
 
@@ -47,28 +49,36 @@ def refresh(log, login: bool = False) -> None:
             save_config_value("last_update_check", int(time.time()))
 
 
-def install(dry_run: bool, log) -> None:
+def _files() -> dict[Path, str]:
+    """El inicio automático y las unidades de systemd que dejan a Macify al día solo."""
     run = " ".join(f'"{part}"' if " " in part else part for part in launcher.command())
-    folders = [path for path in icons.APP_DIRS if path.parent.exists()]
+    # Carpetas de apps (apt, snap, flatpak) y la de los snaps de cada usuario, que cambia la
+    # primera vez que se abre una app snap recién instalada.
+    folders = [path for path in [*icons.APP_DIRS, HOME / "snap"] if path.parent.exists()]
+    watches = "".join(f"PathChanged={folder}\n" for folder in folders)
+    return {
+        AUTOSTART: ("[Desktop Entry]\nType=Application\nName=Macify\n"
+                    f"Exec={run} refresh --login\n"
+                    "NoDisplay=true\nX-GNOME-Autostart-enabled=true\n"),
+        UNIT_DIR / SERVICE: ("[Unit]\nDescription=Macify: icono y tema estilo Mac para apps nuevas\n\n"
+                             f"[Service]\nType=oneshot\nExecStart={run} refresh\n"),
+        UNIT_DIR / PATH_UNIT: ("[Unit]\nDescription=Macify: vigila las carpetas de apps\n\n"
+                               f"[Path]\n{watches}TriggerLimitIntervalSec=10\n\n[Install]\nWantedBy=default.target\n"),
+    }
+
+
+def current() -> bool:
+    """¿Están las unidades como las escribe esta versión de Macify?"""
+    return all(path.exists() and path.read_text() == text for path, text in _files().items())
+
+
+def install(dry_run: bool, log) -> None:
     log(_("Automatic upkeep: at login and whenever an app is installed"))
     if dry_run:
         return
-    AUTOSTART.parent.mkdir(parents=True, exist_ok=True)
-    AUTOSTART.write_text(
-        "[Desktop Entry]\nType=Application\nName=Macify\n"
-        f"Exec={run} refresh --login\n"
-        "NoDisplay=true\nX-GNOME-Autostart-enabled=true\n"
-    )
-    UNIT_DIR.mkdir(parents=True, exist_ok=True)
-    (UNIT_DIR / SERVICE).write_text(
-        "[Unit]\nDescription=Macify: icono estilo Mac para apps nuevas\n\n"
-        f"[Service]\nType=oneshot\nExecStart={run} refresh\n"
-    )
-    watches = "".join(f"PathChanged={folder}\n" for folder in folders)
-    (UNIT_DIR / PATH_UNIT).write_text(
-        "[Unit]\nDescription=Macify: vigila las carpetas de apps\n\n"
-        f"[Path]\n{watches}TriggerLimitIntervalSec=10\n\n[Install]\nWantedBy=default.target\n"
-    )
+    for path, text in _files().items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
     subprocess.run(["systemctl", "--user", "enable", "--now", PATH_UNIT], check=False, capture_output=True)
 

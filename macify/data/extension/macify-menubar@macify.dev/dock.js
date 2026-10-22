@@ -2,6 +2,7 @@
 
 import Cairo from 'gi://cairo';
 import GLib from 'gi://GLib';
+import Mtk from 'gi://Mtk';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -18,25 +19,36 @@ const KEEP_MARGIN = 28;
 
 // Sobre una app maximizada que ocupa todo un monitor (Brave, VS Code y otras de Chromium o
 // Electron), GNOME puede mandar la imagen de la app directo a la pantalla y no repintar la
-// capa del dock: el dock "entra" pero no se ve hasta que algo fuerce un repintado. Durante
-// la entrada se mantiene viva su animación y se pide repintar en cada cuadro.
+// capa del dock: el dock "entra" pero no se ve. Mientras entra, se mantiene viva su
+// animación y se repinta sólo su zona. Si ya está a la vista no se hace nada: el dock
+// llama a show() cada pocos segundos y repintar entonces sólo gastaría GPU.
+function queueDockRedraw(dock) {
+    const [x, y] = dock.get_transformed_position();
+    const clip = new Mtk.Rectangle({x: Math.floor(x), y: Math.floor(y),
+        width: Math.ceil(dock.width), height: Math.ceil(dock.height)});
+    if (typeof global.stage.queue_redraw_with_clip === 'function')
+        global.stage.queue_redraw_with_clip(clip);
+    else
+        global.stage.queue_redraw();
+}
+
 function revealFully(dock) {
-    if (dock._macifyRevealId)
+    const offscreen = () => Math.abs(dock.dash?.translationY ?? 0) > 0.5;
+    if (dock._macifyRevealId || !offscreen())
         return;
     const started = GLib.get_monotonic_time();
     dock._macifyRevealId = GLib.timeout_add(GLib.PRIORITY_HIGH, 16, () => {
         const elapsed = (GLib.get_monotonic_time() - started) / 1000;
-        if (dock._hidden || !dock.dash || elapsed > REVEAL_MS) {
-            if (!dock._hidden && dock.dash)
-                console.log(`Macify dock: revealed translation=${Math.round(dock.dash.translationY)} ` +
-                    `opacity=${dock.opacity} after ${Math.round(elapsed)} ms`);
+        if (dock._hidden || !dock.dash || !offscreen() || elapsed > REVEAL_MS) {
+            if (!dock._hidden && dock.dash && offscreen())
+                console.log(`Macify dock: reveal unfinished translation=${Math.round(dock.dash.translationY)}`);
+            if (dock.dash)
+                queueDockRedraw(dock);      // un último cuadro con el dock ya en su sitio
             dock._macifyRevealId = 0;
             return GLib.SOURCE_REMOVE;
         }
-        if (Math.abs(dock.dash.translationY) > 0.5)
-            dock._beginAnimation?.();
-        dock.queue_redraw();
-        global.stage.queue_redraw();
+        dock._beginAnimation?.();
+        queueDockRedraw(dock);
         return GLib.SOURCE_CONTINUE;
     });
 }
@@ -80,6 +92,41 @@ function enableBadges(dock) {
         proto._draw_macos = drawMacBadge;
 }
 
+// Con una app maximizada que ocupa todo un monitor, GNOME manda su imagen directo a la
+// pantalla («direct scanout») y no dibuja nada encima: el dock queda «visible» pero no se ve.
+// Mientras el dock está a la vista se pide componer la pantalla, como hacen los menús de
+// GNOME (por eso un clic derecho lo hacía aparecer). Al esconderse se devuelve.
+const SCANOUT_BACK_MS = 400;    // tras esconderse, deja terminar la animación de salida
+
+function keepComposited(dock, on) {
+    if (dock._macifyScanoutId) {
+        GLib.source_remove(dock._macifyScanoutId);
+        dock._macifyScanoutId = 0;
+    }
+    if (on && !dock._macifyNoScanout) {
+        global.compositor.disable_unredirect();
+        dock._macifyNoScanout = true;
+    } else if (!on && dock._macifyNoScanout) {
+        dock._macifyScanoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SCANOUT_BACK_MS, () => {
+            dock._macifyScanoutId = 0;
+            if (dock._macifyNoScanout) {
+                global.compositor.enable_unredirect();
+                dock._macifyNoScanout = false;
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+}
+
+function releaseComposited(dock) {
+    if (dock._macifyScanoutId)
+        GLib.source_remove(dock._macifyScanoutId);
+    dock._macifyScanoutId = 0;
+    if (dock._macifyNoScanout)
+        global.compositor.enable_unredirect();
+    dock._macifyNoScanout = false;
+}
+
 // El puntero está sobre el dock visible o en el camino entre él y el borde inferior.
 function pointerOnDock(dock) {
     const monitor = dock._monitor;
@@ -117,6 +164,7 @@ export class FullscreenDock {
 
     _update() {
         try {
+            this._watchCreation();
             for (const dock of this._docks())
                 this._patch(dock);
         } catch (e) {
@@ -124,8 +172,42 @@ export class FullscreenDock {
         }
     }
 
+    // El dock rehace sus docks al cambiar las pantallas o la escala: cada dock nuevo se
+    // ajusta en cuanto se crea, no al siguiente aviso.
+    _watchCreation() {
+        const extension = Main.extensionManager.lookup(DOCK_UUID)?.stateObj;
+        if (!extension || extension._macifyCreateDock || typeof extension.createDock !== 'function')
+            return;
+        const self = this;
+        extension._macifyCreateDock = extension.createDock;
+        extension.createDock = function (...args) {
+            const dock = this._macifyCreateDock(...args);
+            const patch = () => {
+                try {
+                    if (dock && !dock._macifyDestroyed)
+                        self._patch(dock);
+                } catch (e) {
+                    console.warn(`Macify: new dock: ${e.message}`);
+                }
+                return GLib.SOURCE_REMOVE;
+            };
+            patch();
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, patch);     // ya ubicado en su pantalla
+            return dock;
+        };
+        this._watched = extension;
+    }
+
     _patch(dock) {
         enableBadges(dock);
+        if (!dock._macifyWatched) {
+            // Si el dock se rehace (al cambiar su tamaño), suelta lo que tenía pedido.
+            dock._macifyWatched = true;
+            dock.connectObject('destroy', () => {
+                dock._macifyDestroyed = true;
+                releaseComposited(dock);
+            }, this);
+        }
         if (dock.dwell && !dock.dwell._macifyLog) {
             // Una línea en el registro cada vez que el puntero llega al borde: sirve para
             // saber por qué el dock no aparece sobre alguna app (journalctl --user -g "Macify dock").
@@ -134,13 +216,20 @@ export class FullscreenDock {
                 const monitor = dock._monitor;
                 console.log(`Macify dock: edge on monitor ${monitor?.index} fullscreen=${monitor?.inFullscreen} ` +
                     `shown=${dock.autohider?._shown} hidden=${dock._hidden} visible=${dock.visible} ` +
+                    `composited=${Boolean(dock._macifyNoScanout)} ` +
                     `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
             }, this);
         }
+        // Con ocultación automática el dock se alcanza también en pantalla completa (como en
+        // macOS); sin ella, GNOME lo esconde en pantalla completa para no tapar un video.
         const tracked = this._tracked(dock);
-        if (tracked?.trackFullscreen) {
-            tracked.trackFullscreen = false;
-            dock.visible = true;
+        const reachable = Boolean(dock.extension?.autohide_dash);
+        if (tracked && tracked.trackFullscreen === reachable) {
+            tracked.trackFullscreen = !reachable;
+            if (reachable)
+                dock.visible = true;
+            else
+                Main.layoutManager._updateVisibility?.();
         }
         const hider = dock.autohider;
         if (!hider || hider._macifyOriginal)
@@ -157,6 +246,7 @@ export class FullscreenDock {
             this.frameDelay = 0;
             this._shown = true;
             this.dock.slideIn();
+            keepComposited(this.dock, true);
             revealFully(this.dock);
             enableBadges(this.dock);
         };
@@ -183,21 +273,31 @@ export class FullscreenDock {
                             `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
                     }
                     this._macifyOriginal.hide.call(this);
+                    keepComposited(this.dock, false);
                 }
                 return GLib.SOURCE_REMOVE;
             });
         };
+        if (hider._shown && !dock._hidden)
+            keepComposited(dock, true);
         hider._debounceCheckHide?.();
     }
 
     destroy() {
         if (this._startId)
             GLib.source_remove(this._startId);
+        if (this._watched?._macifyCreateDock) {
+            this._watched.createDock = this._watched._macifyCreateDock;
+            delete this._watched._macifyCreateDock;
+        }
         global.display.disconnectObject(this);
         Main.extensionManager.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
         try {
             for (const dock of this._docks()) {
+                releaseComposited(dock);
+                dock.disconnectObject(this);
+                delete dock._macifyWatched;
                 dock.dwell?.disconnectObject(this);
                 if (dock.dwell)
                     delete dock.dwell._macifyLog;

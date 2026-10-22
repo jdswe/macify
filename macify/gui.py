@@ -1,10 +1,8 @@
 """Asistente de Macify (GTK4 + libadwaita), al estilo del asistente de bienvenida de macOS."""
 
-import hashlib
 import subprocess
 import threading
 from importlib import resources
-from pathlib import Path
 
 import gi
 
@@ -12,8 +10,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import __version__, doctor, info, installer, launcher, profile, system, updates  # noqa: E402
-from .assets import WALLPAPER_DIR, assets_root, install_bundled_data, load_config, save_config_value  # noqa: E402
+from . import __version__, doctor, info, installer, launcher, profile, system, updates, wallpapers  # noqa: E402
+from .assets import install_bundled_data, load_config, save_config_value  # noqa: E402
 from .colors import accent_for_wallpaper, accent_label, dominant_rgb  # noqa: E402
 from .i18n import _, language  # noqa: E402
 from .uninstall import uninstall  # noqa: E402
@@ -28,68 +26,6 @@ STEP_ICONS = ["emblem-system-symbolic", "preferences-desktop-font-symbolic", "pr
               "applications-system-symbolic", "view-refresh-symbolic", "preferences-desktop-wallpaper-symbolic",
               "computer-symbolic"]
 
-CSS = """
-window { background: transparent; }
-headerbar { background: transparent; box-shadow: none; }
-.mf-backdrop { filter: blur(56px) saturate(150%); }
-.mf-tint { background: linear-gradient(180deg, rgba(12, 10, 22, 0.52), rgba(12, 10, 22, 0.80)); }
-.mf-hello { font-family: "SF Pro Display", sans-serif; font-size: 92px; font-weight: 800; color: #ffffff;
-  letter-spacing: -2px; text-shadow: 0 8px 36px rgba(0, 0, 0, 0.35); }
-.mf-title { font-family: "SF Pro Display", sans-serif; font-size: 32px; font-weight: 700; color: #ffffff;
-  letter-spacing: -0.5px; }
-.mf-subtitle { font-family: "SF Pro Text", sans-serif; font-size: 16px; color: rgba(255, 255, 255, 0.82); }
-.mf-small { font-family: "SF Pro Text", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
-.mf-pill { padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.16); font-size: 12px; color: rgba(255, 255, 255, 0.78); }
-button.mf-cta { padding: 12px 40px; border-radius: 999px; font-weight: 700; font-size: 16px; color: #ffffff;
-  border: none; background: linear-gradient(135deg, #4f86ff, #9b5cff);
-  box-shadow: 0 10px 30px rgba(110, 90, 255, 0.45); transition: all 180ms ease-out; }
-button.mf-cta:hover { background: linear-gradient(135deg, #6697ff, #ab70ff); box-shadow: 0 14px 40px rgba(110, 90, 255, 0.6); }
-button.mf-cta:active { transform: scale(0.97); }
-button.mf-ghost { padding: 8px 22px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.16); color: #ffffff; transition: all 180ms ease-out; }
-button.mf-ghost:hover { background: rgba(255, 255, 255, 0.18); }
-@keyframes mf-float { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
-.mf-float { animation: mf-float 4s ease-in-out infinite; -gtk-icon-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); }
-list.boxed-list, .mf-glass { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
-list.boxed-list row { background: transparent; color: #ffffff; }
-list.boxed-list row:hover { background: rgba(255, 255, 255, 0.06); }
-progressbar trough { min-height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
-progressbar progress { min-height: 10px; border-radius: 999px; background: linear-gradient(90deg, #4f86ff, #9b5cff); }
-button.mf-choice, button.mf-choice:hover { padding: 14px; border-radius: 20px;
-  background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.10);
-  box-shadow: none; color: #ffffff; transition: all 180ms ease-out; }
-button.mf-choice:checked, button.mf-choice:checked:hover { background: rgba(255, 255, 255, 0.14);
-  border: 2px solid @accent_color; box-shadow: 0 0 0 4px alpha(@accent_color, 0.35); color: #ffffff; }
-.mf-preview { border-radius: 12px; min-width: 200px; min-height: 120px; }
-.mf-preview-dark { background: linear-gradient(160deg, #2b2440, #4b2f55); }
-.mf-preview-light { background: linear-gradient(160deg, #f4ede6, #d9d4f2); }
-.mf-preview-window { border-radius: 8px; min-width: 120px; min-height: 66px; margin: 26px 40px 0 40px; }
-.mf-preview-dark .mf-preview-window { background: rgba(30, 30, 36, 0.92); }
-.mf-preview-light .mf-preview-window { background: rgba(255, 255, 255, 0.95); }
-.mf-thumb { border-radius: 14px; }
-flowboxchild { border-radius: 18px; padding: 4px; transition: all 180ms ease-out; }
-flowboxchild:hover { background: rgba(255, 255, 255, 0.10); }
-flowboxchild:selected { background: @accent_color; }
-.mf-dot { border-radius: 999px; min-width: 8px; min-height: 8px; background: rgba(255, 255, 255, 0.28);
-  transition: all 250ms ease-out; }
-.mf-dot-on { background: #ffffff; min-width: 22px; }
-.mf-step { font-family: "SF Pro Text", sans-serif; font-size: 15px; color: #ffffff; }
-.mf-log { background: rgba(0, 0, 0, 0.30); border-radius: 12px; font-size: 12px; }
-.mf-dock-preview { padding: 10px 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.26); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28); }
-.mf-dock-icon { transition: all 160ms ease-out; }
-.mf-magnify .mf-dock-icon:hover { transform: scale(1.35) translateY(-10px); }
-button.mf-tile { padding: 18px; border-radius: 20px; background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14); color: #ffffff; transition: all 180ms ease-out; }
-button.mf-tile:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28); }
-button.mf-tile:active { transform: scale(0.98); }
-button.mf-tile-primary { background: linear-gradient(135deg, rgba(79, 134, 255, 0.60), rgba(155, 92, 255, 0.60)); }
-button.mf-tile-primary:hover { background: linear-gradient(135deg, rgba(102, 151, 255, 0.75), rgba(171, 112, 255, 0.75)); }
-button.mf-tile-danger:hover { background: rgba(255, 80, 80, 0.22); }
-"""
 
 
 def text(label: str, css: str, center: bool = False) -> Gtk.Label:
@@ -106,24 +42,6 @@ def clear(container: Gtk.Widget) -> None:
     while child:
         container.remove(child)
         child = container.get_first_child()
-
-
-def wallpaper_choices() -> list[Path]:
-    """Fondos incluidos, los de la carpeta de recursos y las fotos que agregó el usuario."""
-    found = sorted(WALLPAPER_DIR.glob("*"))
-    root = assets_root()
-    if root and (root / "wallpapers").is_dir():
-        found += sorted(p for p in (root / "wallpapers").iterdir()
-                        if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"))
-    found += [Path(p) for p in load_config().get("user_wallpapers", []) if Path(p).is_file()]
-    # Sin repetidos: dos archivos iguales (aunque se llamen distinto) cuentan una vez.
-    unique, seen = [], set()
-    for path in found:
-        digest = hashlib.sha1(path.read_bytes()).hexdigest()
-        if digest not in seen:
-            seen.add(digest)
-            unique.append(path)
-    return unique
 
 
 class MacifyWindow(Adw.ApplicationWindow):
@@ -291,9 +209,8 @@ class MacifyWindow(Adw.ApplicationWindow):
         GLib.timeout_add(350, apply_if_latest)
 
     def _wallpaper_page(self) -> Gtk.Widget:
-        self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.SINGLE, max_children_per_line=4,
-                                min_children_per_line=2, row_spacing=10, column_spacing=10, homogeneous=True)
-        self.flow.connect("child-activated", self._on_wallpaper)
+        self.wallpaper_sections = vbox(12)
+        self.wallpaper_flows: list[Gtk.FlowBox] = []
         self.accent_dot = Gtk.Box(css_classes=["mf-accent"], valign=Gtk.Align.CENTER)
         self.accent_dot.set_size_request(18, 18)
         self.accent_css = Gtk.CssProvider()
@@ -308,23 +225,50 @@ class MacifyWindow(Adw.ApplicationWindow):
         self._fill_wallpapers()
         return self._page(text(_("Choose your wallpaper"), "mf-title"),
                           text(_("Buttons and system colors come from your wallpaper."), "mf-subtitle"),
-                          accent_row, self.flow, add)
+                          accent_row, self.wallpaper_sections, add)
 
     def _fill_wallpapers(self) -> None:
-        clear(self.flow)
+        """Galería por secciones; las miniaturas se cargan aparte para no frenar la ventana."""
+        clear(self.wallpaper_sections)
+        self.wallpaper_flows = []
         current = profile.wallpaper_path(self.choices).resolve()
-        for path in wallpaper_choices():
-            picture = Gtk.Picture.new_for_filename(str(path))
-            picture.set_content_fit(Gtk.ContentFit.COVER)
-            picture.set_size_request(160, 100)
-            picture.add_css_class("mf-thumb")
-            picture.wallpaper_path = path
-            self.flow.append(picture)
-            if path.resolve() == current:
-                self.flow.select_child(picture.get_parent())
+        items = wallpapers.catalog()
+        pending = []
+        for section in wallpapers.SECTIONS:
+            members = [w for w in items if w.section == section]
+            if not members:
+                continue
+            flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.SINGLE, max_children_per_line=4,
+                               min_children_per_line=4, row_spacing=14, column_spacing=14, homogeneous=True,
+                               css_classes=["mf-wallpapers"])
+            flow.connect("child-activated", self._on_wallpaper)
+            for wallpaper in members:
+                picture = Gtk.Picture(content_fit=Gtk.ContentFit.COVER, can_shrink=True, css_classes=["mf-thumb"])
+                picture.set_size_request(-1, 84)
+                tile = vbox(6)
+                tile.append(picture)
+                tile.append(text(wallpaper.title, "mf-thumb-title", center=True))
+                tile.wallpaper_path = wallpaper.path
+                flow.append(tile)
+                if wallpaper.path.resolve() == current:
+                    flow.select_child(tile.get_parent())
+                pending.append((picture, wallpaper.path))
+            self.wallpaper_sections.append(text(_(section), "mf-section"))
+            self.wallpaper_sections.append(flow)
+            self.wallpaper_flows.append(flow)
         self._update_accent()
 
-    def _on_wallpaper(self, _flow: Gtk.FlowBox, child: Gtk.FlowBoxChild) -> None:
+        def load() -> None:
+            for picture, path in pending:
+                thumb = wallpapers.thumbnail(path)
+                GLib.idle_add(picture.set_filename, str(thumb))
+
+        threading.Thread(target=load, daemon=True).start()
+
+    def _on_wallpaper(self, flow: Gtk.FlowBox, child: Gtk.FlowBoxChild) -> None:
+        for other in self.wallpaper_flows:
+            if other is not flow:
+                other.unselect_all()
         self.choices.wallpaper = str(child.get_child().wallpaper_path)
         self._update_accent()
         self._update_backdrop()
@@ -826,6 +770,16 @@ class MacifyWindow(Adw.ApplicationWindow):
         return GLib.SOURCE_REMOVE
 
 
+def install_style(display: Gdk.Display) -> None:
+    """Estilo e iconos propios de la app."""
+    data = resources.files("macify").joinpath("data")
+    provider = Gtk.CssProvider()
+    provider.load_from_string(data.joinpath("gui.css").read_text())
+    # El tema del usuario (~/.config/gtk-4.0/gtk.css) carga con prioridad USER: hay que superarla.
+    Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 1)
+    Gtk.IconTheme.get_for_display(display).add_search_path(str(data))
+
+
 class MacifyApp(Adw.Application):
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID)
@@ -835,12 +789,7 @@ class MacifyApp(Adw.Application):
     def _on_startup(self, _app: Adw.Application) -> None:
         launcher.ensure()
         install_bundled_data()
-        provider = Gtk.CssProvider()
-        provider.load_from_string(CSS)
-        display = Gdk.Display.get_default()
-        # El tema del usuario (~/.config/gtk-4.0/gtk.css) carga con prioridad USER: hay que superarla.
-        Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 1)
-        Gtk.IconTheme.get_for_display(display).add_search_path(str(resources.files("macify").joinpath("data")))
+        install_style(Gdk.Display.get_default())
 
     def _on_activate(self, app: Adw.Application) -> None:
         window = app.get_active_window() or MacifyWindow(app)

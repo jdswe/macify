@@ -1,7 +1,11 @@
 // Menús de app como los de macOS: el nombre de la app en negrita y File, Edit, View, Go,
-// Window y Help. Sirven en cualquier app (apt, snap, flatpak, AppImage): las órdenes de
-// edición mandan a la ventana activa sus atajos de siempre y las de ventana actúan
-// directamente sobre ella. Cada menú se arma al abrirlo, así que no gasta nada cerrado.
+// Window y Help, con el orden y las reglas de las Human Interface Guidelines de Apple:
+// - Siempre las mismas opciones; las que no aplican se ven desactivadas, no se esconden.
+// - Atajos con los símbolos de macOS e iconos en cada grupo.
+// - Con Alt (la Opción de macOS): «Minimize All» y «Close All».
+// Sirven en cualquier app (apt, snap, flatpak, AppImage): las órdenes de edición mandan los
+// atajos de siempre de esa clase de app y las de ventana actúan sobre la ventana. Cada menú
+// se arma al abrirlo, así que cerrado no gasta nada.
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
@@ -16,61 +20,74 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {_} from './i18n.js';
+import * as Keys from './keys.js';
 
 const FILES_APP = 'org.gnome.Nautilus.desktop';
-// En las terminales copiar y pegar llevan Mayúsculas (Ctrl+C interrumpe el programa).
+const WEBSITE = 'https://jdswe.github.io/macify/';
 const TERMINALS = new Set([
     'org.gnome.Ptyxis.desktop', 'org.gnome.Terminal.desktop', 'org.gnome.Console.desktop',
     'com.mitchellh.ghostty.desktop', 'kitty.desktop', 'Alacritty.desktop', 'org.wezfurlong.wezterm.desktop',
     'org.kde.konsole.desktop', 'terminator.desktop', 'com.gexperts.Tilix.desktop', 'xterm.desktop',
 ]);
-const SEND_DELAY_MS = 120;      // espera a que el menú se cierre y la ventana recupere el teclado
 
-const MODIFIERS = {
-    Ctrl: Clutter.KEY_Control_L,
-    Shift: Clutter.KEY_Shift_L,
-    Alt: Clutter.KEY_Alt_L,
-    Super: Clutter.KEY_Super_L,
+// Atajo de cada orden según la clase de app. null: esa clase de app no la tiene.
+// En las terminales copiar y pegar llevan Mayúsculas (Ctrl+C interrumpe el programa).
+const SHORTCUTS = {
+    settings: {app: '<Ctrl>comma'},
+    newTab: {app: '<Ctrl>t', terminal: '<Ctrl><Shift>t'},
+    newFolder: {app: null, files: '<Ctrl><Shift>n'},
+    open: {app: '<Ctrl>o', terminal: null, files: null},
+    closeTab: {app: '<Ctrl>w', terminal: '<Ctrl><Shift>w'},
+    save: {app: '<Ctrl>s', terminal: null, files: null},
+    saveAs: {app: '<Ctrl><Shift>s', terminal: null, files: null},
+    print: {app: '<Ctrl>p', terminal: null, files: null},
+    undo: {app: '<Ctrl>z', terminal: null},
+    redo: {app: '<Ctrl><Shift>z', terminal: null},
+    cut: {app: '<Ctrl>x', terminal: null},
+    copy: {app: '<Ctrl>c', terminal: '<Ctrl><Shift>c'},
+    paste: {app: '<Ctrl>v', terminal: '<Ctrl><Shift>v'},
+    delete: {app: 'Delete', terminal: null},
+    selectAll: {app: '<Ctrl>a', terminal: '<Ctrl><Shift>a'},
+    find: {app: '<Ctrl>f', terminal: '<Ctrl><Shift>f'},
+    findNext: {app: '<Ctrl>g', terminal: '<Ctrl><Shift>g'},
+    findPrevious: {app: '<Ctrl><Shift>g', terminal: '<Ctrl><Shift>h'},
+    emoji: {app: '<Ctrl>period', terminal: null},
+    zoomIn: {app: '<Ctrl>plus'},
+    zoomOut: {app: '<Ctrl>minus'},
+    actualSize: {app: '<Ctrl>0'},
+    reload: {app: '<Ctrl>r', terminal: null},
+    back: {app: null, files: '<Alt>Left'},
+    forward: {app: null, files: '<Alt>Right'},
+    up: {app: null, files: '<Alt>Up'},
+    tileLeft: {app: '<Super>Left'},
+    tileRight: {app: '<Super>Right'},
+    help: {app: 'F1'},
+    keyboardShortcuts: {app: '<Ctrl>question'},
 };
 
-let keyboard = null;
-
-function virtualKeyboard() {
-    keyboard ??= Clutter.get_default_backend().get_default_seat()
-        .create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
-    return keyboard;
+function accelFor(action, kind) {
+    const table = SHORTCUTS[action];
+    return kind in table ? table[kind] : table.app;
 }
 
-// '<Ctrl><Shift>z' → teclas para pulsar en orden.
-function parseShortcut(accel) {
-    const keys = [];
-    const key = accel.replace(/<(\w+)>/g, (_m, name) => {
-        keys.push(MODIFIERS[name]);
-        return '';
-    });
-    keys.push(key.length === 1 ? Clutter.unicode_to_keysym(key.codePointAt(0)) : Clutter[`KEY_${key}`]);
-    return keys;
+// ---------- a quién van las órdenes ----------
+
+// La app y la ventana activas. Sin ventana activa, Archivos (como el Finder en macOS).
+function currentTarget() {
+    const focused = Shell.WindowTracker.get_default().focus_app;
+    const app = focused ?? Shell.AppSystem.get_default().lookup_app(FILES_APP);
+    const id = app?.get_id() ?? '';
+    const kind = TERMINALS.has(id) ? 'terminal' : id === FILES_APP ? 'files' : 'app';
+    return {
+        app,
+        win: focused ? global.display.focus_window : null,
+        name: app?.get_name() ?? _('Files'),
+        kind,
+        option: Keys.optionPressed(),
+    };
 }
 
-function pressShortcut(accel) {
-    const device = virtualKeyboard();
-    const keys = parseShortcut(accel);
-    let time = GLib.get_monotonic_time();
-    for (const key of keys)
-        device.notify_keyval(time++, key, Clutter.KeyState.PRESSED);
-    for (const key of keys.reverse())
-        device.notify_keyval(time++, key, Clutter.KeyState.RELEASED);
-}
-
-// Devuelve el foco a la ventana y le manda el atajo cuando el menú ya se cerró.
-function sendShortcut(win, accel) {
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, SEND_DELAY_MS, () => {
-        if (win && !win.has_focus())
-            win.activate(global.get_current_time());
-        pressShortcut(accel);
-        return GLib.SOURCE_REMOVE;
-    });
-}
+// ---------- acciones ----------
 
 function openUri(uri) {
     try {
@@ -85,18 +102,200 @@ function folderUri(directory) {
     return path ? Gio.File.new_for_path(path).get_uri() : null;
 }
 
-function otherMonitor(win) {
+function nextMonitor(win) {
     const count = global.display.get_n_monitors();
-    if (!win || count < 2)
-        return -1;
-    return (win.get_monitor() + 1) % count;
+    return win && count > 1 ? (win.get_monitor() + 1) % count : -1;
 }
 
 function monitorName(index) {
     return index === Main.layoutManager.primaryIndex ? _('Main Display') : _('Display {n}', {n: index + 1});
 }
 
-// Un menú de la barra con un título de texto.
+function appWindows(t) {
+    return t.app?.get_windows() ?? [];
+}
+
+const now = () => global.get_current_time();
+
+// ---------- entradas de menú ----------
+
+// Orden que se hace con el atajo de la app.
+function shortcut(t, label, icon, action) {
+    const accel = accelFor(action, t.kind);
+    return {label, icon, accel, enabled: Boolean(t.win && accel), run: () => Keys.sendShortcut(t.win, accel)};
+}
+
+// Orden que Macify hace directamente.
+function command(label, icon, run, enabled = true, accel = null) {
+    return {label, icon, accel, enabled: Boolean(enabled), run};
+}
+
+const SEPARATOR = null;
+
+function appMenu(t) {
+    const tracker = Shell.WindowTracker.get_default();
+    const others = () => global.display.list_all_windows()
+        .filter(w => !w.minimized && w.can_minimize() && tracker.get_window_app(w) !== t.app);
+    return [
+        command(_('About {app}', {app: t.name}), 'help-about-symbolic',
+            () => Util.spawn(['gnome-control-center', 'applications', t.app.get_id().replace(/\.desktop$/, '')]), t.app),
+        SEPARATOR,
+        shortcut(t, _('Settings…'), 'preferences-system-symbolic', 'settings'),
+        SEPARATOR,
+        command(_('Hide {app}', {app: t.name}), 'view-conceal-symbolic',
+            () => appWindows(t).forEach(w => w.can_minimize() && w.minimize()), t.win),
+        command(_('Hide Others'), 'view-conceal-symbolic', () => others().forEach(w => w.minimize()), others().length),
+        command(_('Show All'), 'view-reveal-symbolic',
+            () => global.display.list_all_windows().forEach(w => w.minimized && w.unminimize())),
+        SEPARATOR,
+        command(_('Quit {app}', {app: t.name}), 'application-exit-symbolic', () => t.app.request_quit(),
+            appWindows(t).length, '<Ctrl>q'),
+    ];
+}
+
+function fileMenu(t) {
+    const newWindow = command(_('New Window'), 'window-new-symbolic', () => {
+        if (t.app.can_open_new_window())
+            t.app.open_new_window(-1);
+        else
+            Keys.sendShortcut(t.win, t.kind === 'terminal' ? '<Ctrl><Shift>n' : '<Ctrl>n');
+    }, t.app, t.kind === 'terminal' ? '<Ctrl><Shift>n' : '<Ctrl>n');
+    const close = t.option
+        ? command(_('Close All'), 'window-close-symbolic',
+            () => appWindows(t).forEach(w => w.can_close() && w.delete(now())), appWindows(t).length)
+        : command(_('Close Window'), 'window-close-symbolic', () => t.win.delete(now()), t.win?.can_close());
+    return [
+        newWindow,
+        t.kind === 'files'
+            ? shortcut(t, _('New Folder'), 'folder-new-symbolic', 'newFolder')
+            : shortcut(t, _('New Tab'), 'tab-new-symbolic', 'newTab'),
+        shortcut(t, _('Open…'), 'document-open-symbolic', 'open'),
+        SEPARATOR,
+        shortcut(t, _('Close Tab'), 'tab-close-symbolic', 'closeTab'),
+        close,
+        SEPARATOR,
+        shortcut(t, _('Save'), 'document-save-symbolic', 'save'),
+        shortcut(t, _('Save As…'), 'document-save-as-symbolic', 'saveAs'),
+        SEPARATOR,
+        shortcut(t, _('Print…'), 'document-print-symbolic', 'print'),
+    ];
+}
+
+function editMenu(t) {
+    return [
+        shortcut(t, _('Undo'), 'edit-undo-symbolic', 'undo'),
+        shortcut(t, _('Redo'), 'edit-redo-symbolic', 'redo'),
+        SEPARATOR,
+        shortcut(t, _('Cut'), 'edit-cut-symbolic', 'cut'),
+        shortcut(t, _('Copy'), 'edit-copy-symbolic', 'copy'),
+        shortcut(t, _('Paste'), 'edit-paste-symbolic', 'paste'),
+        shortcut(t, _('Delete'), 'edit-delete-symbolic', 'delete'),
+        shortcut(t, _('Select All'), 'edit-select-all-symbolic', 'selectAll'),
+        SEPARATOR,
+        shortcut(t, _('Find…'), 'edit-find-symbolic', 'find'),
+        shortcut(t, _('Find Next'), 'go-down-symbolic', 'findNext'),
+        shortcut(t, _('Find Previous'), 'go-up-symbolic', 'findPrevious'),
+        SEPARATOR,
+        shortcut(t, _('Emoji & Symbols'), 'face-smile-symbolic', 'emoji'),
+    ];
+}
+
+function viewMenu(t) {
+    const fullscreen = t.win?.is_fullscreen();
+    return [
+        shortcut(t, _('Zoom In'), 'zoom-in-symbolic', 'zoomIn'),
+        shortcut(t, _('Zoom Out'), 'zoom-out-symbolic', 'zoomOut'),
+        shortcut(t, _('Actual Size'), 'zoom-original-symbolic', 'actualSize'),
+        shortcut(t, _('Reload'), 'view-refresh-symbolic', 'reload'),
+        SEPARATOR,
+        command(fullscreen ? _('Exit Full Screen') : _('Enter Full Screen'),
+            fullscreen ? 'view-restore-symbolic' : 'view-fullscreen-symbolic',
+            () => (fullscreen ? t.win.unmake_fullscreen() : t.win.make_fullscreen()), t.win, 'F11'),
+    ];
+}
+
+function goMenu(t) {
+    const places = [
+        [_('Home'), 'user-home-symbolic', null],
+        [_('Desktop'), 'user-desktop-symbolic', GLib.UserDirectory.DIRECTORY_DESKTOP],
+        [_('Documents'), 'folder-documents-symbolic', GLib.UserDirectory.DIRECTORY_DOCUMENTS],
+        [_('Downloads'), 'folder-download-symbolic', GLib.UserDirectory.DIRECTORY_DOWNLOAD],
+        [_('Pictures'), 'folder-pictures-symbolic', GLib.UserDirectory.DIRECTORY_PICTURES],
+        [_('Music'), 'folder-music-symbolic', GLib.UserDirectory.DIRECTORY_MUSIC],
+        [_('Videos'), 'folder-videos-symbolic', GLib.UserDirectory.DIRECTORY_VIDEOS],
+    ];
+    return [
+        shortcut(t, _('Back'), 'go-previous-symbolic', 'back'),
+        shortcut(t, _('Forward'), 'go-next-symbolic', 'forward'),
+        shortcut(t, _('Enclosing Folder'), 'go-up-symbolic', 'up'),
+        SEPARATOR,
+        ...places.map(([label, icon, dir]) => command(label, icon, () => openUri(folderUri(dir)), folderUri(dir))),
+        SEPARATOR,
+        command(_('Computer'), 'computer-symbolic', () => openUri('computer:///')),
+        command(_('Trash'), 'user-trash-symbolic', () => openUri('trash:///')),
+    ];
+}
+
+function windowMenu(t) {
+    const target = nextMonitor(t.win);
+    const minimize = t.option
+        ? command(_('Minimize All'), 'window-minimize-symbolic',
+            () => appWindows(t).forEach(w => w.can_minimize() && w.minimize()), appWindows(t).length)
+        : command(_('Minimize'), 'window-minimize-symbolic', () => t.win.minimize(), t.win?.can_minimize());
+    const entries = [
+        minimize,
+        command(_('Zoom'), 'window-maximize-symbolic',
+            () => (t.win.is_maximized() ? t.win.unmaximize() : t.win.maximize()), t.win?.can_maximize()),
+        SEPARATOR,
+        shortcut(t, _('Tile Window to Left of Screen'), 'view-dual-symbolic', 'tileLeft'),
+        shortcut(t, _('Tile Window to Right of Screen'), 'view-dual-symbolic', 'tileRight'),
+        command(_('Move to {display}', {display: monitorName(Math.max(target, 0))}), 'video-display-symbolic',
+            () => t.win.move_to_monitor(target), target >= 0),
+        SEPARATOR,
+        command(_('Bring All to Front'), 'focus-windows-symbolic',
+            () => appWindows(t).slice().reverse().forEach(w => w.activate(now())), appWindows(t).length),
+    ];
+    // Ventanas abiertas de la app, en orden alfabético.
+    const windows = appWindows(t)
+        .map(w => ({w, title: w.get_title() || t.name}))
+        .sort((a, b) => a.title.localeCompare(b.title));
+    if (windows.length)
+        entries.push(SEPARATOR);
+    for (const {w, title} of windows)
+        entries.push({...command(title, null, () => w.activate(now())), checked: w === t.win});
+    return entries;
+}
+
+function helpMenu(t) {
+    return [
+        shortcut(t, _('{app} Help', {app: t.name}), 'help-browser-symbolic', 'help'),
+        shortcut(t, _('Keyboard Shortcuts'), 'input-keyboard-symbolic', 'keyboardShortcuts'),
+        SEPARATOR,
+        command(_('Macify Website'), 'web-browser-symbolic', () => openUri(WEBSITE)),
+    ];
+}
+
+// ---------- menús de la barra ----------
+
+function menuItem(entry) {
+    const item = entry.icon
+        ? new PopupMenu.PopupImageMenuItem(entry.label, entry.icon)
+        : new PopupMenu.PopupMenuItem(entry.label);
+    if (entry.accel) {
+        item.add_child(new St.Label({
+            text: Keys.glyphs(entry.accel),
+            x_expand: true,
+            x_align: Clutter.ActorAlign.END,
+            style_class: 'macify-menu-shortcut',
+        }));
+    }
+    if (entry.checked)
+        item.setOrnament(PopupMenu.Ornament.CHECK);
+    item.setSensitive(entry.enabled);
+    item.connect('activate', () => entry.run());
+    return item;
+}
+
 const BarMenu = GObject.registerClass(
 class BarMenu extends PanelMenu.Button {
     _init(title, build, bold = false) {
@@ -122,208 +321,43 @@ class BarMenu extends PanelMenu.Button {
 
     _refill() {
         this.menu.removeAll();
-        const target = currentTarget();
-        for (const entry of this._build(target)) {
-            if (entry === null) {
-                this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-                continue;
-            }
-            const item = new PopupMenu.PopupMenuItem(entry.label);
-            if (entry.shortcut) {
-                item.add_child(new St.Label({
-                    text: entry.shortcut, x_expand: true, x_align: Clutter.ActorAlign.END,
-                    style_class: 'macify-menu-shortcut',
-                }));
-            }
-            if (entry.checked)
-                item.setOrnament(PopupMenu.Ornament.CHECK);
-            item.setSensitive(entry.enabled !== false);
-            item.connect('activate', () => entry.run());
-            this.menu.addMenuItem(item);
+        for (const entry of this._build(currentTarget())) {
+            this.menu.addMenuItem(entry === SEPARATOR
+                ? new PopupMenu.PopupSeparatorMenuItem()
+                : menuItem(entry));
         }
     }
 });
-
-// La app y la ventana a las que van las órdenes. Sin ventana activa, Archivos (como Finder).
-function currentTarget() {
-    const tracker = Shell.WindowTracker.get_default();
-    const win = global.display.focus_window;
-    const focused = tracker.focus_app;
-    const app = focused ?? Shell.AppSystem.get_default().lookup_app(FILES_APP);
-    const id = app?.get_id() ?? '';
-    return {
-        app,
-        win: focused ? win : null,
-        name: app?.get_name() ?? _('Files'),
-        terminal: TERMINALS.has(id),
-        files: id === FILES_APP,
-    };
-}
-
-// Atajo que se ve en el menú, al estilo de macOS (⌘ es Ctrl en Ubuntu).
-function display(accel) {
-    return accel.replace('<Ctrl>', 'Ctrl+').replace('<Shift>', 'Shift+').replace('<Alt>', 'Alt+')
-        .replace('<Super>', 'Super+').replace('plus', '+').replace('minus', '−').replace('comma', ',')
-        .replace('period', '.').replace(/\+([a-z])$/, (_m, c) => `+${c.toUpperCase()}`);
-}
-
-function key(label, accel, t, extra = {}) {
-    return {label, shortcut: display(accel), enabled: Boolean(t.win), run: () => sendShortcut(t.win, accel), ...extra};
-}
-
-function appMenu(t) {
-    const others = () => global.display.list_all_windows()
-        .filter(w => !w.minimized && w.can_minimize() && Shell.WindowTracker.get_default().get_window_app(w) !== t.app);
-    return [
-        {label: _('About {app}', {app: t.name}), enabled: Boolean(t.app),
-            run: () => Util.spawn(['gnome-control-center', 'applications', t.app.get_id().replace(/\.desktop$/, '')])},
-        null,
-        key(_('Settings…'), '<Ctrl>comma', t),
-        null,
-        {label: _('Hide {app}', {app: t.name}), shortcut: 'Ctrl+H', enabled: Boolean(t.win),
-            run: () => t.app.get_windows().forEach(w => w.can_minimize() && w.minimize())},
-        {label: _('Hide Others'), run: () => others().forEach(w => w.minimize())},
-        {label: _('Show All'), run: () => global.display.list_all_windows()
-            .forEach(w => w.minimized && w.unminimize())},
-        null,
-        {label: _('Quit {app}', {app: t.name}), shortcut: 'Ctrl+Q', enabled: Boolean(t.app?.get_n_windows()),
-            run: () => t.app.request_quit()},
-    ];
-}
-
-function fileMenu(t) {
-    const newWindow = {
-        label: _('New Window'), shortcut: display(t.terminal ? '<Ctrl><Shift>n' : '<Ctrl>n'), enabled: Boolean(t.app),
-        run: () => (t.app.can_open_new_window() ? t.app.open_new_window(-1)
-            : sendShortcut(t.win, t.terminal ? '<Ctrl><Shift>n' : '<Ctrl>n')),
-    };
-    const entries = [newWindow];
-    if (t.files)
-        entries.push(key(_('New Folder'), '<Ctrl><Shift>n', t));
-    else
-        entries.push(key(_('New Tab'), t.terminal ? '<Ctrl><Shift>t' : '<Ctrl>t', t));
-    if (!t.terminal && !t.files)
-        entries.push(key(_('Open…'), '<Ctrl>o', t));
-    if (!t.terminal && !t.files) {
-        entries.push(null, key(_('Save'), '<Ctrl>s', t), key(_('Save As…'), '<Ctrl><Shift>s', t),
-            null, key(_('Print…'), '<Ctrl>p', t));
-    }
-    entries.push(null, {label: _('Close Window'), shortcut: 'Ctrl+W', enabled: Boolean(t.win?.can_close()),
-        run: () => t.win.delete(global.get_current_time())});
-    return entries;
-}
-
-function editMenu(t) {
-    const shift = t.terminal ? '<Shift>' : '';
-    const entries = [key(_('Undo'), '<Ctrl>z', t), key(_('Redo'), '<Ctrl><Shift>z', t), null];
-    if (!t.terminal)
-        entries.push(key(_('Cut'), '<Ctrl>x', t));
-    entries.push(key(_('Copy'), `<Ctrl>${shift}c`, t), key(_('Paste'), `<Ctrl>${shift}v`, t),
-        key(_('Select All'), `<Ctrl>${shift}a`, t), null, key(_('Find…'), `<Ctrl>${shift}f`, t));
-    if (!t.terminal)
-        entries.push(null, key(_('Emoji & Symbols'), '<Ctrl>period', t));
-    return entries;
-}
-
-function viewMenu(t) {
-    const fullscreen = t.win?.is_fullscreen();
-    const entries = [
-        {label: fullscreen ? _('Exit Full Screen') : _('Enter Full Screen'), shortcut: 'F11',
-            enabled: Boolean(t.win), run: () => (fullscreen ? t.win.unmake_fullscreen() : t.win.make_fullscreen())},
-        null,
-        key(_('Zoom In'), '<Ctrl>plus', t), key(_('Zoom Out'), '<Ctrl>minus', t), key(_('Actual Size'), '<Ctrl>0', t),
-    ];
-    if (!t.terminal)
-        entries.push(null, key(_('Reload'), '<Ctrl>r', t));
-    return entries;
-}
-
-function goMenu(t) {
-    const places = [
-        [_('Home'), null], [_('Documents'), GLib.UserDirectory.DIRECTORY_DOCUMENTS],
-        [_('Downloads'), GLib.UserDirectory.DIRECTORY_DOWNLOAD], [_('Desktop'), GLib.UserDirectory.DIRECTORY_DESKTOP],
-        [_('Pictures'), GLib.UserDirectory.DIRECTORY_PICTURES], [_('Music'), GLib.UserDirectory.DIRECTORY_MUSIC],
-        [_('Videos'), GLib.UserDirectory.DIRECTORY_VIDEOS],
-    ];
-    return [
-        key(_('Back'), '<Alt>Left', t), key(_('Forward'), '<Alt>Right', t), key(_('Enclosing Folder'), '<Alt>Up', t),
-        null,
-        ...places.map(([label, dir]) => ({label, enabled: Boolean(folderUri(dir)), run: () => openUri(folderUri(dir))})),
-        null,
-        {label: _('Computer'), run: () => openUri('computer:///')},
-        {label: _('Trash'), run: () => openUri('trash:///')},
-    ];
-}
-
-function windowMenu(t) {
-    const target = otherMonitor(t.win);
-    const maximized = t.win?.is_maximized();
-    const entries = [
-        {label: _('Minimize'), shortcut: 'Ctrl+M', enabled: Boolean(t.win?.can_minimize()), run: () => t.win.minimize()},
-        {label: _('Zoom'), enabled: Boolean(t.win?.can_maximize()),
-            run: () => (maximized ? t.win.unmaximize() : t.win.maximize())},
-        null,
-        key(_('Tile Window to Left of Screen'), '<Super>Left', t),
-        key(_('Tile Window to Right of Screen'), '<Super>Right', t),
-    ];
-    if (target >= 0) {
-        entries.push({label: _('Move to {display}', {display: monitorName(target)}),
-            run: () => t.win.move_to_monitor(target)});
-    }
-    entries.push(null, {label: _('Bring All to Front'), enabled: Boolean(t.app?.get_n_windows()),
-        run: () => t.app.get_windows().slice().reverse().forEach(w => w.activate(global.get_current_time()))});
-    const windows = t.app?.get_windows() ?? [];
-    if (windows.length) {
-        entries.push(null);
-        for (const w of windows) {
-            entries.push({label: w.get_title() || t.name, checked: w === t.win,
-                run: () => w.activate(global.get_current_time())});
-        }
-    }
-    return entries;
-}
-
-function helpMenu(t) {
-    return [
-        key(_('{app} Help', {app: t.name}), 'F1', t),
-        key(_('Keyboard Shortcuts'), '<Ctrl>question', t),
-        null,
-        {label: _('Macify Website'), run: () => openUri('https://jdswe.github.io/macify/')},
-    ];
-}
 
 // El grupo completo: nombre de la app y sus menús, siguiendo a la app activa.
 export class AppMenus {
     constructor() {
         this._appMenu = new BarMenu('', appMenu, true);
-        this._menus = [
+        this._goMenu = new BarMenu(_('Go'), goMenu);
+        const menus = [
             ['file', new BarMenu(_('File'), fileMenu)],
             ['edit', new BarMenu(_('Edit'), editMenu)],
             ['view', new BarMenu(_('View'), viewMenu)],
-            ['go', new BarMenu(_('Go'), goMenu)],
+            ['go', this._goMenu],
             ['window', new BarMenu(_('Window'), windowMenu)],
             ['help', new BarMenu(_('Help'), helpMenu)],
         ];
+        this._menus = [this._appMenu, ...menus.map(([, menu]) => menu)];
         Main.panel.addToStatusArea('macify-app-menu', this._appMenu, 1, 'left');
-        this._menus.forEach(([name, menu], i) => Main.panel.addToStatusArea(`macify-menu-${name}`, menu, 2 + i, 'left'));
-        this._tracker = Shell.WindowTracker.get_default();
-        this._tracker.connectObject('notify::focus-app', () => this._update(), this);
+        menus.forEach(([name, menu], i) => Main.panel.addToStatusArea(`macify-menu-${name}`, menu, 2 + i, 'left'));
+        Shell.WindowTracker.get_default().connectObject('notify::focus-app', () => this._update(), this);
         this._update();
     }
 
     _update() {
         const t = currentTarget();
         this._appMenu.setTitle(t.name);
-        // «Ir» sólo tiene sentido en Archivos, como en el Finder.
-        const go = this._menus.find(([name]) => name === 'go')[1];
-        go.visible = t.files;
+        this._goMenu.visible = t.kind === 'files';      // «Go» es el menú propio de Archivos
     }
 
     destroy() {
-        this._tracker.disconnectObject(this);
-        this._appMenu.destroy();
-        this._menus.forEach(([, menu]) => menu.destroy());
-        keyboard?.run_dispose?.();
-        keyboard = null;
+        Shell.WindowTracker.get_default().disconnectObject(this);
+        this._menus.forEach(menu => menu.destroy());
+        Keys.dispose();
     }
 }
