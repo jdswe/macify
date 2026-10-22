@@ -176,6 +176,10 @@ def check_extensions(online: bool) -> list[Check]:
         if state != "ACTIVE":
             result.append(Check(name, WARN, _("Installed; it starts after you log in again.")))
             continue
+        if uuid == extensions.MENUBAR and extensions.menubar_outdated():
+            result.append(Check(name, WARN, _("Update available (active after you log in again)."),
+                                lambda log: extensions.install_menubar(False, log)))
+            continue
         remote = remote_versions.get(uuid)
         local = _local_extension_version(uuid)
         if remote and local and remote > local:

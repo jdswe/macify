@@ -108,15 +108,120 @@ class AppTitle extends PanelMenu.Button {
     }
 });
 
+// El dock animado (Dash2Dock Animated) se esconde del todo cuando una ventana está en
+// pantalla completa. Como en macOS, aquí sigue a mano: escondido, y aparece al llevar
+// el puntero al borde inferior. Si ese dock no está, esto no hace nada.
+const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
+
+class FullscreenDock {
+    constructor() {
+        global.display.connectObject('in-fullscreen-changed', () => this._update(), this);
+        Main.extensionManager.connectObject('extension-state-changed', () => this._update(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => this._update(), this);
+        // El dock puede crearse después que esta extensión.
+        this._startId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
+            this._startId = 0;
+            this._update();
+            return GLib.SOURCE_REMOVE;
+        });
+        this._update();
+    }
+
+    _docks() {
+        return Main.extensionManager.lookup(DOCK_UUID)?.stateObj?.docks ?? [];
+    }
+
+    _tracked(dock) {
+        return Main.layoutManager._trackedActors?.find(data => data.actor === dock);
+    }
+
+    _update() {
+        try {
+            for (const dock of this._docks())
+                this._patch(dock);
+        } catch (e) {
+            console.warn(`Macify: fullscreen dock: ${e.message}`);
+        }
+    }
+
+    _patch(dock) {
+        if (dock.dwell && !dock.dwell._macifyLog) {
+            // Una línea en el registro cada vez que el puntero llega al borde: sirve para
+            // saber por qué el dock no aparece sobre alguna app (journalctl --user -g "Macify dock").
+            dock.dwell._macifyLog = true;
+            dock.dwell.connectObject('enter-event', () => {
+                const monitor = dock._monitor;
+                console.log(`Macify dock: edge on monitor ${monitor?.index} fullscreen=${monitor?.inFullscreen} ` +
+                    `shown=${dock.autohider?._shown} hidden=${dock._hidden} visible=${dock.visible} ` +
+                    `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
+            }, this);
+        }
+        const tracked = this._tracked(dock);
+        if (tracked?.trackFullscreen) {
+            tracked.trackFullscreen = false;
+            dock.visible = true;
+        }
+        const hider = dock.autohider;
+        if (!hider || hider._macifyOriginal)
+            return;
+        hider._macifyOriginal = {show: hider.show, checkOverlap: hider._checkOverlap};
+        hider.show = function () {
+            if (!this.dock._monitor)
+                return;
+            this._dwell = 0;
+            this.frameDelay = 0;
+            this._shown = true;
+            this.dock.slideIn();
+        };
+        hider._checkOverlap = function () {
+            // En pantalla completa sólo se queda mientras el puntero está sobre el dock.
+            if (this.dock._monitor?.inFullscreen && !this.extension?._inOverview)
+                return !this.dock._isWithinDash(global.get_pointer());
+            return this._macifyOriginal.checkOverlap.call(this);
+        };
+        hider._debounceCheckHide?.();
+    }
+
+    destroy() {
+        if (this._startId)
+            GLib.source_remove(this._startId);
+        global.display.disconnectObject(this);
+        Main.extensionManager.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
+        try {
+            for (const dock of this._docks()) {
+                dock.dwell?.disconnectObject(this);
+                if (dock.dwell)
+                    delete dock.dwell._macifyLog;
+                const hider = dock.autohider;
+                if (hider?._macifyOriginal) {
+                    hider.show = hider._macifyOriginal.show;
+                    hider._checkOverlap = hider._macifyOriginal.checkOverlap;
+                    delete hider._macifyOriginal;
+                }
+                const tracked = this._tracked(dock);
+                if (tracked)
+                    tracked.trackFullscreen = true;
+            }
+            Main.layoutManager._updateVisibility?.();
+        } catch (e) {
+            console.warn(`Macify: fullscreen dock: ${e.message}`);
+        }
+    }
+}
+
 export default class MacifyMenubar extends Extension {
     enable() {
         this._logo = new LogoMenu(this.path);
         this._title = new AppTitle();
         Main.panel.addToStatusArea('macify-logo', this._logo, 0, 'left');
         Main.panel.addToStatusArea('macify-app-title', this._title, 1, 'left');
+        this._fullscreenDock = new FullscreenDock();
     }
 
     disable() {
+        this._fullscreenDock?.destroy();
+        this._fullscreenDock = null;
         this._title?.destroy();
         this._logo?.destroy();
         this._title = null;

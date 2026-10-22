@@ -269,6 +269,7 @@ SPANISH = {
     "Macify {version} is installed": "Macify {version} está instalado",
     "Reopen Macify to use the new version.": "Vuelve a abrir Macify para usar la versión nueva.",
     "Reopen Macify": "Volver a abrir Macify",
+    "Update available (active after you log in again).": "Hay una actualización (se activa al volver a iniciar sesión).",
 }
 
 

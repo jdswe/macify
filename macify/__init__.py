@@ -1,3 +1,3 @@
 """Macify: convierte el escritorio GNOME de Ubuntu al estilo macOS."""
 
-__version__ = "0.7.1"
+__version__ = "0.7.2"

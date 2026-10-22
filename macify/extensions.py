@@ -100,6 +100,16 @@ def install_menubar(dry_run: bool, log) -> None:
     (target / "icons" / "macify-logo-symbolic.svg").write_text(menubar_logo_svg())
 
 
+def menubar_outdated() -> bool:
+    """La extensión propia instalada es distinta de la que trae esta versión de Macify."""
+    target = INSTALL_DIR / MENUBAR
+    if not target.exists():
+        return False
+    packaged = resources.files("macify").joinpath("data", "extension", MENUBAR)
+    return any(not (target / item.name).is_file() or (target / item.name).read_bytes() != item.read_bytes()
+               for item in packaged.iterdir() if item.is_file())
+
+
 def enabled_settings(magic_lamp: bool = True) -> dict:
     """Ajuste de enabled-extensions: añade las de Macify y quita los docks anteriores."""
     result = subprocess.run(["gsettings", "get", "org.gnome.shell", "enabled-extensions"],

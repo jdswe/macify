@@ -29,6 +29,9 @@ def refresh(log, login: bool = False) -> None:
         installed = (extensions.INSTALL_DIR / "dash2dock-lite@icedman.github.com").exists()
         if installed:
             extensions.disable_other_docks(False, log)
+        if extensions.menubar_outdated():
+            # Macify se actualizó: su extensión nueva queda lista para el próximo inicio de sesión.
+            extensions.install_menubar(False, log)
         apps.apply(False, log)
     if icons.THEME_DIR.exists() and icons.mac_theme_ready():
         icons.ensure_theme(False, log)
