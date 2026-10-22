@@ -68,6 +68,7 @@ nav .links a:hover { color: var(--text); }
   background: var(--glass); border: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 .badge b { color: var(--text); }
 .actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 28px 0 14px; }
+@media (max-width: 560px) { .btn { padding: 12px 20px; font-size: 15px; } .actions { gap: 10px; } }
 .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 30px; border-radius: 999px;
   font-weight: 700; font-size: 16px; text-decoration: none; border: 1px solid transparent;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease; }
@@ -131,7 +132,7 @@ th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: upp
 .yes { color: #6ee7a8; font-weight: 700; } .part { color: #ffd479; font-weight: 700; } .no { color: #ff8a8a; font-weight: 700; }
 
 /* versiones */
-.release { padding: 18px 22px; }
+.release { padding: 18px 22px; min-width: 0; overflow-wrap: anywhere; }
 .release header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .release h3 { margin: 0; }
 .release time { color: var(--faint); font-size: 13px; }
@@ -145,6 +146,13 @@ details { background: var(--glass); border: 1px solid var(--border); border-radi
 summary { cursor: pointer; font-weight: 600; }
 details p { color: var(--muted); margin: 10px 0 0; }
 
+.gl { width: 18px; height: 18px; flex: none; }
+nav .with-icon { display: inline-flex; align-items: center; gap: 6px; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.footer-links a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--border); color: var(--muted); text-decoration: none;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease; }
+.footer-links a:hover { background: var(--glass-strong); color: var(--text); transform: translateY(-2px); }
 footer { padding: 48px 0 64px; color: var(--faint); font-size: 14px; border-top: 1px solid var(--border); }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
 </style>
@@ -159,7 +167,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
       <a href="#screenshots" class="optional">Screenshots</a>
       <a href="#safety" class="optional">Safety</a>
       <a href="#releases" class="optional">Releases</a>
-      <a href="https://github.com/jdswe/macify">GitHub</a>
+      <a href="https://github.com/jdswe/macify" class="with-icon"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
     </div>
   </div>
 </nav>
@@ -170,8 +178,9 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
   <p>A one-click macOS look for Ubuntu — from the boot screen to the dock. Everything can be undone.</p>
   <span class="badge">Latest version <b id="version">…</b> <span id="released"></span></span>
   <div class="actions">
-    <a class="btn btn-primary" id="download" href="https://github.com/jdswe/macify/releases/latest">Download .deb</a>
-    <a class="btn btn-ghost" href="#install">Install with one command</a>
+    <a class="btn btn-primary" href="https://github.com/jdswe/macify/releases/latest" data-download><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="download">Download .deb</span></a>
+    <a class="btn btn-ghost" href="#install"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 4 4-4 4"/><path d="M12 17h7"/></svg>Install with one command</a>
+    <a class="btn btn-ghost" href="https://github.com/jdswe/macify"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Source</a>
   </div>
   <div class="fine">Ubuntu with GNOME 45–50 · tested on Ubuntu 26.04 · free and open source (GPL-3.0)</div>
   <div class="shot"><img src="welcome.png" alt="Macify welcome screen"></div>
@@ -295,7 +304,12 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
         and <a href="https://extensions.gnome.org">GNOME extensions</a>, each under its own license.
         macOS is a trademark of Apple Inc. Not affiliated with Apple or Canonical.</div>
     </div>
-    <a href="https://github.com/jdswe/macify">github.com/jdswe/macify</a>
+    <div class="footer-links">
+      <a href="https://github.com/jdswe/macify" title="Source code"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+      <a href="https://github.com/jdswe/macify/releases" title="All versions"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.2"/></svg>Releases</a>
+      <a href="https://github.com/jdswe/macify/blob/main/LICENSE" title="License"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>License</a>
+      <a href="https://github.com/jdswe/macify/issues/new" title="Report a problem"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M3 13h4M17 13h4M5 19l2.5-2M19 19l-2.5-2M5 7l2.5 2M19 7l-2.5 2M9 5l1.5 2M15 5l-1.5 2"/></svg>Report a problem</a>
+    </div>
   </div>
 </footer>
 
@@ -340,7 +354,8 @@ async function loadReleases() {
     document.getElementById("released").textContent =
       "· " + new Date(latest.published_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
     if (deb) {
-      for (const id of ["download", "download2"]) document.getElementById(id).href = deb.browser_download_url;
+      document.querySelectorAll("[data-download]").forEach(a => (a.href = deb.browser_download_url));
+      document.getElementById("download2").href = deb.browser_download_url;
       document.getElementById("download").textContent = `Download ${latest.tag_name} (.deb)`;
     }
     list.innerHTML = releases.map((r, i) => `
