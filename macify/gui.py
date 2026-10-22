@@ -185,10 +185,6 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _on_appearance(self, button: Gtk.ToggleButton, value: str) -> None:
         if button.get_active():
             self.choices.appearance = value
-            # Los fondos con versión oscura se muestran (y se aplican) en la del aspecto elegido.
-            if hasattr(self, "wallpaper_sections"):
-                self._fill_wallpapers()
-                self._update_backdrop()
             self._live()
 
     def _update_dock_preview(self) -> None:
@@ -246,7 +242,6 @@ class MacifyWindow(Adw.ApplicationWindow):
         current = profile.wallpaper_path(self.choices).resolve()
         items = wallpapers.catalog()
         pending = []
-        dark = self.choices.appearance == "dark"
         for section in wallpapers.sections(items):
             members = [w for w in items if w.section == section]
             if not members:
@@ -265,7 +260,7 @@ class MacifyWindow(Adw.ApplicationWindow):
                 flow.append(tile)
                 if wallpaper.path.resolve() == current:
                     flow.select_child(tile.get_parent())
-                pending.append((picture, profile.dark_variant(wallpaper.path) if dark else wallpaper.path))
+                pending.append((picture, wallpaper.path))
             self.wallpaper_sections.append(text(_(section), "mf-section"))
             self.wallpaper_sections.append(flow)
             self.wallpaper_flows.append(flow)

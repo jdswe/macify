@@ -14,7 +14,8 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 // - Mientras está visible no se esconde si el puntero sigue encima (iconos ampliados,
 //   margen y hueco hasta el borde incluidos), y espera un momento antes de esconderse.
 const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
-const HIDE_DELAY_MS = 300;
+const HIDE_DELAY_MS = 200;
+const LEAVE_POLL_MS = 120;     // mientras el puntero sigue cerca del dock, se mira si ya salió
 const REVEAL_MS = 700;          // tiempo en que se vigila que el dock termine de entrar
 const KEEP_MARGIN = 28;
 // Al poner o quitar una pantalla (o Super+P: duplicar, sólo el portátil…) el dock rehace sus
@@ -296,8 +297,23 @@ export class FullscreenDock {
             enableBadges(this.dock);
         };
         hider._checkOverlap = function () {
-            if (this._shown && pointerOnDock(this.dock))
+            if (this._shown && pointerOnDock(this.dock)) {
+                // El dock no vuelve a mirar hasta otro evento: aquí se vigila cuándo sale el
+                // puntero, para esconderlo enseguida y no dejarlo «esperando».
+                this._macifyLeaveId ??= GLib.timeout_add(GLib.PRIORITY_DEFAULT, LEAVE_POLL_MS, () => {
+                    if (this.dock._macifyDestroyed) {
+                        this._macifyLeaveId = null;
+                        return GLib.SOURCE_REMOVE;
+                    }
+                    if (this._shown && pointerOnDock(this.dock))
+                        return GLib.SOURCE_CONTINUE;
+                    this._macifyLeaveId = null;
+                    if (this._shown)
+                        this.hide();
+                    return GLib.SOURCE_REMOVE;
+                });
                 return false;
+            }
             // En pantalla completa sólo se queda mientras el puntero está sobre el dock.
             if (this.dock._monitor?.inFullscreen && !this.extension?._inOverview)
                 return true;
@@ -361,6 +377,9 @@ export class FullscreenDock {
                     if (hider._macifyHideId)
                         GLib.source_remove(hider._macifyHideId);
                     hider._macifyHideId = 0;
+                    if (hider._macifyLeaveId)
+                        GLib.source_remove(hider._macifyLeaveId);
+                    hider._macifyLeaveId = null;
                     hider.show = hider._macifyOriginal.show;
                     hider.hide = hider._macifyOriginal.hide;
                     hider._checkOverlap = hider._macifyOriginal.checkOverlap;

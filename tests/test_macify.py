@@ -112,7 +112,8 @@ class WallpaperTests(unittest.TestCase):
             if section == wallpapers.MACIFY:
                 self.assertTrue((folder / name.replace(".jpg", "-dark.jpg")).is_file(), name)
 
-    def test_dark_twin_follows_the_appearance(self):
+    def test_appearance_never_changes_the_wallpaper(self):
+        """Regresión 0.11: al tocar Estilo oscuro cambiaba el fondo; sólo debe cambiar el aspecto."""
         import tempfile
         from unittest import mock
         from macify import profile
@@ -120,18 +121,17 @@ class WallpaperTests(unittest.TestCase):
             light, dark = Path(tmp) / "bay.jpg", Path(tmp) / "bay-dark.jpg"
             self._image(light, (240, 230, 220))
             self._image(dark, (20, 20, 30))
-            choices = profile.Choices(appearance="dark", wallpaper=str(light))
-            self.assertEqual(profile.desktop_wallpaper(choices), dark)
-            background = profile.settings(choices)["org.gnome.desktop.background"]
-            self.assertIn("bay.jpg", background["picture-uri"])
-            self.assertIn("bay-dark.jpg", background["picture-uri-dark"])
-            self.assertEqual(profile.look(choices)["bar"], {"light": "dark-text", "dark": "light-text"})
-            choices.appearance = "light"
-            self.assertEqual(profile.desktop_wallpaper(choices), light)
+            for appearance in ("light", "dark"):
+                choices = profile.Choices(appearance=appearance, wallpaper=str(light))
+                self.assertEqual(profile.desktop_wallpaper(choices), light)
+                background = profile.settings(choices)["org.gnome.desktop.background"]
+                self.assertEqual(background["picture-uri"], background["picture-uri-dark"])
+                self.assertIn("bay.jpg", background["picture-uri"])
+            self.assertEqual(profile.look(choices)["bar"], {"light": "dark-text", "dark": "dark-text"})
             with mock.patch("macify.profile.top_brightness", return_value=0.1):
                 self.assertEqual(profile.look(choices)["bar"]["light"], "light-text")
 
-    def test_folders_become_sections_and_twins_are_hidden(self):
+    def test_folders_become_sections_and_dark_versions_are_choices(self):
         import tempfile
         from unittest import mock
         from macify import wallpapers
@@ -145,9 +145,28 @@ class WallpaperTests(unittest.TestCase):
                  mock.patch.object(wallpapers, "load_config", return_value={}):
                 items = wallpapers.catalog()
             mine = {w.title: w.section for w in items if w.section not in wallpapers.FIRST}
-            self.assertEqual(mine, {"Loose": "Your Folder", "macOS Hills": "Landscapes"})
-            self.assertEqual(wallpapers.sections(items)[:2], wallpapers.FIRST)
+            self.assertEqual(mine, {"Loose": "Your Folder", "macOS Hills": "Landscapes",
+                                    "macOS Hills Dark": "Landscapes"})
             self.assertEqual(wallpapers.sections(items)[-2:], ["Landscapes", "Your Folder"])
+            macify = [w.path.name for w in items if w.section == wallpapers.MACIFY]
+            self.assertEqual(macify[:2], ["lilac.jpg", "lilac-dark.jpg"])    # cada oscura junto a su clara
+
+    def test_big_wallpapers_get_a_screen_sized_copy(self):
+        """El fondo se carga entero en la memoria de vídeo: uno de 6000 px gastaba ~96 MB."""
+        import tempfile
+        from unittest import mock
+        from PIL import Image
+        from macify import wallpapers
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(wallpapers, "FITTED_DIR", Path(tmp) / "cache"):
+            big, small = Path(tmp) / "big.jpg", Path(tmp) / "small.jpg"
+            Image.new("RGB", (6000, 4000), (10, 20, 30)).save(big)
+            Image.new("RGB", (1920, 1080), (10, 20, 30)).save(small)
+            copy = wallpapers.fitted(big, screen=(1920, 1080))
+            self.assertNotEqual(copy, big)
+            self.assertEqual(Image.open(copy).size, (2560, 1707))       # cubre 2560×1440 sin recortar
+            self.assertEqual(wallpapers.fitted(big, screen=(1920, 1080)), copy)   # en caché
+            self.assertEqual(wallpapers.fitted(small, screen=(1920, 1080)), small)
+            self.assertEqual(Image.open(big).size, (6000, 4000))        # el original no se toca
 
     def test_login_screen_is_outdated_after_a_new_wallpaper(self):
         from unittest import mock

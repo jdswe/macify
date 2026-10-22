@@ -23,8 +23,8 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
 | Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |
 | Cursor & fonts | WhiteSur cursor, San Francisco fonts (SF Pro, SF Mono) |
-| Wallpapers | Eight original 4K wallpapers, each with a light and a dark version; your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
-| One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches everything. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
+| Wallpapers | Eight original 4K wallpapers, each in a light and a dark version (your choice stays in both appearances); your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
+| One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches windows, menus, bar and dock — the wallpaper stays. Night Light turns on right away, like Night Shift. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
 | Displays | Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change |
 | Colors | Accent color taken from your wallpaper |
 | Apps | Traffic-light buttons in apt, Flatpak and snap GTK apps (also ones installed later), VS Code and Firefox |

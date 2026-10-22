@@ -274,6 +274,15 @@ async function testLiveActivities(macify) {
     await until(() => button.visible && button.pill.opacity > 200, 5000);
     check('Live Activity shows the playing song', button.visible && button.label.text.includes('Blinding Lights'),
         button.label.text);
+    // Con un título largo la cápsula se ajusta y el reloj no se sale de la barra (pasó en 12 h).
+    const longPlayer = fakePlayer('long', 'Compañero de Mi Alma (En Vivo) — Versión Extendida Acústica', 'Óscar Medina');
+    await sleep(2500);
+    const right = Main.panel._rightBox;
+    await sleep(500);
+    check('the clock never overflows with a long song title', right.width >= right.get_preferred_width(-1)[1] - 1,
+        `${Math.round(right.width)} of ${Math.round(right.get_preferred_width(-1)[1])}`);
+    longPlayer.stop();
+    await sleep(800);
     await sleep(6000);
     check('audio bars keep moving while the song plays', button.barActors.some(b => b._moving));
     button.menu.open();
@@ -467,6 +476,40 @@ async function testBarLook() {
     file.delete(null);
 }
 
+// Con el Wi‑Fi apagado o sin red GNOME oculta su icono: el botón debe seguir en la barra
+// para volver a encenderlo desde ahí. (Se simula ocultando el icono: el Wi‑Fi real no se toca.)
+async function testWifiStays() {
+    const qs = Main.panel.statusArea.quickSettings;
+    const button = Main.panel.statusArea['macify-wifi'];
+    const wifi = button && Main.extensionManager.lookup('macify-menubar@macify.dev').stateObj._parts
+        .find(p => p.constructor.name === 'StatusBar')._extras.map(e => e.menu).find(m => m.constructor.name === 'WifiMenu');
+    if (!wifi?._device) {
+        check('Wi‑Fi stays in the bar when off', true, 'no Wi‑Fi device here');
+        return;
+    }
+    const indicator = qs._network;
+    indicator.visible = false;
+    await sleep(300);
+    check('Wi‑Fi stays in the bar when off or without signal', button.visible && wifi.fallbackIcon.visible,
+        wifi.fallbackIcon.icon_name);
+    indicator.visible = true;
+    await sleep(300);
+    check('and shows GNOME\'s icon again when back', button.visible && !wifi.fallbackIcon.visible);
+}
+
+// Con el Centro de control abierto no sale el indicador encima (su deslizador ya lo muestra).
+async function testOsdHidesWithControlCenter() {
+    const qs = Main.panel.statusArea.quickSettings;
+    qs.menu.open();
+    await sleep(400);
+    Main.osdWindowManager.showAll(new Gio.ThemedIcon({name: 'display-brightness-symbolic'}), null, 0.4, 1);
+    await sleep(300);
+    const window = Main.osdWindowManager._osdWindows[Main.layoutManager.primaryIndex];
+    check('no brightness card over an open Control Center', !window.visible);
+    qs.menu.close();
+    await sleep(300);
+}
+
 // El indicador de volumen sale arriba a la derecha con su nombre, como en macOS.
 async function testOsd() {
     Main.osdWindowManager.showAll(new Gio.ThemedIcon({name: 'audio-volume-medium-symbolic'}), null, 0.6, 1);
@@ -560,10 +603,10 @@ async function testDisplayChanges() {
     const healthy = () => docks().length > 0 && docks().every(d => d.dash && d.width > 0 && d.height > 0);
     const describe = () => docks().map(d => `${Math.round(d.width)}x${Math.round(d.height)}${d.dash ? '' : ' no dash'}`).join(', ');
     await useDisplays(1);
-    await sleep(5000);
+    await until(() => healthy() && docks().length === 1, 12000);
     check('dock works after a display is removed', healthy() && docks().length === 1, describe());
     await useDisplays(all);
-    await sleep(5000);
+    await until(() => healthy() && docks().length === all, 12000);
     check('dock works after the display comes back', healthy() && docks().length === all, describe());
 }
 
@@ -743,6 +786,8 @@ async function run() {
         await testSoundAmplification();
         await testEnergyModes();
         await testOsd();
+        await testOsdHidesWithControlCenter();
+        await testWifiStays();
         await testBarLook();
         await testScreenshotPreview(macify);
         await captureMenu('dateMenu', 'date-menu');

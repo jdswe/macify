@@ -26,6 +26,12 @@ const EVENT_MS = 3500;          // lo que dura un aviso (carga, conexión)
 const QUIET_START_MS = 6000;    // al iniciar sesión no se avisa de lo que ya estaba así
 const VOLUME_STEP = 0.05;
 const MAX_TEXT = 44;
+// GNOME da a cada lado de la barra como mucho la mitad de lo que deja el centro: si la
+// cápsula crece, el lado derecho se aprieta y el reloj se corta. El título se ajusta al
+// espacio que queda libre de verdad (entre estos límites, en píxeles lógicos).
+const LABEL_MAX_PX = 320;
+const LABEL_MIN_PX = 48;
+const BARS_STEP_MS = 125;
 const RESTING_BARS = [0.55, 0.95, 0.7, 0.45];
 const UPOWER_STATE = {CHARGING: 1, DISCHARGING: 2, FULL: 4};
 
@@ -74,6 +80,9 @@ export class LiveActivities {
         this._nowPlaying = new NowPlaying(this._button.menu, this._volume, player => this._players.select(player));
         this._button.connect('scroll-event', (_a, event) => this._onScroll(event));
         Main.panel.addToStatusArea('macify-live', this._button, 0, 'center');
+        // Si cambia lo que hay a los lados (otra app, más iconos), el título se reajusta.
+        for (const box of [Main.panel._leftBox, Main.panel._rightBox])
+            box.connectObject('notify::allocation', () => this._queueFit(), this);
         // Las barras descansan mientras la barra no se ve (pantalla completa o bloqueo).
         global.display.connectObject('in-fullscreen-changed', () => this._wakeBars(), this);
         Main.screenShield?.connectObject?.('locked-changed', () => this._wakeBars(), this);
@@ -105,6 +114,32 @@ export class LiveActivities {
         }
     }
 
+    _queueFit() {
+        this._fitId ??= GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._fitId = null;
+            this._fitIsland();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _fitIsland() {
+        const button = this._button;
+        if (!button.visible)
+            return;
+        const panel = Main.panel;
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const [, left] = panel._leftBox.get_preferred_width(-1);
+        const [, right] = panel._rightBox.get_preferred_width(-1);
+        const [, center] = panel._centerBox.get_preferred_width(-1);
+        const [, label] = button.label.get_preferred_width(-1);
+        const room = (panel.width - 2 * Math.max(left, right) - (center - label)) / scale - 8;
+        const width = Math.min(LABEL_MAX_PX, Math.floor(room));
+        const style = `max-width: ${Math.max(width, 0)}px;`;
+        if (button.label.style !== style)
+            button.label.style = style;
+        button.label.visible = width >= LABEL_MIN_PX;      // sin sitio: sólo icono y barras
+    }
+
     _show(icon, text, playing) {
         const button = this._button;
         if (icon instanceof Gio.Icon)
@@ -113,6 +148,7 @@ export class LiveActivities {
             button.icon.icon_name = icon;
         const changed = button.label.text !== clip(text);
         button.label.text = clip(text);
+        this._queueFit();
         button.bars.visible = playing;
         if (!playing)
             this._restBars();
@@ -150,8 +186,9 @@ export class LiveActivities {
 
     // ---------- barras de audio ----------
     // Se mueven todo el tiempo que suena algo, como en macOS (también con otra app delante).
-    // Sólo se repinta su pequeña zona; con la barra oculta (pantalla completa o bloqueo) o en
-    // pausa descansan, así no gastan nada.
+    // Un solo temporizador las cambia 8 veces por segundo, sin animar entre medias: la barra
+    // se repinta 8 veces y no 60, y en pausa o con la barra oculta (pantalla completa,
+    // bloqueo) se paran del todo.
 
     get _barsLive() {
         const button = this._button;
@@ -160,31 +197,25 @@ export class LiveActivities {
     }
 
     _wakeBars() {
-        if (!this._barsLive)
+        if (!this._barsLive || this._barsId)
             return;
-        for (const bar of this._button.barActors) {
-            if (!bar._moving)
-                this._moveBar(bar);
-        }
-    }
-
-    _moveBar(bar) {
-        if (!this._barsLive) {
-            bar._moving = false;
-            bar.ease({scale_y: RESTING_BARS[this._button.barActors.indexOf(bar)], duration: 300,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD});
-            return;
-        }
-        bar._moving = true;
-        bar.ease({
-            scale_y: 0.25 + Math.random() * 0.75,
-            duration: 220 + Math.floor(Math.random() * 240),
-            mode: Clutter.AnimationMode.EASE_IN_OUT_SINE,
-            onComplete: () => this._moveBar(bar),
+        this._button.barActors.forEach(bar => (bar._moving = true));
+        this._barsId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BARS_STEP_MS, () => {
+            if (!this._barsLive) {
+                this._barsId = 0;
+                this._restBars();
+                return GLib.SOURCE_REMOVE;
+            }
+            for (const bar of this._button.barActors)
+                bar.scale_y = 0.25 + Math.random() * 0.75;
+            return GLib.SOURCE_CONTINUE;
         });
     }
 
     _restBars() {
+        if (this._barsId)
+            GLib.source_remove(this._barsId);
+        this._barsId = 0;
         this._button.barActors.forEach((bar, i) => {
             bar.remove_all_transitions();
             bar._moving = false;
@@ -298,6 +329,10 @@ export class LiveActivities {
         }
         global.display.disconnectObject(this);
         Main.screenShield?.disconnectObject?.(this);
+        Main.panel._leftBox.disconnectObject(this);
+        Main.panel._rightBox.disconnectObject(this);
+        if (this._fitId)
+            GLib.source_remove(this._fitId);
         this._powerCancellable.cancel();
         this._power?.disconnectObject(this);
         this._monitor.disconnectObject(this);

@@ -21,8 +21,8 @@
 - **Live Activities** — a bubble at the top for music, charging and connection changes. Click it for Now Playing: cover, progress, controls, volume and the choice of source.
 - **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
 - **Icons** — macOS icon set; missing icons are generated in the macOS shape.
-- **Wallpapers, light and dark** — eight original folded-glass wallpapers, each with a light and a dark version that switch with your appearance. Your own folders become sections of the gallery. Changing the wallpaper also updates the login screen (one password), without reinstalling.
-- **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches everything.
+- **Wallpapers, light and dark** — eight original folded-glass wallpapers, each in a light and a dark version — pick the one you like; it stays when you switch appearance. Your own folders become sections of the gallery. Changing the wallpaper also updates the login screen (one password), without reinstalling.
+- **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches windows, menus, bar and dock together — your wallpaper stays.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Software Update** — checks GitHub, downloads and installs new versions from inside the app.

@@ -1,7 +1,8 @@
 // Indicador de volumen y brillo como en macOS 27: una tarjeta de cristal arriba a la derecha,
 // bajo la barra, con el nombre («Sonido», «Pantalla»…) sobre la barra de nivel. Es el mismo
 // indicador de GNOME (teclas de volumen, brillo, micrófono), sólo que colocado y vestido
-// como el de Apple; al desactivar la extensión vuelve a ser el de GNOME.
+// como el de Apple; al desactivar la extensión vuelve a ser el de GNOME. Mientras el Centro
+// de control está abierto no sale (sus deslizadores ya enseñan el cambio).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -35,6 +36,10 @@ export class MacOsd {
         // Cada vez que GNOME va a mostrar el indicador en un monitor (también en los que se
         // conectan después), se viste antes.
         this._manager._showOsdWindow = (index, icon, ...rest) => {
+            // Con el Centro de control abierto, su propio deslizador ya muestra el cambio:
+            // el indicador sólo saldría encima, repetido.
+            if (Main.panel.statusArea.quickSettings?.menu?.isOpen)
+                return;
             const window = this._manager._osdWindows[index];
             if (window)
                 this._dress(window, icon);

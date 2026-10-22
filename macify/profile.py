@@ -50,16 +50,10 @@ def wallpaper_path(choices: Choices) -> Path:
     return chosen if chosen and chosen.is_file() else WALLPAPER_DIR / DEFAULT_WALLPAPER
 
 
-def dark_variant(path: Path) -> Path:
-    """«nombre-dark.jpg» junto a «nombre.jpg» es su versión oscura, como en los fondos de macOS."""
-    twin = path.with_name(f"{path.stem}-dark{path.suffix}")
-    return twin if twin.is_file() else path
-
-
 def desktop_wallpaper(choices: Choices) -> Path:
-    """El fondo que se ve: la versión oscura con el aspecto oscuro, si la hay."""
-    path = wallpaper_path(choices)
-    return dark_variant(path) if choices.appearance == "dark" else path
+    """El fondo que se ve: el elegido, con el aspecto claro o el oscuro (cambiar de aspecto
+    adapta ventanas, barra, menús y dock, pero no cambia el fondo)."""
+    return wallpaper_path(choices)
 
 
 def accent(choices: Choices) -> str:
@@ -76,11 +70,10 @@ def _bar_text(wallpaper: Path) -> str:
 
 
 def look(choices: Choices) -> dict:
-    """Lo que Macify Menubar ajusta en vivo: el texto de la barra según el fondo de cada aspecto,
-    y el aspecto aplicado (si se cambia desde el Centro de control, Macify lo sigue)."""
-    light = wallpaper_path(choices)
-    return {"appearance": choices.appearance,
-            "bar": {"light": _bar_text(light), "dark": _bar_text(dark_variant(light))}}
+    """Lo que Macify Menubar ajusta en vivo: el texto de la barra según el fondo, y el aspecto
+    aplicado (si se cambia desde el Centro de control, Macify adapta el resto)."""
+    bar = _bar_text(wallpaper_path(choices))
+    return {"appearance": choices.appearance, "bar": {"light": bar, "dark": bar}}
 
 
 def write_look(choices: Choices) -> None:
@@ -117,11 +110,10 @@ def dock_icon_size(pixels: int) -> str:
 def settings(choices: Choices) -> dict:
     dark = choices.appearance == "dark"
     variant = "Dark" if dark else "Light"
-    light = wallpaper_path(choices)
-    uri = q("file://" + str(light))
-    dark_uri = q("file://" + str(dark_variant(light)))
-    shown = q("file://" + str(desktop_wallpaper(choices)))
-    glass = glass_tint(desktop_wallpaper(choices), dark) if light.exists() else (
+    wallpaper = wallpaper_path(choices)
+    from .wallpapers import fitted             # aquí: wallpapers importa profile de forma indirecta
+    uri = q("file://" + str(fitted(wallpaper)))
+    glass = glass_tint(wallpaper, dark) if wallpaper.exists() else (
         (0.12, 0.12, 0.14, 0.35) if dark else (1.0, 1.0, 1.0, 0.35))
     return {
         "org.gnome.desktop.interface": {
@@ -147,15 +139,22 @@ def settings(choices: Choices) -> dict:
         },
         "org.gnome.desktop.background": {
             "picture-uri": uri,
-            "picture-uri-dark": dark_uri,           # con «-dark» al lado, cambia con el aspecto
+            "picture-uri-dark": uri,                # el mismo fondo en claro y en oscuro
             "picture-options": q("zoom"),
         },
         "org.gnome.desktop.screensaver": {
-            "picture-uri": shown,
+            "picture-uri": uri,
             "picture-options": q("zoom"),
             "lock-enabled": "true",
         },
         "org.gnome.desktop.sound": {"event-sounds": "true"},
+        # Luz nocturna como Night Shift: el botón del Centro de control la enciende al momento
+        # y sigue puesta hasta apagarla (sin esperar al horario de las 20:00).
+        "org.gnome.settings-daemon.plugins.color": {
+            "night-light-schedule-automatic": "false",
+            "night-light-schedule-from": "0.0",
+            "night-light-schedule-to": "24.0",
+        },
         # Cmd (Super) + Tab cambia de app; Cmd + ` entre ventanas de la misma app.
         "org.gnome.desktop.wm.keybindings": {
             "switch-applications": q_list("<Super>Tab"),

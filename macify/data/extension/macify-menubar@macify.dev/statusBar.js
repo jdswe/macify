@@ -87,6 +87,11 @@ export class StatusBar {
                 // menú decide cuándo se ve. El indicador de GNOME queda guardado.
                 button.add_child(menu.icon);
                 this._lend(indicator, this._tucked);
+            } else if (menu.fallbackIcon) {
+                // Wi‑Fi: los iconos de GNOME y, cuando no muestra ninguno, el de Macify.
+                this._lend(indicator, button);
+                button.add_child(menu.fallbackIcon);
+                menu.watchPresence(indicator, button);
             } else {
                 this._lend(indicator, button);
                 // Sin batería o sin audio, GNOME oculta su indicador: el botón también.
