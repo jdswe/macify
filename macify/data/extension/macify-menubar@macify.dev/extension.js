@@ -108,10 +108,27 @@ class AppTitle extends PanelMenu.Button {
     }
 });
 
-// El dock animado (Dash2Dock Animated) se esconde del todo cuando una ventana está en
-// pantalla completa. Como en macOS, aquí sigue a mano: escondido, y aparece al llevar
-// el puntero al borde inferior. Si ese dock no está, esto no hace nada.
+// Ajustes al dock animado (Dash2Dock Animated) para que se comporte como el de macOS
+// sobre cualquier app. Si ese dock no está, esto no hace nada.
+// - En pantalla completa se esconde del todo; aquí aparece al llevar el puntero al borde.
+// - Mientras está visible no se esconde si el puntero sigue encima (iconos ampliados,
+//   margen y hueco hasta el borde incluidos), y espera un momento antes de esconderse.
 const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
+const HIDE_DELAY_MS = 300;
+const KEEP_MARGIN = 28;
+
+// El puntero está sobre el dock visible o en el camino entre él y el borde inferior.
+function pointerOnDock(dock) {
+    const monitor = dock._monitor;
+    const struts = dock.struts;
+    if (!monitor || !struts || dock._hidden || dock.isVertical?.() || dock._position === 'top')
+        return false;
+    const [px, py] = global.get_pointer();
+    const [x, y] = struts.get_transformed_position();
+    const lift = struts.height * 0.9 + KEEP_MARGIN;          // espacio de los iconos ampliados
+    return px >= x - KEEP_MARGIN && px <= x + struts.width + KEEP_MARGIN &&
+        py >= y - lift && py <= monitor.y + monitor.height;
+}
 
 class FullscreenDock {
     constructor() {
@@ -164,8 +181,12 @@ class FullscreenDock {
         const hider = dock.autohider;
         if (!hider || hider._macifyOriginal)
             return;
-        hider._macifyOriginal = {show: hider.show, checkOverlap: hider._checkOverlap};
+        hider._macifyOriginal = {show: hider.show, hide: hider.hide, checkOverlap: hider._checkOverlap};
         hider.show = function () {
+            if (this._macifyHideId) {
+                GLib.source_remove(this._macifyHideId);
+                this._macifyHideId = 0;
+            }
             if (!this.dock._monitor)
                 return;
             this._dwell = 0;
@@ -174,10 +195,31 @@ class FullscreenDock {
             this.dock.slideIn();
         };
         hider._checkOverlap = function () {
+            if (this._shown && pointerOnDock(this.dock))
+                return false;
             // En pantalla completa sólo se queda mientras el puntero está sobre el dock.
             if (this.dock._monitor?.inFullscreen && !this.extension?._inOverview)
-                return !this.dock._isWithinDash(global.get_pointer());
+                return true;
             return this._macifyOriginal.checkOverlap.call(this);
+        };
+        hider.hide = function () {
+            if (this._macifyHideId)
+                return;
+            this._macifyHideId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, HIDE_DELAY_MS, () => {
+                this._macifyHideId = 0;
+                if (this._enabled && this._checkOverlap()) {
+                    if (this._shown) {
+                        const [px, py] = global.get_pointer();
+                        const [x, y] = this.dock.struts?.get_transformed_position() ?? [0, 0];
+                        console.log(`Macify dock: hide on monitor ${this.dock._monitor?.index} pointer=${px},${py} ` +
+                            `dock=${Math.round(x)},${Math.round(y)} ${this.dock.struts?.width}x${this.dock.struts?.height} ` +
+                            `fullscreen=${this.dock._monitor?.inFullscreen} ` +
+                            `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
+                    }
+                    this._macifyOriginal.hide.call(this);
+                }
+                return GLib.SOURCE_REMOVE;
+            });
         };
         hider._debounceCheckHide?.();
     }
@@ -195,7 +237,11 @@ class FullscreenDock {
                     delete dock.dwell._macifyLog;
                 const hider = dock.autohider;
                 if (hider?._macifyOriginal) {
+                    if (hider._macifyHideId)
+                        GLib.source_remove(hider._macifyHideId);
+                    hider._macifyHideId = 0;
                     hider.show = hider._macifyOriginal.show;
+                    hider.hide = hider._macifyOriginal.hide;
                     hider._checkOverlap = hider._macifyOriginal.checkOverlap;
                     delete hider._macifyOriginal;
                 }
