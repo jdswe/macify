@@ -5,6 +5,8 @@
 #   3. la web (Firefox sin ventana)
 #   4. render.py dibuja cada cuadro y music.py compone el audio
 #   5. narrate.py añade la voz (ElevenLabs, «Jessa»); sin clave queda sólo con música
+# Siempre deja dos copias fuera del repositorio, en MACIFY_VIDEO_DIR (por defecto ../video):
+#   macify-demo-music.mp4 (sólo música) y macify-demo-narrated.mp4 (con la voz).
 # Uso: scripts/demo/make_video.sh [salida.mp4]   (por defecto docs/demo.mp4)
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -44,10 +46,14 @@ mv "$web/web.png" "$work/web.png"
 
 echo "4/5 rendering"
 python3 "$here/render.py" "$work" "$out"
+copies=${MACIFY_VIDEO_DIR:-$(cd "$repo/.." && pwd)/video}
+mkdir -p "$copies"
+cp "$out" "$copies/macify-demo-music.mp4"
 
 echo "5/5 narration"
 if python3 "$here/narrate.py" "$out" "$work/narrated.mp4"; then
     mv "$work/narrated.mp4" "$out"
+    cp "$out" "$copies/macify-demo-narrated.mp4"
 else
     echo "   no narration (no ElevenLabs key?): the video keeps only the music"
 fi
