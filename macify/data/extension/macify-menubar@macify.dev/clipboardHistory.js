@@ -21,8 +21,8 @@ import {_} from './i18n.js';
 
 const MAX_ITEMS = 20;
 const MAX_CHARS = 20000;                    // un texto enorme no se guarda
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;    // ni una imagen enorme
-const MAX_IMAGES = 8;
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;    // ni una imagen enorme
+const MAX_IMAGES = 5;
 const LABEL_CHARS = 56;
 const THUMB_W = 140;
 const THUMB_H = 64;
@@ -50,8 +50,17 @@ function ago(time) {
     return _('{n} h ago', {n: Math.floor(minutes / 60)});
 }
 
+// La imagen se guarda como PNG (para pegarla igual) y, para verla, sólo una copia del tamaño
+// de la vista grande: una captura de 1920×1080 decodificada entera ocuparía 8 MB más.
 function imageItem(bytes) {
     const loader = new GdkPixbuf.PixbufLoader();
+    let width = 0, height = 0;
+    loader.connect('size-prepared', (_loader, w, h) => {
+        width = w;
+        height = h;
+        const scale = Math.min(1, BIG_W / w, BIG_H / h);
+        loader.set_size(Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale)));
+    });
     try {
         loader.write_bytes(bytes);
         loader.close();
@@ -61,7 +70,8 @@ function imageItem(bytes) {
     const pixbuf = loader.get_pixbuf();
     if (!pixbuf)
         return null;
-    return {kind: 'image', key: `i:${GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA256, bytes)}`, bytes, pixbuf, time: GLib.get_real_time()};
+    return {kind: 'image', key: `i:${GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA256, bytes)}`,
+        bytes, pixbuf, width, height, time: GLib.get_real_time()};
 }
 
 export class ClipboardHistory {
@@ -188,14 +198,14 @@ export class ClipboardHistory {
         line.add_child(new St.Label({text: index < 9 ? `${index + 1}` : '', style_class: 'macify-clip-number',
             y_align: Clutter.ActorAlign.CENTER}));
         if (item.kind === 'image') {
-            const {width, height} = item.pixbuf;
+            const {width, height} = item.pixbuf;          // copia reducida; el tamaño real va en item
             const scale = Math.min(THUMB_W / width, THUMB_H / height, 1);
             line.add_child(new St.Widget({
                 style_class: 'macify-clip-thumb', content: imageContent(item.pixbuf),
                 content_gravity: Clutter.ContentGravity.RESIZE_ASPECT,
                 width: Math.round(width * scale), height: Math.round(height * scale),
             }));
-            line.add_child(this._describe(_('Image'), `${width} × ${height} · ${ago(item.time)}`));
+            line.add_child(this._describe(_('Image'), `${item.width} × ${item.height} · ${ago(item.time)}`));
         } else {
             const chars = item.text.length;
             line.add_child(this._describe(this._label(item.text),
@@ -269,7 +279,7 @@ export class ClipboardHistory {
         const big = new St.BoxLayout({style_class: 'macify-clip-big', reactive: false});
         if (item.kind === 'image') {
             const {width, height} = item.pixbuf;
-            const scale = Math.min(BIG_W / width, BIG_H / height, 1.5);
+            const scale = Math.min(BIG_W / width, BIG_H / height, 1);
             big.add_child(new St.Widget({
                 content: imageContent(item.pixbuf), content_gravity: Clutter.ContentGravity.RESIZE_ASPECT,
                 width: Math.round(width * scale), height: Math.round(height * scale),

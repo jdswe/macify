@@ -196,11 +196,24 @@ export class DockPreview {
                 this._candidate = null;
                 return GLib.SOURCE_REMOVE;
             }
-            const found = this._appOf(dock._hoveredIcon);
+            const found = this._appOf(this._iconUnderPointer(dock));
             if (found)
                 this._hover(found);
             return GLib.SOURCE_CONTINUE;
         });
+    }
+
+    // El icono bajo el puntero, mirado aquí mismo: el dock sólo anota el suyo (_hoveredIcon)
+    // mientras anima, y en la segunda pantalla a veces no lo hace.
+    _iconUnderPointer(dock) {
+        const [px, py] = global.get_pointer();
+        for (const icon of dock._icons ?? dock.dash._box.get_children()) {
+            const [x, y] = icon.get_transformed_position();
+            const [w, h] = icon.get_transformed_size();
+            if (Number.isFinite(x) && Number.isFinite(y) && px >= x && px <= x + w && py >= y && py <= y + h)
+                return icon;
+        }
+        return null;
     }
 
     _appOf(icon) {

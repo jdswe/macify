@@ -55,8 +55,9 @@ def mac_theme_ready() -> bool:
 def ensure_theme(dry_run: bool, log) -> None:
     """Crea el tema Macify con una cadena de herencia sin huecos."""
     inherits = [base_theme(), "Adwaita", "hicolor"]
-    log(_("Icon theme {theme}: inherits from {parents}").format(theme=THEME_NAME, parents=", ".join(inherits)))
+    message = _("Icon theme {theme}: inherits from {parents}").format(theme=THEME_NAME, parents=", ".join(inherits))
     if dry_run:
+        log(message)
         return
     (THEME_DIR / "apps" / str(ICON_SIZE)).mkdir(parents=True, exist_ok=True)
     changed = _write_if_changed(THEME_DIR / "index.theme",
@@ -71,6 +72,8 @@ def ensure_theme(dry_run: bool, log) -> None:
         "Size=16\nMinSize=8\nMaxSize=512\nType=Scalable\nContext=Status\n")
     # Batería, Wi‑Fi y demás iconos de la barra superior, al estilo de macOS.
     changed |= status_icons.write(THEME_DIR)
+    if changed:
+        log(message)
     if changed and shutil.which("gtk-update-icon-cache"):
         subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(THEME_DIR)], capture_output=True)
 
@@ -334,25 +337,30 @@ def generate(dry_run: bool, log) -> int:
                 continue  # lanzador propio del usuario: no se toca
             alias = next((n for n in (stem.split("_")[0], stem, entry.get("Name", "").lower()) if n in mac), None)
             name = alias or f"macify-{stem}"
-            log(_("{app}: fixed image icon → {name}").format(app=app, name=name))
             handled += 1
             overrides_wanted.add(desktop_id)
+            touched = dry_run
             if alias is None and Path(icon).exists():
                 icons_wanted.add(name)
                 if not dry_run:
-                    changed |= _draw(Path(icon), folder / f"{name}.png")
+                    touched |= _draw(Path(icon), folder / f"{name}.png")
             if not dry_run:
                 OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
-                changed |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name))
+                touched |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name))
+            # El vigilante corre cada vez que cambia una carpeta de apps: sólo se anota lo nuevo.
+            if touched:
+                log(_("{app}: fixed image icon → {name}").format(app=app, name=name))
+            changed |= touched and not dry_run
         elif icon not in mac:
             source = _find_source(icon)
             if source is None:
                 continue
-            log(_("{app}: no macOS-style icon → created").format(app=app))
             handled += 1
             icons_wanted.add(icon)
-            if not dry_run:
-                changed |= _draw(source, folder / f"{icon}.png")
+            drawn = not dry_run and _draw(source, folder / f"{icon}.png")
+            if dry_run or drawn:
+                log(_("{app}: no macOS-style icon → created").format(app=app))
+            changed |= drawn
     if not dry_run:
         changed |= _prune(folder, icons_wanted, overrides_wanted, log)
         if changed and shutil.which("gtk-update-icon-cache"):

@@ -718,6 +718,61 @@ async function testCropEditor() {
     Gio.File.new_for_path(path).delete(null);
 }
 
+// En cada pantalla (también la segunda), pasar el puntero por un icono del dock y recorrer su
+// menú del clic derecho muestran las miniaturas en esa misma pantalla.
+async function testDockPreviewEveryDisplay(macify) {
+    const app = await openApp('org.gnome.TextEditor.desktop');
+    if (app.get_n_windows() < 2) {
+        app.open_new_window(-1);
+        await until(() => app.get_n_windows() >= 2, 5000);
+    }
+    const preview = macify._parts.find(p => p.constructor.name === 'FullscreenDock')?._preview;
+    const docks = Main.extensionManager.lookup('dash2dock-lite@icedman.github.com')?.stateObj?.docks ?? [];
+    const pointer = Clutter.get_default_backend().get_default_seat()
+        .create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
+    const inside = (actor, monitor) => {
+        const [x, y] = actor.get_transformed_position();
+        return x >= monitor.x && x < monitor.x + monitor.width && y >= monitor.y && y < monitor.y + monitor.height;
+    };
+    for (const dock of docks) {
+        const monitor = dock._monitor;
+        const icon = dock.dash?._box.get_children().find(c => (c._appwell?.app ?? c.child?.app) === app);
+        if (!icon) {
+            check(`dock on display ${monitor?.index} has the app`, false, `${dock.dash?._box.get_n_children()} icons`);
+            continue;
+        }
+        const [x, y] = icon.get_transformed_position();
+        const [w, h] = icon.get_transformed_size();
+        pointer.notify_absolute_motion(GLib.get_monotonic_time(), x + w / 2, y + h / 2);
+        await sleep(300);
+        pointer.notify_absolute_motion(GLib.get_monotonic_time(), x + w / 2 + 1, y + h / 2);
+        await until(() => Boolean(preview._popup), 2500);
+        await sleep(200);                                 // ya dibujado y colocado
+        check(`hover preview on display ${monitor.index}`, Boolean(preview._popup) && inside(preview._popup, monitor),
+            preview._popup ? `at ${preview._popup.get_transformed_position().map(Math.round)}` :
+                `no popup; hovered=${Boolean(dock._hoveredIcon)} polling=${Boolean(preview._pollId)}`);
+        await screenshot(`dock-hover-${monitor.index}`);
+        pointer.notify_absolute_motion(GLib.get_monotonic_time(), monitor.x + monitor.width / 2, monitor.y + 300);
+        await sleep(600);
+        // Menú del clic derecho: la miniatura de la ventana sale junto al menú, en esta pantalla.
+        const well = icon._appwell ?? icon.child;
+        well.popupMenu?.();
+        await sleep(500);
+        const menu = well._menu;
+        const item = menu?._windowSection?._getMenuItems()[0];
+        if (item) {
+            item.active = true;
+            await sleep(200);
+        }
+        const card = preview._menus._card;
+        check(`window menu preview on display ${monitor.index}`, Boolean(card) && inside(card, monitor),
+            card ? `at ${card.get_transformed_position().map(Math.round)}` : `menu=${Boolean(menu)} item=${Boolean(item)}`);
+        await screenshot(`dock-menu-${monitor.index}`);
+        menu?.close();
+        await sleep(300);
+    }
+}
+
 async function applyScale(wanted) {
     const [serial, monitors] = await displayCall('GetCurrentState');
     let x = 0;
@@ -918,6 +973,10 @@ async function run() {
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'appgrid') {
             await captureAppGrid();
             throw new Error('only app grid requested');
+        }
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'dockhover') {
+            await testDockPreviewEveryDisplay(macify);
+            throw new Error('only dock hover requested');
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'demo') {
             await captureDemo(macify);

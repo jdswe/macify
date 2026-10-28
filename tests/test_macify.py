@@ -574,6 +574,31 @@ class IconTests(unittest.TestCase):
                 self.assertFalse(icons._draw(source, target))
             draw.assert_not_called()
 
+    def test_second_pass_with_nothing_new_logs_nothing(self):
+        """El vigilante corre a menudo: si nada cambió, no escribe en el registro."""
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            apps_dir, theme = root / "applications", root / "theme"
+            apps_dir.mkdir()
+            source = next(Path("/usr/share/icons/hicolor").rglob("*.png"), None)
+            if source is None:
+                self.skipTest("sin iconos de ejemplo")
+            (apps_dir / "demo.desktop").write_text(f"[Desktop Entry]\nType=Application\nName=Demo\nIcon={source}\nExec=demo\n")
+            with mock.patch.object(icons, "app_entries", return_value={"demo.desktop": apps_dir / "demo.desktop"}), \
+                 mock.patch.object(icons, "THEME_DIR", theme), \
+                 mock.patch.object(icons, "OVERRIDES_DIR", root / "overrides"), \
+                 mock.patch.object(icons, "_theme_stems", return_value=set()), \
+                 mock.patch.object(icons, "base_theme", return_value="Adwaita"):
+                (theme / "apps" / str(icons.ICON_SIZE)).mkdir(parents=True)
+                first, second = [], []
+                icons.generate(False, first.append)
+                icons.generate(False, second.append)
+        self.assertTrue(first)
+        self.assertEqual(second, [])
+
     def test_online_update_check_once_a_day(self):
         import time
         from unittest import mock

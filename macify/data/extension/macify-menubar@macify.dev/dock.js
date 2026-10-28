@@ -260,18 +260,6 @@ export class FullscreenDock {
                 releaseComposited(dock);
             }, this);
         }
-        if (dock.dwell && !dock.dwell._macifyLog) {
-            // Una línea en el registro cada vez que el puntero llega al borde: sirve para
-            // saber por qué el dock no aparece sobre alguna app (journalctl --user -g "Macify dock").
-            dock.dwell._macifyLog = true;
-            dock.dwell.connectObject('enter-event', () => {
-                const monitor = dock._monitor;
-                console.log(`Macify dock: edge on monitor ${monitor?.index} fullscreen=${monitor?.inFullscreen} ` +
-                    `shown=${dock.autohider?._shown} hidden=${dock._hidden} visible=${dock.visible} ` +
-                    `composited=${Boolean(dock._macifyNoScanout)} ` +
-                    `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
-            }, this);
-        }
         // Con ocultación automática el dock se alcanza también en pantalla completa (como en
         // macOS); sin ella, GNOME lo esconde en pantalla completa para no tapar un video.
         const tracked = this._tracked(dock);
@@ -331,14 +319,6 @@ export class FullscreenDock {
             this._macifyHideId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, HIDE_DELAY_MS, () => {
                 this._macifyHideId = 0;
                 if (this._enabled && this._checkOverlap()) {
-                    if (this._shown) {
-                        const [px, py] = global.get_pointer();
-                        const [x, y] = this.dock.struts?.get_transformed_position() ?? [0, 0];
-                        console.log(`Macify dock: hide on monitor ${this.dock._monitor?.index} pointer=${px},${py} ` +
-                            `dock=${Math.round(x)},${Math.round(y)} ${this.dock.struts?.width}x${this.dock.struts?.height} ` +
-                            `fullscreen=${this.dock._monitor?.inFullscreen} ` +
-                            `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
-                    }
                     this._macifyOriginal.hide.call(this);
                     keepComposited(this.dock, false);
                 }
@@ -372,9 +352,6 @@ export class FullscreenDock {
                     dock.animate = dock._macifyAnimate;
                     delete dock._macifyAnimate;
                 }
-                dock.dwell?.disconnectObject(this);
-                if (dock.dwell)
-                    delete dock.dwell._macifyLog;
                 const hider = dock.autohider;
                 if (dock._macifyRevealId) {
                     GLib.source_remove(dock._macifyRevealId);
