@@ -18,6 +18,7 @@ import {ControlCenter} from './controlCenter.js';
 import {FullscreenDock, Gnome50Fixes} from './dock.js';
 import {LiveActivities} from './liveActivities.js';
 import {BarLook} from './look.js';
+import {DisplaySwitcher} from './displaySwitcher.js';
 import {MacOsd} from './osd.js';
 import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
@@ -83,6 +84,7 @@ const PARTS = [
     ['osd', () => new MacOsd()],
     ['screenshots', () => new ScreenshotPreview()],
     ['windows', () => new WindowGuard()],
+    ['displays', () => new DisplaySwitcher()],
     ['dock', () => new FullscreenDock()],
 ];
 

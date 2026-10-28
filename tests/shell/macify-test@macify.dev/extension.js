@@ -546,6 +546,24 @@ async function testOsd() {
     await sleep(300);
 }
 
+// Con la tecla de proyectar cada pulsación pasa a la siguiente opción; el puntero no la deshace.
+async function testDisplaySwitcherKeys() {
+    const popup = new SwitchMonitor.SwitchMonitorPopup();
+    const key = () => popup._keyPressHandler(0, Meta.KeyBindingAction.SWITCH_MONITOR);
+    popup._select(0);
+    key();
+    check('projection key moves to the next option', popup._selectedIndex === 1, `${popup._selectedIndex}`);
+    key();
+    check('projection key repeat is ignored', popup._selectedIndex === 1, `${popup._selectedIndex}`);
+    await sleep(250);
+    key();
+    const wrapped = 2 % popup._items.length;       // sin pantalla integrada sólo hay dos opciones
+    check('next press moves again', popup._selectedIndex === wrapped, `${popup._selectedIndex}`);
+    popup._itemEnteredHandler((wrapped + 1) % popup._items.length);
+    check('pointer hover does not undo the choice', popup._selectedIndex === wrapped, `${popup._selectedIndex}`);
+    popup.destroy();
+}
+
 // Al dejar el puntero sobre un icono salen los archivos recientes (y las ventanas si hay varias).
 async function testDockPreview(macify) {
     const dock = macify._parts.find(p => p.constructor.name === 'FullscreenDock');
@@ -839,6 +857,7 @@ async function run() {
         await testBadges();
         await testEditor();
         await testDockPreview(macify);
+        await testDisplaySwitcherKeys();
         await testTerminal();
         await testDisplayChanges();
     } catch (e) {
