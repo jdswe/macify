@@ -3,6 +3,9 @@
 import GLib from 'gi://GLib';
 
 const SPANISH = {
+    // Vista previa del dock
+    'Recent Files': 'Archivos recientes',
+    'Copied': 'Copiado',
     // Menú del logo
     'About This Computer': 'Acerca de este equipo',
     'System Settings…': 'Ajustes del sistema…',

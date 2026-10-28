@@ -21,6 +21,7 @@ import {BarLook} from './look.js';
 import {MacOsd} from './osd.js';
 import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
+import {WindowGuard} from './windowGuard.js';
 import {_} from './i18n.js';
 
 
@@ -81,6 +82,7 @@ const PARTS = [
     ['live', () => new LiveActivities()],
     ['osd', () => new MacOsd()],
     ['screenshots', () => new ScreenshotPreview()],
+    ['windows', () => new WindowGuard()],
     ['dock', () => new FullscreenDock()],
 ];
 

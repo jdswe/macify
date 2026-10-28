@@ -8,14 +8,16 @@ import {ExtensionState} from 'resource:///org/gnome/shell/misc/extensionUtils.js
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {DockPreview} from './dockPreview.js';
+
 // Ajustes al dock animado (Dash2Dock Animated) para que se comporte como el de macOS
 // sobre cualquier app. Si ese dock no está, esto no hace nada.
 // - En pantalla completa se esconde del todo; aquí aparece al llevar el puntero al borde.
 // - Mientras está visible no se esconde si el puntero sigue encima (iconos ampliados,
 //   margen y hueco hasta el borde incluidos), y espera un momento antes de esconderse.
 const DOCK_UUID = 'dash2dock-lite@icedman.github.com';
-const HIDE_DELAY_MS = 200;
-const LEAVE_POLL_MS = 120;     // mientras el puntero sigue cerca del dock, se mira si ya salió
+const HIDE_DELAY_MS = 120;
+const LEAVE_POLL_MS = 80;      // mientras el puntero sigue cerca del dock, se mira si ya salió
 const REVEAL_MS = 700;          // tiempo en que se vigila que el dock termine de entrar
 const KEEP_MARGIN = 28;
 // Al poner o quitar una pantalla (o Super+P: duplicar, sólo el portátil…) el dock rehace sus
@@ -139,6 +141,8 @@ function pointerOnDock(dock) {
     const struts = dock.struts;
     if (!monitor || !struts || dock._hidden || dock.isVertical?.() || dock._position === 'top')
         return false;
+    if (dock._macifyKeepOpen?.())
+        return true;                                          // el panel de ventanas y archivos está abierto
     const [px, py] = global.get_pointer();
     const [x, y] = struts.get_transformed_position();
     const lift = struts.height * 0.9 + KEEP_MARGIN;          // espacio de los iconos ampliados
@@ -155,6 +159,7 @@ export class FullscreenDock {
             this._checkAfterDisplayChange();
         }, this);
         this._displays = Main.layoutManager.monitors.length;
+        this._preview = new DockPreview();
         // El dock puede crearse después que esta extensión.
         this._startId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 3, () => {
             this._startId = 0;
@@ -239,6 +244,7 @@ export class FullscreenDock {
 
     _patch(dock) {
         enableBadges(dock);
+        this._preview.attach(dock);
         if (typeof dock.animate === 'function' && !dock._macifyAnimate) {
             // Un dock quitado (sin dash) que aún se anima sólo daría errores en cada cuadro.
             dock._macifyAnimate = dock.animate;
@@ -345,6 +351,7 @@ export class FullscreenDock {
     }
 
     destroy() {
+        this._preview.destroy();
         if (this._startId)
             GLib.source_remove(this._startId);
         if (this._checkId)

@@ -103,10 +103,10 @@
 .macify-np-play StIcon { icon-size: 26px; }
 .macify-np-volume { spacing: 8px; }
 .macify-np-menu .slider {
-  -barlevel-height: 4px;
+  -barlevel-height: 10px;
   -barlevel-background-color: rgba(128, 128, 128, 0.30);
   -barlevel-active-background-color: -st-accent-color;
-  -slider-handle-radius: 6px;
+  -slider-handle-radius: 9px;
 }
 
 /* ---------- indicador de volumen y brillo (arriba a la derecha, como macOS 27) ---------- */
@@ -137,11 +137,12 @@
 .osd-window.macify-osd StLabel { font-size: 12px; margin: 0; }
 .osd-window.macify-osd .macify-osd-title { font-size: 13px; }
 .osd-window.macify-osd .level {
-  min-width: 180px;
-  height: 6px;
+  min-width: 200px;
+  height: 18px;
   margin: 0;
-  border-radius: 3px;
-  -barlevel-height: 6px;
+  border-radius: 9px;
+  -barlevel-height: 18px;
+  -barlevel-border-width: 0;
 }
 .osd-window.macify-osd-dark .level {
   -barlevel-background-color: rgba(255, 255, 255, 0.18);
@@ -208,3 +209,27 @@
 .switcher-list .alt-tab-app StLabel { font-size: 12px; }
 .switcher-list .item-box:outlined { background-color: rgba(128, 128, 128, 0.18); }
 .switcher-list .item-box:selected { background-color: rgba(128, 128, 128, 0.34); }
+
+/* ---------- panel del dock: ventanas de la app y archivos recientes ---------- */
+
+.macify-dockpop {
+  padding: 10px;
+  spacing: 8px;
+  border-radius: 20px;
+  color: #ffffff;
+  background-color: rgba(38, 38, 40, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+.macify-dockpop-windows { spacing: 10px; }
+.macify-dockpop-window { padding: 8px; border-radius: 14px; }
+.macify-dockpop-window:hover { background-color: rgba(255, 255, 255, 0.16); }
+.macify-dockpop-title { font-size: 12px; max-width: 210px; padding-top: 6px; text-align: center; }
+.macify-dockpop-recents { spacing: 2px; min-width: 240px; }
+.macify-dockpop-heading { font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.6); padding: 2px 8px 4px; }
+.macify-dockpop-file { spacing: 4px; }
+.macify-dockpop-open { padding: 5px 8px; border-radius: 9px; text-align: left; }
+.macify-dockpop-open StBoxLayout { spacing: 8px; }
+.macify-dockpop-open:hover,
+.macify-dockpop-copy:hover { background-color: rgba(255, 255, 255, 0.16); }
+.macify-dockpop-copy { padding: 5px 8px; border-radius: 9px; color: rgba(255, 255, 255, 0.75); }

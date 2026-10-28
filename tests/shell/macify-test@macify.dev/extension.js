@@ -6,6 +6,7 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
@@ -152,6 +153,22 @@ async function testEditor() {
     choose('macify-menu-window', 'Zoom');
     await until(() => win.is_maximized() !== wasMaximized, 3000);
     check('Window › Zoom', win.is_maximized() !== wasMaximized);
+    if (win.is_maximized()) {
+        await sleep(600);
+        const frame = win.get_frame_rect();
+        const area = Main.layoutManager.getWorkAreaForMonitor(win.get_monitor());
+        check('Maximized window stays below the top bar', frame.y >= Main.panel.height && frame.y >= area.y,
+            `window y=${frame.y}, bar=${Main.panel.height}, work area y=${area.y}`);
+    }
+    // Una app que se coloca por su cuenta bajo la barra: se baja sola.
+    if (win.is_maximized())
+        win.unmaximize(Meta.MaximizeFlags.BOTH);
+    await sleep(400);
+    const placed = win.get_frame_rect();
+    win.move_frame(false, placed.x, 0);
+    await until(() => win.get_frame_rect().y >= Main.panel.height, 3000);
+    check('window pushed under the bar is moved down', win.get_frame_rect().y >= Main.panel.height,
+        `y=${win.get_frame_rect().y}`);
 
     const before = app.get_n_windows();
     choose('macify-menu-file', 'New Window');
@@ -522,9 +539,35 @@ async function testOsd() {
         y < monitor.y + 120, `${Math.round(x)},${Math.round(y)} ${Math.round(box.width)}x${Math.round(box.height)}`);
     const title = window._vbox.get_first_child();
     check('volume indicator says what it is', title.visible && title.text === 'Sound', title.text);
+    const level = window._level;
+    check('volume indicator bar is as thick as the Sound slider', level.height >= 16, `${level.height}px`);
     await screenshot('osd');
     Main.osdWindowManager.hideAll();
     await sleep(300);
+}
+
+// Al dejar el puntero sobre un icono salen los archivos recientes (y las ventanas si hay varias).
+async function testDockPreview(macify) {
+    const dock = macify._parts.find(p => p.constructor.name === 'FullscreenDock');
+    const dir = GLib.build_filenamev([GLib.get_user_data_dir()]);
+    const target = Gio.File.new_for_path(GLib.build_filenamev([GLib.get_tmp_dir(), 'macify-recent-test.txt']));
+    target.replace_contents('hola', null, false, Gio.FileCreateFlags.NONE, null);
+    const xbel = `<?xml version="1.0"?><xbel version="1.0" xmlns:bookmark="http://www.freedesktop.org/standards/desktop-bookmarks">
+<bookmark href="${target.get_uri()}" added="2026-01-01T00:00:00Z" modified="2026-10-01T00:00:00Z"><info><metadata owner="http://freedesktop.org"><bookmark:applications><bookmark:application name="Files" exec="nautilus" modified="2026-10-01T00:00:00Z" count="1"/></bookmark:applications></metadata></info></bookmark></xbel>`;
+    Gio.File.new_for_path(`${dir}/recently-used.xbel`).replace_contents(xbel, null, false, Gio.FileCreateFlags.NONE, null);
+    const app = Shell.AppSystem.get_default().lookup_app('org.gnome.Nautilus.desktop');
+    if (!app || !dock) {
+        check('dock preview shows recent files', false, 'Files app or dock part missing');
+        return;
+    }
+    dock._preview._open({app, icon: Main.panel});
+    const popup = dock._preview._popup;
+    const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)];
+    check('dock preview shows recent files', Boolean(popup) && texts(popup).includes('macify-recent-test.txt'),
+        popup ? texts(popup).join('|') : 'no popup');
+    await screenshot('dock-preview');
+    dock._preview._close();
+    target.delete(null);
 }
 
 // Miniatura de captura abajo a la derecha, sin el aviso de GNOME, y se va sola.
@@ -795,6 +838,7 @@ async function run() {
         await testDockScanout();
         await testBadges();
         await testEditor();
+        await testDockPreview(macify);
         await testTerminal();
         await testDisplayChanges();
     } catch (e) {
