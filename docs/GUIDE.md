@@ -93,7 +93,7 @@ app/
 │   ├── assets.py, colors.py, info.py, i18n.py
 │   └── data/           app icon and style, wallpapers, menubar extension, boot theme, root helper
 ├── tests/              unit tests; tests/shell runs a hidden GNOME Shell on several monitor layouts
-├── scripts/            build.sh (.pyz), build_deb.sh (.deb), make_wallpapers.py, demo/ (video)
+├── scripts/            build.sh (.pyz), build_deb.sh (.deb), make_wallpapers.py, demo/ (video; narrate.py adds the ElevenLabs voice)
 └── docs/               website, guide and screenshots
 ```
 
