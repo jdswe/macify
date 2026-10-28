@@ -565,6 +565,26 @@ async function testDisplaySwitcherKeys() {
     popup.destroy();
 }
 
+// «Batería baja» de GNOME no sale como aviso: lo dice la cápsula de Live Activities.
+async function testLowBatteryInIsland(macify) {
+    const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
+    live._startedAt = 0;
+    const source = new MessageTray.Source({title: 'Power', iconName: 'battery-low-symbolic',
+        policy: new MessageTray.NotificationGenericPolicy()});
+    Main.messageTray.add(source);
+    const notification = new MessageTray.Notification({source, title: 'Low Battery', body: '19% battery remaining'});
+    let destroyed = false;
+    notification.connect('destroy', () => {
+        destroyed = true;
+    });
+    source.addNotification(notification);
+    await sleep(300);
+    check('GNOME low battery notice is taken over', destroyed);
+    check('island says Battery Low', live._event?.text === 'Battery Low · 19%', live._event?.text ?? 'none');
+    await screenshot('island-low-battery');
+    source.destroy();
+}
+
 // Super+V: lo copiado queda en el historial (sólo en memoria) y la tarjeta lo ofrece.
 async function testClipboardHistory(macify) {
     const clip = macify._parts.find(p => p.constructor.name === 'ClipboardHistory');
@@ -912,6 +932,7 @@ async function run() {
         await testEditor();
         await testDockPreview(macify);
         await testClipboardHistory(macify);
+        await testLowBatteryInIsland(macify);
         await testDisplaySwitcherKeys();
         await testTerminal();
         await testDisplayChanges();

@@ -15,6 +15,7 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import {_} from './i18n.js';
@@ -89,6 +90,7 @@ export class LiveActivities {
 
         this._players.connectObject('changed', () => this._render(), this);
         this._watchPower();
+        this._watchPowerNotices();
         this._watchNetwork();
     }
 
@@ -246,7 +248,7 @@ export class LiveActivities {
     _flash(icon, text) {
         // Al iniciar sesión el estado ya era ese: no se avisa.
         if ((GLib.get_monotonic_time() - this._startedAt) / 1000 < QUIET_START_MS)
-            return;
+            return false;
         this._event = {icon, text};
         this._render();
         if (this._eventId)
@@ -257,6 +259,7 @@ export class LiveActivities {
             this._render();
             return GLib.SOURCE_REMOVE;
         });
+        return true;
     }
 
     _watchPower() {
@@ -302,6 +305,29 @@ export class LiveActivities {
         }
     }
 
+    // GNOME avisa «Batería baja» con una notificación; aquí ya lo dice la cápsula, así que el
+    // aviso de GNOME se quita y se muestra en la cápsula. Los críticos (el equipo se va a
+    // suspender) siguen saliendo como aviso, para no perderlos.
+    _watchPowerNotices() {
+        const watch = source => {
+            const id = `${source.policy?.id ?? ''} ${source.title ?? ''}`;
+            if (!/power/i.test(id))
+                return;
+            source.connectObject('notification-added', (_source, notification) => {
+                if (notification.urgency === MessageTray.Urgency.CRITICAL)
+                    return;
+                const percent = /(\d+)\s*%/.exec(`${notification.body ?? ''} ${notification.title ?? ''}`)?.[1];
+                const step = Number(percent) <= 10 ? 10 : 20;
+                // Recién iniciada la sesión la cápsula calla: entonces queda el aviso de GNOME.
+                if (this._flash(`battery-level-${step}-symbolic`,
+                    percent ? `${_('Battery Low')} · ${percent}%` : notification.title ?? _('Battery Low')))
+                    notification.destroy();
+            }, this);
+        };
+        Main.messageTray.connectObject('source-added', (_tray, source) => watch(source), this);
+        Main.messageTray.getSources().forEach(watch);
+    }
+
     _watchNetwork() {
         this._monitor = Gio.NetworkMonitor.get_default();
         this._online = this._monitor.network_available;
@@ -336,6 +362,8 @@ export class LiveActivities {
         this._powerCancellable.cancel();
         this._power?.disconnectObject(this);
         this._monitor.disconnectObject(this);
+        Main.messageTray.disconnectObject(this);
+        Main.messageTray.getSources().forEach(source => source.disconnectObject(this));
         this._players.disconnectObject(this);
         this._players.destroy();
         this._nowPlaying.destroy();

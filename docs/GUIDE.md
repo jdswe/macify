@@ -17,7 +17,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Volume and brightness | The keys show a glass card at the top right with its name (Sound, Display…), like macOS |
 | Calendar | The clock menu shows the month and today in red, with widget-style cards |
 | Screenshots | A thumbnail appears above the dock and leaves after two seconds (stays while the pointer is on it); the image is already copied (Ctrl+V). **Crop** opens a full-screen cropper: drag a rectangle, Enter saves it over the file and copies it. Click the thumbnail to open the image |
-| Live Activities | Bubble at the top for music, charging and connection; Now Playing with cover, progress, controls, volume and source choice |
+| Live Activities | Bubble at the top for music, charging, low battery (instead of GNOME's Low Battery notice; critical warnings still notify) and connection; Now Playing with cover, progress, controls, volume and source choice |
 | Dock | Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated) |
 | Dock hover | Hover an icon: thumbnails of the app's windows (when it has several) and its recent files (open or copy). In the right-click menu, each open window previews beside the menu |
 | Clipboard | Super+V: history of what you copied — text and images (thumbnails; hover for a larger view; copy and delete buttons per item; Delete key removes). Pick with the pointer, arrows + Enter or 1–9 and it pastes. Clear Clipboard empties it. Kept in memory only, never from password managers. GNOME's own Super+V (notifications) moves to Super+M while Macify is active |
