@@ -4,7 +4,7 @@ import GLib from 'gi://GLib';
 
 const SPANISH = {
     // Vista previa del dock
-    'Recent Files': 'Archivos recientes',
+    'Just Added': 'Recién añadidos',
     'Copied': 'Copiado',
     'Clipboard': 'Portapapeles',
     'Clear Clipboard': 'Borrar portapapeles',
