@@ -1,6 +1,6 @@
 // Al dejar el puntero sobre un icono del dock, como en macOS: si la app tiene varias
-// ventanas salen sus miniaturas (un clic lleva a esa ventana) y, si hay archivos recientes de
-// esa app (en Archivos, los de todo el sistema), la lista para abrirlos o copiarlos. Copiar
+// ventanas salen sus miniaturas (un clic lleva a esa ventana) y, en
+// Archivos, las capturas y descargas de los últimos minutos) la lista para abrirlos o copiarlos. Copiar
 // deja el archivo en el portapapeles: se pega (Ctrl+V) en Archivos, en un correo o en un chat.
 
 import Clutter from 'gi://Clutter';
@@ -19,24 +19,8 @@ const MARGIN = 14;               // tolerancia entre el icono y el panel
 const MAX_RECENTS = 8;
 const THUMB_W = 210;
 const THUMB_H = 130;
-const RECENT_FILE = `${GLib.get_user_data_dir()}/recently-used.xbel`;
-
-const unescapeXml = text => text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-
-// Archivos usados hace poco, del más nuevo al más viejo: [{uri, apps: [nombres], modified}].
-export function parseRecents(xml) {
-    const items = [];
-    for (const block of xml.split('<bookmark ').slice(1)) {
-        const href = /^href="([^"]*)"/.exec(block);
-        const modified = /modified="([^"]*)"/.exec(block);
-        if (!href?.[1].startsWith('file://'))
-            continue;
-        const apps = [...block.matchAll(/<bookmark:application name="([^"]*)"/g)].map(m => unescapeXml(m[1]));
-        items.push({uri: unescapeXml(href[1]), apps, modified: modified?.[1] ?? ''});
-    }
-    return items.sort((a, b) => b.modified.localeCompare(a.modified));
-}
+const FRESH_SECONDS = 120;       // en Archivos sólo salen las capturas y descargas de hace poco
+const PARTIAL = /\.(crdownload|part|download|tmp)$/i;     // descargas que aún no terminan
 
 // Miniatura de una ventana con su título (la misma en el dock y en el menú del clic derecho).
 export function windowThumbnail(win) {
@@ -53,27 +37,45 @@ export function windowThumbnail(win) {
     return column;
 }
 
-function recentFor(app) {
-    let xml;
-    try {
-        xml = new TextDecoder().decode(Gio.File.new_for_path(RECENT_FILE).load_contents(null)[1]);
-    } catch (e) {
-        return [];
-    }
-    const name = app.get_name().toLowerCase();
-    const files = app.get_id() === 'org.gnome.Nautilus.desktop' || name === 'files';
+// Capturas, grabaciones y descargas de los últimos minutos, de la más nueva a la más vieja.
+// Sólo para Archivos: al pasar por su icono justo después de capturar o descargar algo, está
+// ahí para abrirlo o copiarlo; pasado ese rato, el icono vuelve a ser sólo un icono.
+function freshFiles() {
+    const pictures = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES);
+    const videos = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_VIDEOS);
+    const downloads = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD);
+    const dirs = [`${pictures}/Screenshots`, `${videos}/Screencasts`, downloads]
+        .filter(dir => dir && dir !== GLib.get_home_dir());
+    const since = GLib.get_real_time() / 1e6 - FRESH_SECONDS;
     const found = [];
-    for (const item of parseRecents(xml)) {
-        if (!files && !item.apps.some(a => a.toLowerCase() === name))
-            continue;
-        const file = Gio.File.new_for_uri(item.uri);
-        if (!file.query_exists(null))
-            continue;
-        found.push(file);
-        if (found.length >= MAX_RECENTS)
-            break;
+    for (const dir of new Set(dirs)) {
+        let list;
+        try {
+            list = Gio.File.new_for_path(dir).enumerate_children(
+                'standard::name,standard::type,standard::is-hidden,time::modified', Gio.FileQueryInfoFlags.NONE, null);
+        } catch (e) {
+            continue;                                 // la carpeta no existe
+        }
+        for (let info = list.next_file(null); info; info = list.next_file(null)) {
+            const time = info.get_modification_date_time()?.to_unix() ?? 0;
+            if (time >= since && info.get_file_type() === Gio.FileType.REGULAR && !info.get_is_hidden() &&
+                !PARTIAL.test(info.get_name()))
+                found.push({time, file: list.get_child(info)});
+        }
+        list.close(null);
     }
-    return found;
+    return found.sort((a, b) => b.time - a.time).slice(0, MAX_RECENTS).map(f => f.file);
+}
+
+// La pantalla donde está un punto (el menú o el icono), no la principal: con dos pantallas
+// el panel sale junto al dock o al menú de esa pantalla.
+export function monitorAt(x, y) {
+    return Main.layoutManager.monitors.find(m => x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height) ??
+        Main.layoutManager.primaryMonitor;
+}
+
+function isFiles(app) {
+    return app.get_id() === 'org.gnome.Nautilus.desktop';
 }
 
 function copyFile(file) {
@@ -134,7 +136,7 @@ class WindowMenuPreviews {
         const [mw] = menu.actor.get_transformed_size();
         const [, iy] = item.get_transformed_position();
         const [width, height] = card.get_size();
-        const monitor = Main.layoutManager.findMonitorForActor(menu.actor) ?? Main.layoutManager.primaryMonitor;
+        const monitor = monitorAt(mx + mw / 2, iy);
         const right = mx + mw + 8;
         const x = right + width <= monitor.x + monitor.width ? right : mx - width - 8;
         card.set_position(Math.round(Math.max(monitor.x, x)),
@@ -222,7 +224,7 @@ export class DockPreview {
     _open({app, icon}) {
         this._close(false);
         const windows = (app.get_windows() ?? []).filter(w => !w.skip_taskbar);
-        const recents = app.get_id() ? recentFor(app) : [];
+        const recents = isFiles(app) ? freshFiles() : [];
         if (windows.length < 2 && recents.length === 0)
             return;
         const box = new St.BoxLayout({style_class: 'macify-dockpop', vertical: true, reactive: true});
@@ -234,7 +236,7 @@ export class DockPreview {
         const [x, y] = icon.get_transformed_position();
         const [iconWidth] = icon.get_transformed_size();
         const [width, height] = box.get_size();
-        const monitor = Main.layoutManager.findMonitorForActor(icon) ?? Main.layoutManager.primaryMonitor;
+        const monitor = monitorAt(x + iconWidth / 2, y);
         box.set_position(
             Math.round(Math.max(monitor.x + 8, Math.min(x + iconWidth / 2 - width / 2, monitor.x + monitor.width - width - 8))),
             Math.round(Math.max(monitor.y + 34, y - height - 6)));
@@ -268,12 +270,12 @@ export class DockPreview {
 
     _recents(files) {
         const column = new St.BoxLayout({vertical: true, style_class: 'macify-dockpop-recents'});
-        column.add_child(new St.Label({text: _('Recent Files'), style_class: 'macify-dockpop-heading'}));
+        column.add_child(new St.Label({text: _('Just Added'), style_class: 'macify-dockpop-heading'}));
         for (const file of files) {
             const row = new St.BoxLayout({style_class: 'macify-dockpop-file'});
             const open = new St.Button({style_class: 'macify-dockpop-open', x_expand: true, x_align: Clutter.ActorAlign.FILL});
             const info = file.query_info('standard::display-name,standard::icon', Gio.FileQueryInfoFlags.NONE, null);
-            const line = new St.BoxLayout();
+            const line = new St.BoxLayout({x_expand: true, x_align: Clutter.ActorAlign.START});
             line.add_child(new St.Icon({gicon: info.get_icon(), icon_size: 18}));
             line.add_child(new St.Label({text: info.get_display_name(), y_align: Clutter.ActorAlign.CENTER}));
             open.set_child(line);

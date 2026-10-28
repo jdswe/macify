@@ -614,6 +614,16 @@ async function testClipboardHistory(macify) {
     await screenshot('clipboard');
     clip._close();
     check('clipboard card closes', !clip._card && !clip._big);
+    // Con una app con el foco, como en la vida real: Super+V la abre.
+    const now = () => GLib.get_monotonic_time();
+    keyboard.notify_keyval(now(), Clutter.KEY_Super_L, Clutter.KeyState.PRESSED);
+    keyboard.notify_keyval(now(), Clutter.KEY_v, Clutter.KeyState.PRESSED);
+    keyboard.notify_keyval(now(), Clutter.KEY_v, Clutter.KeyState.RELEASED);
+    keyboard.notify_keyval(now(), Clutter.KEY_Super_L, Clutter.KeyState.RELEASED);
+    await until(() => Boolean(clip._card), 3000);
+    check('Super+V opens the clipboard over a focused app', Boolean(clip._card),
+        `focus=${global.display.focus_window?.get_wm_class() ?? '-'}`);
+    clip._close();
     const tray = new Gio.Settings({schema_id: 'org.gnome.shell.keybindings'}).get_strv('toggle-message-tray');
     check('Super+V freed from GNOME while active', !tray.some(k => k.toLowerCase() === '<super>v'), tray.join(','));
 }
@@ -621,25 +631,37 @@ async function testClipboardHistory(macify) {
 // Al dejar el puntero sobre un icono salen los archivos recientes (y las ventanas si hay varias).
 async function testDockPreview(macify) {
     const dock = macify._parts.find(p => p.constructor.name === 'FullscreenDock');
-    const dir = GLib.build_filenamev([GLib.get_user_data_dir()]);
-    const target = Gio.File.new_for_path(GLib.build_filenamev([GLib.get_tmp_dir(), 'macify-recent-test.txt']));
-    target.replace_contents('hola', null, false, Gio.FileCreateFlags.NONE, null);
-    const xbel = `<?xml version="1.0"?><xbel version="1.0" xmlns:bookmark="http://www.freedesktop.org/standards/desktop-bookmarks">
-<bookmark href="${target.get_uri()}" added="2026-01-01T00:00:00Z" modified="2026-10-01T00:00:00Z"><info><metadata owner="http://freedesktop.org"><bookmark:applications><bookmark:application name="Files" exec="nautilus" modified="2026-10-01T00:00:00Z" count="1"/></bookmark:applications></metadata></info></bookmark></xbel>`;
-    Gio.File.new_for_path(`${dir}/recently-used.xbel`).replace_contents(xbel, null, false, Gio.FileCreateFlags.NONE, null);
+    const pictures = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES);
+    GLib.mkdir_with_parents(`${pictures}/Screenshots`, 0o700);
+    const target = Gio.File.new_for_path(`${pictures}/Screenshots/macify-fresh-test.png`);
+    target.replace_contents('png', null, false, Gio.FileCreateFlags.NONE, null);
     const app = Shell.AppSystem.get_default().lookup_app('org.gnome.Nautilus.desktop');
     if (!app || !dock) {
-        check('dock preview shows recent files', false, 'Files app or dock part missing');
+        check('dock preview shows a fresh capture', false, 'Files app or dock part missing');
         return;
     }
     dock._preview._open({app, icon: Main.panel});
     const popup = dock._preview._popup;
     const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)];
-    check('dock preview shows recent files', Boolean(popup) && texts(popup).includes('macify-recent-test.txt'),
+    check('dock preview shows a fresh capture', Boolean(popup) && texts(popup).includes('macify-fresh-test.png'),
         popup ? texts(popup).join('|') : 'no popup');
     await screenshot('dock-preview');
     dock._preview._close();
+    // Pasados unos minutos ya no sale: el icono de Archivos vuelve a ser sólo un icono.
+    const old = GLib.DateTime.new_now_utc().add_minutes(-10);
+    const info = new Gio.FileInfo();
+    info.set_modification_date_time(old);
+    target.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null);
+    dock._preview._open({app, icon: Main.panel});
+    const later = dock._preview._popup;
+    check('old files no longer pop up over Files', !later || !texts(later).includes('macify-fresh-test.png'),
+        later ? texts(later).join('|') : 'no popup');
+    dock._preview._close();
     target.delete(null);
+    const {monitorAt} = await import(`file://${Main.extensionManager.lookup('macify-menubar@macify.dev').path}/dockPreview.js`);
+    const last = Main.layoutManager.monitors.at(-1);
+    check('previews open on the display they belong to', monitorAt(last.x + 10, last.y + 10) === last,
+        `${Main.layoutManager.monitors.length} displays`);
 }
 
 // Cambia la escala de todas las pantallas con el servicio de pantallas de GNOME, como lo

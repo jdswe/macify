@@ -10,11 +10,13 @@ import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {imageContent} from './cropEditor.js';
+import {monitorAt} from './dockPreview.js';
 import {_} from './i18n.js';
 
 const MAX_ITEMS = 20;
@@ -78,19 +80,33 @@ export class ClipboardHistory {
             if (type === Meta.SelectionType.SELECTION_CLIPBOARD)
                 this._read();
         }, this);
-        global.stage.connectObject('captured-event', (_stage, event) => this._key(event), this);
+        this._grab(3);
     }
 
-    _key(event) {
-        if (event.type() !== Clutter.EventType.KEY_PRESS || this._card)
-            return Clutter.EVENT_PROPAGATE;
-        const super_ = event.get_state() & Clutter.ModifierType.SUPER_MASK;
-        const symbol = event.get_key_symbol();
-        if (super_ && (symbol === Clutter.KEY_v || symbol === Clutter.KEY_V) && !Main.sessionMode.isLocked) {
-            this.open();
-            return Clutter.EVENT_STOP;
+    // Un atajo del sistema (como las teclas de volumen): llega aunque una app tenga el foco.
+    // GNOME suelta su Super+V un instante después de cambiar el ajuste: si aún lo tiene, se
+    // vuelve a intentar.
+    _grab(tries) {
+        const action = global.display.grab_accelerator('<Super>v', Meta.KeyBindingFlags.NONE);
+        if (action === Meta.KeyBindingAction.NONE) {
+            if (tries > 1) {
+                this._grabId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                    this._grabId = 0;
+                    this._grab(tries - 1);
+                    return GLib.SOURCE_REMOVE;
+                });
+            } else {
+                console.warn('Macify: Super+V is taken by another shortcut');
+            }
+            return;
         }
-        return Clutter.EVENT_PROPAGATE;
+        this._accelerator = action;
+        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(action),
+            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW);
+        global.display.connectObject('accelerator-activated', (_display, activated) => {
+            if (activated === this._accelerator && !this._card && !Main.sessionMode.isLocked)
+                this.open();
+        }, this);
     }
 
     _read() {
@@ -268,7 +284,7 @@ export class ClipboardHistory {
         const [cw] = this._card.get_transformed_size();
         const [, ry] = row.get_transformed_position();
         const [bw, bh] = big.get_size();
-        const monitor = Main.layoutManager.findMonitorForActor(this._card) ?? Main.layoutManager.primaryMonitor;
+        const monitor = monitorAt(cx + cw / 2, cy);
         const right = cx + cw + 10;
         const x = right + bw <= monitor.x + monitor.width ? right : cx - bw - 10;
         big.set_position(Math.round(x), Math.round(Math.max(monitor.y + 36,
@@ -367,7 +383,13 @@ export class ClipboardHistory {
         if (this._pasteId)
             GLib.source_remove(this._pasteId);
         global.display.get_selection().disconnectObject(this);
-        global.stage.disconnectObject(this);
+        global.display.disconnectObject(this);
+        if (this._grabId)
+            GLib.source_remove(this._grabId);
+        if (this._accelerator) {
+            Main.wm.allowKeybinding(Meta.external_binding_name_for_action(this._accelerator), Shell.ActionMode.NONE);
+            global.display.ungrab_accelerator(this._accelerator);
+        }
         if (this._savedTray)
             this._keys.set_strv('toggle-message-tray', this._savedTray);
         this._items = [];
