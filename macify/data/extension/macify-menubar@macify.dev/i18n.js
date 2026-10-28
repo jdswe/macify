@@ -8,6 +8,8 @@ const SPANISH = {
     'Copied': 'Copiado',
     'Clipboard': 'Portapapeles',
     'Clear': 'Borrar',
+    'Crop': 'Recortar',
+    'Cancel': 'Cancelar',
     'Nothing copied yet': 'Todavía no has copiado nada',
     // Menú del logo
     'About This Computer': 'Acerca de este equipo',

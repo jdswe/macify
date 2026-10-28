@@ -5,6 +5,7 @@
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -216,7 +217,7 @@ function testParts() {
     const parts = (macify?.stateObj?._parts ?? []).map(p => p.constructor.name);
     check('extension active', macify?.state === 1, `state ${macify?.state}`);
     for (const name of ['Gnome50Fixes', 'BarLook', 'AppMenus', 'StatusBar', 'ControlCenter', 'LiveActivities', 'MacOsd',
-        'FullscreenDock'])
+        'ScreenshotPreview', 'FullscreenDock'])
         check(`part ${name}`, parts.includes(name));
     const right = Main.panel._rightBox.get_children();
     const dateIndex = right.indexOf(Main.panel.statusArea.dateMenu.container);
@@ -625,6 +626,46 @@ function displayCall(method, args = null) {
         }));
 }
 
+// Miniatura de captura abajo a la derecha, sin el aviso de GNOME, y se va sola.
+async function testScreenshotPreview(macify) {
+    const preview = macify._parts.find(p => p.constructor.name === 'ScreenshotPreview');
+    const [content] = await new Shell.Screenshot().screenshot_stage_to_content();
+    const file = await Screenshot.captureScreenshot(content.get_texture(), null, 1, null);
+    await sleep(500);
+    const actor = preview._actor;
+    const notification = preview._notification;
+    const [x, y] = actor?.get_transformed_position() ?? [0, 0];
+    const monitor = Main.layoutManager.monitors[global.display.get_current_monitor()];
+    check('screenshot thumbnail at the bottom right', actor?.visible &&
+        x > monitor.x + monitor.width / 2 && y > monitor.y + monitor.height / 2, `${Math.round(x)},${Math.round(y)}`);
+    check('no GNOME banner on top of it', notification?.urgency === MessageTray.Urgency.LOW);
+    await screenshot('screenshot-preview');
+    preview._hide();
+    await sleep(600);
+    check('thumbnail leaves and takes its notification', !preview._actor && !Main.messageTray.getSources()
+        .some(s => s.notifications.includes(notification)));
+    file?.delete(null);
+}
+
+// Recortar una captura: se arrastra un rectángulo y el archivo queda recortado.
+async function testCropEditor() {
+    const path = GLib.build_filenamev([GLib.get_tmp_dir(), 'macify-crop-test.png']);
+    const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 400, 300);
+    pixbuf.fill(0x3366ccff);
+    pixbuf.savev(path, 'png', [], []);
+    const macify = Main.extensionManager.lookup('macify-menubar@macify.dev');
+    const {CropEditor} = await import(`file://${macify.path}/cropEditor.js`);
+    const editor = new CropEditor(path, null);
+    await sleep(300);
+    editor._select([0, 0], [editor._w / 2, editor._h / 2]);
+    await screenshot('crop');
+    editor._save();
+    const out = GdkPixbuf.Pixbuf.new_from_file(path);
+    check('crop saves the selected part', out.width >= 190 && out.width <= 210 && out.height >= 140 && out.height <= 160,
+        `${out.width}x${out.height}`);
+    Gio.File.new_for_path(path).delete(null);
+}
+
 async function applyScale(wanted) {
     const [serial, monitors] = await displayCall('GetCurrentState');
     let x = 0;
@@ -789,6 +830,7 @@ async function captureDemo(macify) {
     await captureMenu('dateMenu', 'date-menu');
     await captureDisplaySwitcher();
     await testOsd();
+    await testScreenshotPreview(macify);
     const player = fakePlayer('demo', 'Golden Hour', 'Macify Radio');
     await sleep(2500);
 
@@ -849,6 +891,8 @@ async function run() {
         await testEnergyModes();
         await testOsd();
         await testOsdHidesWithControlCenter();
+        await testScreenshotPreview(macify);
+        await testCropEditor();
         await testWifiStays();
         await testBarLook();
         await captureMenu('dateMenu', 'date-menu');

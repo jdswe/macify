@@ -16,6 +16,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Control Center | Only what has no menu of its own, in Apple's order: Airplane Mode, Do Not Disturb, brightness, Dark Style, Night Light. Shut down, restart and lock are in the logo menu |
 | Volume and brightness | The keys show a glass card at the top right with its name (Sound, Display…), like macOS |
 | Calendar | The clock menu shows the month and today in red, with widget-style cards |
+| Screenshots | A thumbnail appears above the dock and leaves after two seconds (stays while the pointer is on it); the image is already copied (Ctrl+V). **Crop** opens a full-screen cropper: drag a rectangle, Enter saves it over the file and copies it. Click the thumbnail to open the image |
 | Live Activities | Bubble at the top for music, charging and connection; Now Playing with cover, progress, controls, volume and source choice |
 | Dock | Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated) |
 | Dock hover | Hover an icon: thumbnails of the app's windows (when it has several) and its recent files (open or copy). In the right-click menu, each open window previews beside the menu |
