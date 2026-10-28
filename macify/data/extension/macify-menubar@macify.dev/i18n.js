@@ -6,6 +6,9 @@ const SPANISH = {
     // Vista previa del dock
     'Recent Files': 'Archivos recientes',
     'Copied': 'Copiado',
+    'Clipboard': 'Portapapeles',
+    'Clear': 'Borrar',
+    'Nothing copied yet': 'Todavía no has copiado nada',
     // Menú del logo
     'About This Computer': 'Acerca de este equipo',
     'System Settings…': 'Ajustes del sistema…',

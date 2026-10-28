@@ -8,6 +8,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
+import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {_} from './i18n.js';
@@ -35,6 +36,21 @@ export function parseRecents(xml) {
         items.push({uri: unescapeXml(href[1]), apps, modified: modified?.[1] ?? ''});
     }
     return items.sort((a, b) => b.modified.localeCompare(a.modified));
+}
+
+// Miniatura de una ventana con su título (la misma en el dock y en el menú del clic derecho).
+export function windowThumbnail(win) {
+    const actor = win.get_compositor_private();
+    if (!actor)
+        return null;
+    const [w, h] = actor.get_size();
+    const scale = Math.min(1, THUMB_W / w, THUMB_H / h);
+    const column = new St.BoxLayout({vertical: true});
+    const clone = new Clutter.Clone({source: actor});
+    clone.set_size(Math.round(w * scale), Math.round(h * scale));
+    column.add_child(clone);
+    column.add_child(new St.Label({text: win.get_title() ?? '', style_class: 'macify-dockpop-title'}));
+    return column;
 }
 
 function recentFor(app) {
@@ -65,9 +81,85 @@ function copyFile(file) {
     St.Clipboard.get_default().set_content(St.ClipboardType.CLIPBOARD, 'x-special/gnome-copied-files', bytes);
 }
 
+// En el menú del clic derecho de un icono, «Ventanas abiertas»: al recorrer cada ventana
+// (con el puntero o las flechas) sale su miniatura al lado, para saber cuál es antes de elegirla.
+class WindowMenuPreviews {
+    constructor() {
+        this._proto = AppMenu.prototype;
+        this._original = this._proto._updateWindowsSection;
+        this._menus = new Set();
+        this._card = null;
+        const self = this;
+        this._proto._updateWindowsSection = function () {
+            self._original.call(this);
+            try {
+                self._decorate(this);
+            } catch (e) {
+                console.warn(`Macify: window previews: ${e.message}`);
+            }
+        };
+    }
+
+    _decorate(menu) {
+        if (!menu._app)
+            return;
+        const windows = menu._app.get_windows().filter(w => !w.skip_taskbar);
+        const items = menu._windowSection._getMenuItems();
+        if (items.length !== windows.length)
+            return;
+        items.forEach((item, i) => item.connectObject('notify::active', () => {
+            if (item.active)
+                this._show(menu, windows[i], item);
+            else
+                this._hide();
+        }, this));
+        if (!this._menus.has(menu)) {
+            this._menus.add(menu);
+            menu.connectObject('open-state-changed', (_menu, open) => {
+                if (!open)
+                    this._hide();
+            }, this);
+        }
+    }
+
+    _show(menu, win, item) {
+        this._hide();
+        const content = windowThumbnail(win);
+        if (!content)
+            return;
+        const card = new St.BoxLayout({style_class: 'macify-dockpop', reactive: false});
+        card.add_child(content);
+        Main.uiGroup.add_child(card);
+        const [mx, my] = menu.actor.get_transformed_position();
+        const [mw] = menu.actor.get_transformed_size();
+        const [, iy] = item.get_transformed_position();
+        const [width, height] = card.get_size();
+        const monitor = Main.layoutManager.findMonitorForActor(menu.actor) ?? Main.layoutManager.primaryMonitor;
+        const right = mx + mw + 8;
+        const x = right + width <= monitor.x + monitor.width ? right : mx - width - 8;
+        card.set_position(Math.round(Math.max(monitor.x, x)),
+            Math.round(Math.max(monitor.y + 34, Math.min(iy - height / 2, monitor.y + monitor.height - height - 8))));
+        this._card = card;
+    }
+
+    _hide() {
+        this._card?.destroy();
+        this._card = null;
+    }
+
+    destroy() {
+        this._hide();
+        this._proto._updateWindowsSection = this._original;
+        for (const menu of this._menus)
+            menu.disconnectObject(this);
+        this._menus.clear();
+    }
+}
+
 export class DockPreview {
     constructor() {
         this._docks = new Set();
+        this._menus = new WindowMenuPreviews();
         this._popup = null;
         this._candidate = null;
     }
@@ -76,8 +168,10 @@ export class DockPreview {
         if (this._docks.has(dock) || !dock.dash)
             return;
         this._docks.add(dock);
-        dock.dash.connectObject('motion-event', (actor, event) => {
-            this._hover(dock, event.get_source());
+        // El dock animado calcula por su cuenta qué icono está bajo el puntero (dock._hoveredIcon):
+        // mientras el puntero está cerca del dock se le pregunta eso, sin escuchar cada movimiento.
+        dock.dash.connectObject('enter-event', () => {
+            this._poll(dock);
             return Clutter.EVENT_PROPAGATE;
         }, this);
         dock.connectObject('destroy', () => {
@@ -87,18 +181,33 @@ export class DockPreview {
         dock._macifyKeepOpen = () => Boolean(this._popup) && this._pointerIn(this._popup);
     }
 
-    _appOf(dock, actor) {
-        for (let a = actor; a && a !== dock.dash; a = a.get_parent()) {
-            const app = a.app ?? a.child?.app;
-            if (app?.get_id && app.get_windows)
-                return {app, icon: a};
-        }
-        return null;
+    _poll(dock) {
+        if (this._pollId)
+            return;
+        this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
+            if (dock._macifyDestroyed || !dock.dash || !this._pointerIn(dock.dash, 40)) {
+                this._pollId = 0;
+                if (!this._popup && this._timer) {
+                    GLib.source_remove(this._timer);
+                    this._timer = 0;
+                }
+                this._candidate = null;
+                return GLib.SOURCE_REMOVE;
+            }
+            const found = this._appOf(dock._hoveredIcon);
+            if (found)
+                this._hover(found);
+            return GLib.SOURCE_CONTINUE;
+        });
     }
 
-    _hover(dock, source) {
-        const found = this._appOf(dock, source);
-        if (!found || found.app === this._candidate?.app)
+    _appOf(icon) {
+        const app = icon?._appwell?.app ?? icon?.child?.app ?? icon?.app;
+        return app?.get_id && app.get_windows ? {app, icon} : null;
+    }
+
+    _hover(found) {
+        if (found.app === this._candidate?.app)
             return;
         this._candidate = found;
         if (this._timer)
@@ -112,7 +221,7 @@ export class DockPreview {
 
     _open({app, icon}) {
         this._close(false);
-        const windows = app.get_windows() ?? [];
+        const windows = (app.get_windows() ?? []).filter(w => !w.skip_taskbar);
         const recents = app.get_id() ? recentFor(app) : [];
         if (windows.length < 2 && recents.length === 0)
             return;
@@ -143,17 +252,10 @@ export class DockPreview {
     _windows(windows) {
         const row = new St.BoxLayout({style_class: 'macify-dockpop-windows'});
         for (const win of windows) {
-            const actor = win.get_compositor_private();
-            if (!actor)
+            const column = windowThumbnail(win);
+            if (!column)
                 continue;
-            const [w, h] = actor.get_size();
-            const scale = Math.min(1, THUMB_W / w, THUMB_H / h);
             const card = new St.Button({style_class: 'macify-dockpop-window', reactive: true, can_focus: true});
-            const column = new St.BoxLayout({vertical: true});
-            const clone = new Clutter.Clone({source: actor});
-            clone.set_size(Math.round(w * scale), Math.round(h * scale));
-            column.add_child(clone);
-            column.add_child(new St.Label({text: win.get_title() ?? '', style_class: 'macify-dockpop-title'}));
             card.set_child(column);
             card.connect('clicked', () => {
                 this._close();
@@ -194,11 +296,11 @@ export class DockPreview {
         return column;
     }
 
-    _pointerIn(actor, loose = false) {
+    _pointerIn(actor, margin = 2) {
         const [px, py] = global.get_pointer();
         const [x, y] = actor.get_transformed_position();
         const [w, h] = actor.get_transformed_size();
-        const m = loose ? MARGIN : 2;
+        const m = margin === true ? MARGIN : margin;
         return px >= x - m && px <= x + w + m && py >= y - m && py <= y + h + m;
     }
 
@@ -218,6 +320,10 @@ export class DockPreview {
     }
 
     destroy() {
+        this._menus.destroy();
+        if (this._pollId)
+            GLib.source_remove(this._pollId);
+        this._pollId = 0;
         this._close();
         for (const dock of this._docks) {
             dock.dash?.disconnectObject(this);

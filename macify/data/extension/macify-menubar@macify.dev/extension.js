@@ -1,6 +1,6 @@
 // Macify Menubar: la barra de menús de macOS en GNOME. Logo con el menú del sistema,
 // menús de la app activa, iconos de estado, Centro de control, Live Activities, indicador de
-// volumen y brillo, miniatura de capturas y arreglos del dock.
+// volumen y brillo, arreglos del dock.
 
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
@@ -14,13 +14,13 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {AppMenus} from './appMenus.js';
+import {ClipboardHistory} from './clipboardHistory.js';
 import {ControlCenter} from './controlCenter.js';
 import {FullscreenDock, Gnome50Fixes} from './dock.js';
 import {LiveActivities} from './liveActivities.js';
 import {BarLook} from './look.js';
 import {DisplaySwitcher} from './displaySwitcher.js';
 import {MacOsd} from './osd.js';
-import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
 import {WindowGuard} from './windowGuard.js';
 import {_} from './i18n.js';
@@ -82,9 +82,9 @@ const PARTS = [
     ['control', () => new ControlCenter()],
     ['live', () => new LiveActivities()],
     ['osd', () => new MacOsd()],
-    ['screenshots', () => new ScreenshotPreview()],
     ['windows', () => new WindowGuard()],
     ['displays', () => new DisplaySwitcher()],
+    ['clipboard', () => new ClipboardHistory()],
     ['dock', () => new FullscreenDock()],
 ];
 

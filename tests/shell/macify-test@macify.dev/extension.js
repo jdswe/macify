@@ -216,7 +216,7 @@ function testParts() {
     const parts = (macify?.stateObj?._parts ?? []).map(p => p.constructor.name);
     check('extension active', macify?.state === 1, `state ${macify?.state}`);
     for (const name of ['Gnome50Fixes', 'BarLook', 'AppMenus', 'StatusBar', 'ControlCenter', 'LiveActivities', 'MacOsd',
-        'ScreenshotPreview', 'FullscreenDock'])
+        'FullscreenDock'])
         check(`part ${name}`, parts.includes(name));
     const right = Main.panel._rightBox.get_children();
     const dateIndex = right.indexOf(Main.panel.statusArea.dateMenu.container);
@@ -564,6 +564,29 @@ async function testDisplaySwitcherKeys() {
     popup.destroy();
 }
 
+// Super+V: lo copiado queda en el historial (sólo en memoria) y la tarjeta lo ofrece.
+async function testClipboardHistory(macify) {
+    const clip = macify._parts.find(p => p.constructor.name === 'ClipboardHistory');
+    if (!clip) {
+        check('clipboard history part', false, 'missing');
+        return;
+    }
+    const board = St.Clipboard.get_default();
+    board.set_text(St.ClipboardType.CLIPBOARD, 'macify clip one');
+    await until(() => clip._items.includes('macify clip one'), 3000);
+    board.set_text(St.ClipboardType.CLIPBOARD, 'macify clip two');
+    await until(() => clip._items[0] === 'macify clip two', 3000);
+    check('clipboard history remembers copies, newest first', clip._items[0] === 'macify clip two' &&
+        clip._items[1] === 'macify clip one', clip._items.join('|'));
+    clip.open();
+    check('clipboard card lists them', clip._rows.length >= 2, `${clip._rows.length} rows`);
+    await screenshot('clipboard');
+    clip._close();
+    check('clipboard card closes', !clip._card);
+    const tray = new Gio.Settings({schema_id: 'org.gnome.shell.keybindings'}).get_strv('toggle-message-tray');
+    check('Super+V freed from GNOME while active', !tray.some(k => k.toLowerCase() === '<super>v'), tray.join(','));
+}
+
 // Al dejar el puntero sobre un icono salen los archivos recientes (y las ventanas si hay varias).
 async function testDockPreview(macify) {
     const dock = macify._parts.find(p => p.constructor.name === 'FullscreenDock');
@@ -586,27 +609,6 @@ async function testDockPreview(macify) {
     await screenshot('dock-preview');
     dock._preview._close();
     target.delete(null);
-}
-
-// Miniatura de captura abajo a la derecha, sin el aviso de GNOME, y se va sola.
-async function testScreenshotPreview(macify) {
-    const preview = macify._parts.find(p => p.constructor.name === 'ScreenshotPreview');
-    const [content] = await new Shell.Screenshot().screenshot_stage_to_content();
-    const file = await Screenshot.captureScreenshot(content.get_texture(), null, 1, null);
-    await sleep(500);
-    const actor = preview._actor;
-    const notification = preview._notification;
-    const [x, y] = actor?.get_transformed_position() ?? [0, 0];
-    const monitor = Main.layoutManager.monitors[global.display.get_current_monitor()];
-    check('screenshot thumbnail at the bottom right', actor?.visible &&
-        x > monitor.x + monitor.width / 2 && y > monitor.y + monitor.height / 2, `${Math.round(x)},${Math.round(y)}`);
-    check('no GNOME banner on top of it', notification?.urgency === MessageTray.Urgency.LOW);
-    await screenshot('screenshot-preview');
-    preview._hide();
-    await sleep(600);
-    check('thumbnail leaves and takes its notification', !preview._actor && !Main.messageTray.getSources()
-        .some(s => s.notifications.includes(notification)));
-    file?.delete(null);
 }
 
 // Cambia la escala de todas las pantallas con el servicio de pantallas de GNOME, como lo
@@ -787,7 +789,6 @@ async function captureDemo(macify) {
     await captureMenu('dateMenu', 'date-menu');
     await captureDisplaySwitcher();
     await testOsd();
-    await testScreenshotPreview(macify);
     const player = fakePlayer('demo', 'Golden Hour', 'Macify Radio');
     await sleep(2500);
 
@@ -850,13 +851,13 @@ async function run() {
         await testOsdHidesWithControlCenter();
         await testWifiStays();
         await testBarLook();
-        await testScreenshotPreview(macify);
         await captureMenu('dateMenu', 'date-menu');
         await testLiveActivities(macify);
         await testDockScanout();
         await testBadges();
         await testEditor();
         await testDockPreview(macify);
+        await testClipboardHistory(macify);
         await testDisplaySwitcherKeys();
         await testTerminal();
         await testDisplayChanges();
