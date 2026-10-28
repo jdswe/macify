@@ -20,7 +20,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Live Activities | Bubble at the top for music, charging and connection; Now Playing with cover, progress, controls, volume and source choice |
 | Dock | Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated) |
 | Dock hover | Hover an icon: thumbnails of the app's windows (when it has several) and its recent files (open or copy). In the right-click menu, each open window previews beside the menu |
-| Clipboard | Super+V: history of what you copied (text only, in memory only, never from password managers); pick with the pointer, arrows + Enter or 1–9 and it pastes. Clear empties it. GNOME's own Super+V (notifications) moves to Super+M while Macify is active |
+| Clipboard | Super+V: history of what you copied — text and images (thumbnails; hover for a larger view; copy and delete buttons per item; Delete key removes). Pick with the pointer, arrows + Enter or 1–9 and it pastes. Clear Clipboard empties it. Kept in memory only, never from password managers. GNOME's own Super+V (notifications) moves to Super+M while Macify is active |
 | Apps view | Show Apps on frosted glass without workspaces, like macOS 27 |
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
 | Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |

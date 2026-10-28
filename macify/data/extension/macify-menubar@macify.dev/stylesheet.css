@@ -178,9 +178,9 @@
 
 /* ---------- recortar captura ---------- */
 
-.macify-crop { background-color: rgba(0, 0, 0, 0.62); }
+.macify-crop { background-color: rgba(0, 0, 0, 0.55); }
 .macify-crop-picture { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5); }
-.macify-crop-box { border: 2px solid #ffffff; background-color: rgba(255, 255, 255, 0.12); }
+.macify-crop-box { border: 2px solid #ffffff; background-color: rgba(255, 255, 255, 0.10); }
 .macify-crop-bar { spacing: 10px; }
 .macify-crop-button { padding: 7px 20px; border-radius: 999px; color: #ffffff; background-color: rgba(255, 255, 255, 0.18); font-weight: bold; }
 .macify-crop-button:hover { background-color: rgba(255, 255, 255, 0.30); }
@@ -267,16 +267,35 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.4);
 }
-.macify-clip-header { padding: 2px 8px 8px; }
+.macify-clip-header { padding: 2px 8px 8px; spacing: 8px; }
+.macify-clip-icon { color: rgba(255, 255, 255, 0.8); }
+.macify-clip-text { font-size: 13px; }
+.macify-clip-detail { font-size: 11px; color: rgba(255, 255, 255, 0.5); padding-top: 1px; }
+.macify-clip-hint { font-size: 11px; color: rgba(255, 255, 255, 0.45); text-align: center; padding: 8px 0 2px; }
 .macify-clip-title { font-weight: bold; font-size: 14px; }
 .macify-clip-clear { font-size: 12px; padding: 2px 10px; border-radius: 999px; color: rgba(255, 255, 255, 0.75); }
 .macify-clip-clear:hover { background-color: rgba(255, 255, 255, 0.16); }
 .macify-clip-empty { padding: 14px 8px; color: rgba(255, 255, 255, 0.6); }
-.macify-clip-row { padding: 7px 10px; border-radius: 10px; text-align: left; }
-.macify-clip-row StBoxLayout { spacing: 10px; }
+.macify-clip-row { border-radius: 12px; padding: 0 4px 0 0; }
+.macify-clip-open { padding: 7px 10px; text-align: left; border-radius: 12px; }
+.macify-clip-open StBoxLayout { spacing: 10px; }
 .macify-clip-number { min-width: 14px; color: rgba(255, 255, 255, 0.5); font-size: 12px; }
+.macify-clip-thumb { border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.18); }
 .macify-clip-row:hover,
-.macify-clip-row:selected { background-color: rgba(255, 255, 255, 0.18); }
+.macify-clip-row:selected { background-color: rgba(255, 255, 255, 0.16); }
+.macify-clip-actions { spacing: 2px; }
+.macify-clip-action { padding: 6px 8px; border-radius: 9px; color: rgba(255, 255, 255, 0.8); }
+.macify-clip-action:hover { background-color: rgba(255, 255, 255, 0.22); }
+.macify-clip-big {
+  padding: 8px;
+  max-width: 500px;
+  border-radius: 18px;
+  color: #ffffff;
+  background-color: rgba(38, 38, 40, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+.macify-clip-fulltext { padding: 6px 8px; font-size: 13px; max-width: 480px; }
 
 /* ---------- deslizadores del Centro de control con color, no grises ---------- */
 

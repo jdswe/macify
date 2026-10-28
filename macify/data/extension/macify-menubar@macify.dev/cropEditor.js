@@ -14,6 +14,15 @@ import {_} from './i18n.js';
 
 const MIN_SIZE = 8;
 
+// Un GdkPixbuf como contenido de un actor de St.
+export function imageContent(pixbuf) {
+    const image = new St.ImageContent({preferred_width: pixbuf.width, preferred_height: pixbuf.height});
+    image.set_bytes(global.stage.context.get_backend().get_cogl_context(), pixbuf.read_pixel_bytes(),
+        pixbuf.has_alpha ? Cogl.PixelFormat.RGBA_8888 : Cogl.PixelFormat.RGB_888,
+        pixbuf.width, pixbuf.height, pixbuf.rowstride);
+    return image;
+}
+
 export class CropEditor {
     constructor(path, onDone) {
         this._path = path;
@@ -66,11 +75,7 @@ export class CropEditor {
     }
 
     _content() {
-        const image = new St.ImageContent({preferred_width: this._pixbuf.width, preferred_height: this._pixbuf.height});
-        image.set_bytes(global.stage.context.get_backend().get_cogl_context(),
-            this._pixbuf.read_pixel_bytes(), this._pixbuf.has_alpha ? Cogl.PixelFormat.RGBA_8888 : Cogl.PixelFormat.RGB_888,
-            this._pixbuf.width, this._pixbuf.height, this._pixbuf.rowstride);
-        return image;
+        return imageContent(this._pixbuf);
     }
 
     _local(event) {

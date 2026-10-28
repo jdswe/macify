@@ -573,17 +573,27 @@ async function testClipboardHistory(macify) {
         return;
     }
     const board = St.Clipboard.get_default();
+    const texts = () => clip._items.map(i => i.text ?? `[${i.kind}]`);
     board.set_text(St.ClipboardType.CLIPBOARD, 'macify clip one');
-    await until(() => clip._items.includes('macify clip one'), 3000);
+    await until(() => texts().includes('macify clip one'), 3000);
     board.set_text(St.ClipboardType.CLIPBOARD, 'macify clip two');
-    await until(() => clip._items[0] === 'macify clip two', 3000);
-    check('clipboard history remembers copies, newest first', clip._items[0] === 'macify clip two' &&
-        clip._items[1] === 'macify clip one', clip._items.join('|'));
+    await until(() => texts()[0] === 'macify clip two', 3000);
+    check('clipboard history remembers copies, newest first', texts()[0] === 'macify clip two' &&
+        texts()[1] === 'macify clip one', texts().join('|'));
+    const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 320, 200);
+    pixbuf.fill(0xcc6633ff);
+    const [, png] = pixbuf.save_to_bufferv('png', [], []);
+    board.set_content(St.ClipboardType.CLIPBOARD, 'image/png', new GLib.Bytes(png));
+    await until(() => clip._items[0]?.kind === 'image', 3000);
+    check('clipboard history keeps images', clip._items[0]?.kind === 'image', texts().join('|'));
     clip.open();
-    check('clipboard card lists them', clip._rows.length >= 2, `${clip._rows.length} rows`);
+    check('clipboard card lists them', clip._rows.length >= 3, `${clip._rows.length} rows`);
+    clip._showPreview(clip._items[0], clip._rows[0]);
+    check('hover shows the image bigger', Boolean(clip._big), clip._big ? 'big preview' : 'none');
+    await sleep(200);
     await screenshot('clipboard');
     clip._close();
-    check('clipboard card closes', !clip._card);
+    check('clipboard card closes', !clip._card && !clip._big);
     const tray = new Gio.Settings({schema_id: 'org.gnome.shell.keybindings'}).get_strv('toggle-message-tray');
     check('Super+V freed from GNOME while active', !tray.some(k => k.toLowerCase() === '<super>v'), tray.join(','));
 }
