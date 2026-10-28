@@ -102,11 +102,15 @@
 .macify-np-button:active { background-color: rgba(128, 128, 128, 0.30); }
 .macify-np-play StIcon { icon-size: 26px; }
 .macify-np-volume { spacing: 8px; }
+/* Todos los deslizadores (música, volumen, micrófono) gruesos, como el de Sonido. */
+.macify-slider,
 .macify-np-menu .slider {
-  -barlevel-height: 10px;
+  -barlevel-height: 18px;
+  -barlevel-border-radius: 9px;
   -barlevel-background-color: rgba(128, 128, 128, 0.30);
   -barlevel-active-background-color: -st-accent-color;
-  -slider-handle-radius: 9px;
+  -slider-handle-radius: 11px;
+  height: 24px;
 }
 
 /* ---------- indicador de volumen y brillo (arriba a la derecha, como macOS 27) ---------- */

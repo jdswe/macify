@@ -28,6 +28,7 @@ export class SoundMenu {
         header(menu, _('Sound'));
         const sliderItem = new PopupMenu.PopupBaseMenuItem({activate: false});
         this._slider = new Slider.Slider(0);
+        this._slider.add_style_class_name('macify-slider');
         this._slider.connect('notify::value', () => {
             if (!this._syncing)
                 this._volume.level = this._slider.value;
@@ -50,6 +51,7 @@ export class SoundMenu {
         this._micItem = new PopupMenu.PopupBaseMenuItem({activate: false});
         this._micItem.add_child(new St.Icon({icon_name: 'audio-input-microphone-symbolic', style_class: 'popup-menu-icon'}));
         this._micSlider = new Slider.Slider(0);
+        this._micSlider.add_style_class_name('macify-slider');
         this._micSlider.connect('notify::value', () => {
             if (!this._syncing)
                 this._setMicLevel(this._micSlider.value);

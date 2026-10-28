@@ -69,6 +69,7 @@ export class NowPlaying {
         header.add_child(titles);
 
         this._progress = new Slider.Slider(0);
+        this._progress.add_style_class_name('macify-slider');
         this._progress.add_style_class_name('macify-np-progress');
         this._progress.connect('drag-end', () => this._player?.seek(this._progress.value));
         const times = new St.BoxLayout({style_class: 'macify-np-times'});
@@ -86,6 +87,7 @@ export class NowPlaying {
 
         this._volumeRow = new St.BoxLayout({style_class: 'macify-np-volume'});
         this._volumeSlider = new Slider.Slider(0);
+        this._volumeSlider.add_style_class_name('macify-slider');
         this._volumeSlider.connect('notify::value', () => {
             if (!this._syncing)
                 this._volume.level = this._volumeSlider.value;
