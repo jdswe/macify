@@ -898,6 +898,24 @@ class LegibilityTests(unittest.TestCase):
             icons._refresh_style(root)
             self.assertTrue((root / "new.png").exists())
 
+class SiteTests(unittest.TestCase):
+    """La guía, la privacidad, la licencia y los avisos se leen dentro del sitio."""
+
+    def test_site_pages_match_their_documents(self):
+        sys.path.insert(0, str(APP / "scripts"))
+        import make_site
+        before = {path: path.read_text() for path in (APP / "docs").glob("*.html")}
+        for path in make_site.build():
+            self.assertEqual(path.read_text(), before.get(path), f"run scripts/make_site.py: {path.name} is out of date")
+
+    def test_footer_keeps_visitors_on_the_site(self):
+        page = (APP / "docs" / "index.html").read_text()
+        footer = page[page.index("<footer>"):]
+        for name in ("guide.html", "privacy.html", "license.html", "notices.html"):
+            self.assertIn(f'href="{name}"', footer)
+            self.assertTrue((APP / "docs" / name).is_file())
+        self.assertNotIn("/blob/main/", footer)
+
 
 if __name__ == "__main__":
     unittest.main()

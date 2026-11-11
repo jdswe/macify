@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Guide — Macify</title>
+<meta name="description" content="What Macify changes, how to install, check, restore and uninstall it.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="icon.svg" alt="">Macify</a>
+    <div class="links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#install">Install</a>
+      <a href="guide.html" aria-current="page">Guide</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="index.html#releases" class="optional">Releases</a>
+    </div>
+  </div>
+</nav>
+<main class="wrap doc">
+<a class="back" href="index.html">← Macify</a>
+<h1>Guide</h1>
+<p>Turn Ubuntu's GNOME desktop into a macOS-style desktop with one click — from the boot screen to the dock. Everything Macify changes can be checked, repaired, restored or uninstalled without leaving anything behind.</p>
+<p>Tested on <b>Ubuntu 26.04.1 LTS, GNOME 50, Wayland</b>. The app follows your system language (English, or Spanish when the system is in Spanish).</p>
+<h2>What it changes</h2>
+<div class="table"><table><thead><tr><th>Area</th><th>Result</th></tr></thead><tbody><tr><td>Boot</td><td>Black screen, white logo and a progress bar timed to your PC's real startup and shutdown, with “Welcome” and “See you soon”</td></tr><tr><td>Login</td><td>macOS-style login screen (WhiteSur GDM theme)</td></tr><tr><td>Windows</td><td>Traffic-light buttons, macOS title bars, light or dark (WhiteSur, GTK 3 and 4)</td></tr><tr><td>Menu bar</td><td>Logo menu, the app's name in bold and File, Edit, View, Window and Help menus for any app, following Apple's guidelines (Macify Menubar extension)</td></tr><tr><td>Status menus</td><td>Battery (Energy Mode: Low Power, Automatic, High Power; time left), Bluetooth (on/off, connect paired devices; shown only if the computer has Bluetooth), Wi‑Fi (networks, connect), Sound (volume up to 150 % when over‑amplification is on, output device) and Control Center, each its own menu</td></tr><tr><td>Control Center</td><td>Only what has no menu of its own, in Apple's order: Airplane Mode, Do Not Disturb, brightness, Dark Style, Night Light. Shut down, restart and lock are in the logo menu</td></tr><tr><td>Volume and brightness</td><td>The keys show a glass card at the top right with its name (Sound, Display…), like macOS</td></tr><tr><td>Calendar</td><td>The clock menu shows the month and today in red, with widget-style cards</td></tr><tr><td>Screenshots</td><td>A thumbnail appears above the dock and leaves after two seconds (stays while the pointer is on it); the image is already copied (Ctrl+V). <b>Crop</b> opens a full-screen cropper: drag a rectangle, Enter saves it over the file and copies it. Click the thumbnail to open the image</td></tr><tr><td>Live Activities</td><td>Bubble at the top for music, charging, low battery (instead of GNOME's Low Battery notice; critical warnings still notify) and connection; Now Playing with cover, progress, controls, volume and source choice</td></tr><tr><td>Dock</td><td>Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated)</td></tr><tr><td>Dock hover</td><td>Hover an icon: thumbnails of the app's windows (when it has several) and, on Files, the screenshots, screen recordings and downloads of the last two minutes (open or copy); after that the icon is just an icon. Previews open on the display you are using. In the right-click menu, each open window previews beside the menu</td></tr><tr><td>Clipboard</td><td>Super+V: history of what you copied — text and images (thumbnails; hover for a larger view; copy and delete buttons per item; Delete key removes). Pick with the pointer, arrows + Enter or 1–9 and it pastes. Clear Clipboard empties it. Kept in memory only, never from password managers. GNOME's own Super+V (notifications) moves to Super+M while Macify is active</td></tr><tr><td>Apps view</td><td>Frosted-glass app grid without workspaces; the Ubuntu/GNOME Show Apps icon stays inherited and unchanged</td></tr><tr><td>Effects</td><td>Magic lamp when minimizing, glass blur for Macify's window</td></tr><tr><td>Icons</td><td>WhiteSur icon set; Macify uses each app's own artwork for generated macOS-shaped icons and does not substitute a different app's logo. GitHub Copilot's AppImage window is matched to its launcher so the dock shows the correct logo</td></tr><tr><td>Cursor &amp; fonts</td><td>WhiteSur cursor, Inter interface fonts and JetBrains Mono for terminals (both bundled with their licenses)</td></tr><tr><td>Wallpapers</td><td>Eight original 4K wallpapers, each in a light and a dark version (your choice stays in both appearances); your folder's subfolders become sections; your own photos. The <b>Wallpaper</b> tile changes it (and the login screen) without reinstalling</td></tr><tr><td>One look</td><td>Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches windows, menus, bar and dock — the wallpaper stays. Night Light turns on right away, like Night Shift. From a terminal: <code>macify look --appearance dark</code> or <code>macify look --wallpaper ~/Pictures/photo.jpg --login</code></td></tr><tr><td>Displays</td><td>Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change</td></tr><tr><td>Colors</td><td>Accent color taken from your wallpaper</td></tr><tr><td>Apps</td><td>GTK apps use the system theme where their toolkit and package allow it; Macify leaves Flatpak permissions unchanged, and apps built with other toolkits keep their own appearance</td></tr><tr><td>Upkeep</td><td>New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login</td></tr><tr><td>Updates</td><td>Software Update (or the install command) installs the new version and runs <code>macify upgrade</code>: only what changed is applied — a newer theme or extension, new settings — and old downloads and caches are removed. Your choices stay; nothing is reinstalled</td></tr></tbody></table></div>
+<h2>Install</h2>
+<pre><code>sudo apt install ./macify_*_all.deb</code></pre>
+<p>Open <b>Macify</b> from the app grid, follow the assistant and press <b>Install</b>. It asks for your password once (for the boot and login screens) and, at the end, to restart.</p>
+<h2>Check and repair</h2>
+<p>Open Macify → <b>Check for Problems</b>, or from a terminal:</p>
+<pre><code>macify doctor          # what is fine, outdated or broken
+macify doctor --fix    # update and repair what can be fixed</code></pre>
+<p>It checks system tools, theme and extension updates, extensions that fail to load, settings changed since install, broken icons, fonts, the boot screen and the automatic upkeep.</p>
+<h2>Restore and uninstall</h2>
+<ul><li><b>Restore Original Settings</b> (in the app) or <code>macify restore</code>: GNOME settings go back to how they were before Macify.</li><li><b>Uninstall Everything</b> or <code>macify uninstall</code>: also removes themes, icons, extensions, fonts, the boot and login screens and the upkeep. Then <code>sudo apt remove macify</code>.</li></ul>
+<p>Flatpak apps run in a sandbox. Macify does not change Flatpak permissions or force a theme. GTK apps use the system theme only when their runtime already exposes it; apps built with other toolkits are unchanged. Older Macify versions did not save the original Flatpak permissions, so restore leaves those legacy overrides alone rather than risk erasing settings that were already there. See Flatpak's <a href="https://docs.flatpak.org/en/latest/sandbox-permissions.html">sandbox permissions</a> and <a href="https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-override">per-user override files</a>.</p>
+<h3>If the login screen ever fails</h3>
+<p>Press <code>Ctrl</code> + <code>Alt</code> + <code>F3</code>, sign in, and run:</p>
+<pre><code>sudo /usr/lib/macify/macify/data/root/macify-root.sh revert
+sudo reboot</code></pre>
+<h2>Project layout</h2>
+<pre><code>app/
+├── macify/
+│   ├── __main__.py     command line (install, doctor, restore, uninstall…) and app entry point
+│   ├── gui.py          the assistant window (GTK 4 + libadwaita)
+│   ├── installer.py    the installation, as an ordered list of named steps
+│   ├── profile.py      user choices → GNOME and extension settings
+│   ├── doctor.py       health check: problems, updates and fixes
+│   ├── session.py      upkeep at login and when apps are installed
+│   ├── system.py       gsettings read/write with backup and restore
+│   ├── themes.py       WhiteSur window theme, icons, cursor, Firefox theme
+│   ├── extensions.py   GNOME extensions, including Macify Menubar
+│   ├── icons.py        Macify icon theme, icon generator and audit
+│   ├── apps.py         VS Code, Firefox and Flatpak title bars
+│   ├── snaps.py        WhiteSur inside snap apps (hard links, no extra space)
+│   ├── wallpapers.py   wallpaper catalog and cached thumbnails
+│   ├── status_icons.py macOS-style battery, Wi‑Fi and Control Center icons
+│   ├── boot.py         boot (Plymouth) and login (GDM) screens
+│   ├── fonts.py        bundled, freely redistributable fonts
+│   ├── deps.py         system packages
+│   ├── launcher.py     app menu entry and icon
+│   ├── uninstall.py    clean removal
+│   ├── assets.py, colors.py, info.py, i18n.py
+│   └── data/           app icon and style, wallpapers, menubar extension, boot theme, root helper
+├── tests/              unit tests; tests/shell runs a hidden GNOME Shell on several monitor layouts
+├── scripts/            build.sh (.pyz), build_deb.sh (.deb), make_wallpapers.py, demo/ (video; narrate.py adds the ElevenLabs voice)
+└── docs/               website, guide and screenshots</code></pre>
+<h2>Development</h2>
+<pre><code>python3 -m unittest discover -s tests -v   # tests (nothing is changed on the system)
+MACIFY_SHELL_TESTS=1 python3 -m unittest tests.test_shell   # real GNOME Shell, 7 monitor layouts
+python3 -m macify install --dry-run        # see every change without applying it
+./scripts/build.sh                         # dist/macify.pyz
+./scripts/build_deb.sh                     # dist/macify_&lt;version&gt;_all.deb</code></pre>
+<h2>Credits and licenses</h2>
+<ul><li>WhiteSur GTK theme, icons and cursors by vinceliuice — GPL-3.0, downloaded from GitHub at install time.</li><li>Extensions downloaded from extensions.gnome.org: User Themes, Blur my Shell, Just Perfection, Dash2Dock Animated, Compiz alike magic lamp effect — each under its own license.</li><li>Macify bundles Inter (SIL Open Font License 1.1) and JetBrains Mono (Apache-2.0), so font installation needs no Apple download or network connection. Their license notices are in <code>macify/data/fonts/</code>.</li><li>macOS is a trademark of Apple Inc. Macify is not affiliated with Apple or Canonical.</li></ul>
+</main>
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html"><img src="icon.svg" alt="">Macify</a>
+        <p>A one-click macOS look for Ubuntu, from the boot screen to the dock. Free software, fully reversible.</p>
+        <a class="foot-source" href="https://github.com/jdswe/macify"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
+      </div>
+      <div class="foot-col">
+        <h4>Product</h4>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#install">Install</a>
+        <a href="index.html#screenshots">Screenshots</a>
+        <a href="index.html#releases">Releases</a>
+      </div>
+      <div class="foot-col">
+        <h4>Help</h4>
+        <a href="guide.html">Guide</a>
+        <a href="index.html#faq">Questions</a>
+        <a href="https://github.com/jdswe/macify/issues/new">Report a problem</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="privacy.html">Privacy &amp; cookies</a>
+        <a href="license.html">License (GPL v3)</a>
+        <a href="notices.html">Third-party notices</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Jose David Carranza Angarita. Macify is free software under the GNU GPL v3.</span>
+      <span>No cookies · No tracking · No account</span>
+    </div>
+    <p class="foot-note">Built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a> and
+      <a href="https://extensions.gnome.org">GNOME extensions</a>, each under its own license. macOS is a trademark of
+      Apple Inc. Macify is an independent project, not affiliated with Apple or Canonical.</p>
+  </div>
+</footer>
+</body>
+</html>

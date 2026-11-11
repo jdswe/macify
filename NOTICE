@@ -1,7 +1,21 @@
 Macify — third-party notices
 
-Fonts bundled in macify/data/fonts (SIL Open Font License 1.1, full text in macify/data/fonts/OFL.txt):
-- Inter (Inter-Regular.otf, Inter-SemiBold.otf) — Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
-- JetBrains Mono (JetBrainsMono-Regular.ttf) — Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+## Bundled with Macify
+
+Fonts in macify/data/fonts, with their license texts in the same folder:
+
+- Inter (Inter-Regular.otf, Inter-SemiBold.otf) — Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter). SIL Open Font License 1.1; see Inter-COPYRIGHT.txt and OFL.txt.
+- JetBrains Mono (JetBrainsMono-Regular.ttf) — Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono). See JetBrainsMono-COPYRIGHT.txt and LICENSE-Apache-2.0.txt.
 
 Macify does not bundle or download Apple's San Francisco fonts.
+
+## Downloaded when you install
+
+These are not part of the Macify package. Macify downloads a fixed, tested version of each and checks it against its SHA-256 fingerprint before using it.
+
+- WhiteSur GTK theme, icon theme and cursors by vinceliuice — GPL-3.0 (https://github.com/vinceliuice).
+- GNOME Shell extensions from extensions.gnome.org: User Themes, Blur my Shell, Just Perfection, Dash2Dock Animated and Compiz alike magic lamp effect — each under its own license.
+
+## Trademarks
+
+macOS is a trademark of Apple Inc. Ubuntu is a trademark of Canonical Ltd. Macify is an independent project, not affiliated with Apple or Canonical.
