@@ -120,9 +120,9 @@ def settings(choices: Choices) -> dict:
             "gtk-theme": q(f"WhiteSur-{variant}-alt"),
             "icon-theme": q("Macify"),
             "cursor-theme": q("WhiteSur-cursors"),
-            "font-name": q("SF Pro Text 11"),
-            "document-font-name": q("SF Pro Text 11"),
-            "monospace-font-name": q("SF Mono 11"),
+            "font-name": q("Inter 11"),
+            "document-font-name": q("Inter 11"),
+            "monospace-font-name": q("JetBrains Mono 11"),
             "color-scheme": q("prefer-dark" if dark else "prefer-light"),
             "accent-color": q(accent(choices)),
             "enable-animations": "true",
@@ -134,7 +134,7 @@ def settings(choices: Choices) -> dict:
         },
         "org.gnome.desktop.wm.preferences": {
             "button-layout": q("close,minimize,maximize:"),
-            "titlebar-font": q("SF Pro Text Semibold 11"),
+            "titlebar-font": q("Inter SemiBold 11"),
             "theme": q(f"WhiteSur-{variant}-alt"),
         },
         "org.gnome.desktop.background": {
@@ -164,7 +164,7 @@ def settings(choices: Choices) -> dict:
         },
         "org.gnome.Ptyxis": {
             "use-system-font": "false",
-            "font-name": q("SF Mono 12"),
+            "font-name": q("JetBrains Mono 12"),
         },
         # Extensiones: tema del Shell, barra superior y cristal.
         "org.gnome.shell.extensions.user-theme": {"name": q(f"WhiteSur-{variant}-alt")},

@@ -70,7 +70,9 @@ SPANISH = {
     # Pasos
     "Preparing the system": "Preparando el sistema",
     "Checks and installs the tools that are needed.": "Comprueba e instala las herramientas que hacen falta.",
-    "Installing San Francisco fonts": "Instalando fuentes San Francisco",
+    "Installing the fonts": "Instalando las fuentes",
+    "Inter and JetBrains Mono, included with Macify under the SIL Open Font License.":
+        "Inter y JetBrains Mono, incluidas en Macify con licencia SIL OFL.",
     "The same typefaces as macOS across the whole system.": "Las mismas letras de macOS en todo el sistema.",
     "macOS windows and buttons": "Ventanas y botones de macOS",
     "Title bars, colored buttons and apps in macOS style.": "Barras de título, botones de colores y apps en estilo macOS.",
@@ -110,9 +112,7 @@ SPANISH = {
     "Remove {path}": "Borrar {path}",
     "Disable {name}": "Desactivar {name}",
     "{name}: {count} fonts extracted": "{name}: {count} fuentes extraídas",
-    "No local fonts: SF Pro and SF Mono would be downloaded from apple.com":
-        "No hay fuentes locales: se descargarían SF Pro y SF Mono de apple.com",
-    "SF fonts: {count} files from {source}": "Fuentes SF: {count} archivos desde {source}",
+    "Fonts: {count} files included with Macify (SIL Open Font License)": "Fuentes: {count} archivos incluidos en Macify (licencia SIL OFL)",
     "your resources folder": "tu carpeta de recursos",
     "Skipped: schema {schema} does not exist on this system.": "Omitido: el esquema {schema} no existe en este sistema.",
     "Skipped: key {schema}/{key} does not exist.": "Omitido: la clave {schema}/{key} no existe.",
@@ -182,7 +182,7 @@ SPANISH = {
     "Changed since install: {keys}": "Cambiaron desde la instalación: {keys}",
     "Icons": "Iconos",
     "Macify icon theme missing.": "Falta el tema de iconos de Macify.",
-    "SF fonts": "Fuentes SF",
+    "Fonts": "Fuentes",
     "Installed.": "Instaladas.",
     "Not found.": "No encontradas.",
     "Watching for new apps.": "Vigilando apps nuevas.",

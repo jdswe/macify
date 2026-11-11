@@ -4,12 +4,12 @@ window { background: transparent; }
 headerbar { background: transparent; box-shadow: none; }
 .mf-backdrop { filter: blur(56px) saturate(150%); }
 .mf-tint { background: linear-gradient(180deg, rgba(12, 10, 22, 0.52), rgba(12, 10, 22, 0.80)); }
-.mf-hello { font-family: "SF Pro Display", sans-serif; font-size: 92px; font-weight: 800; color: #ffffff;
+.mf-hello { font-family: "Inter", sans-serif; font-size: 92px; font-weight: 800; color: #ffffff;
   letter-spacing: -2px; text-shadow: 0 8px 36px rgba(0, 0, 0, 0.35); }
-.mf-title { font-family: "SF Pro Display", sans-serif; font-size: 32px; font-weight: 700; color: #ffffff;
+.mf-title { font-family: "Inter", sans-serif; font-size: 32px; font-weight: 700; color: #ffffff;
   letter-spacing: -0.5px; }
-.mf-subtitle { font-family: "SF Pro Text", sans-serif; font-size: 16px; color: rgba(255, 255, 255, 0.82); }
-.mf-small { font-family: "SF Pro Text", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+.mf-subtitle { font-family: "Inter", sans-serif; font-size: 16px; color: rgba(255, 255, 255, 0.82); }
+.mf-small { font-family: "Inter", sans-serif; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
 .mf-pill { padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.16); font-size: 12px; color: rgba(255, 255, 255, 0.78); }
 button.mf-cta { padding: 12px 40px; border-radius: 999px; font-weight: 700; font-size: 16px; color: #ffffff;
@@ -50,7 +50,7 @@ button.mf-choice:checked, button.mf-choice:checked:hover { background: rgba(255,
 .mf-dot { border-radius: 999px; min-width: 8px; min-height: 8px; background: rgba(255, 255, 255, 0.28);
   transition: all 250ms ease-out; }
 .mf-dot-on { background: #ffffff; min-width: 22px; }
-.mf-step { font-family: "SF Pro Text", sans-serif; font-size: 15px; color: #ffffff; }
+.mf-step { font-family: "Inter", sans-serif; font-size: 15px; color: #ffffff; }
 .mf-log { background: rgba(0, 0, 0, 0.30); border-radius: 12px; font-size: 12px; }
 .mf-dock-preview { padding: 10px 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.26); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28); }

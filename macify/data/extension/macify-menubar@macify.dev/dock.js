@@ -80,7 +80,7 @@ function drawMacBadge(ctx, state) {
     ctx.closePath();
     ctx.setSourceRGBA(1.0, 0.23, 0.19, 1.0);
     ctx.fill();
-    ctx.selectFontFace('SF Pro Text', Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+    ctx.selectFontFace('Inter', Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
     ctx.setFontSize(radius * 1.3);
     const extents = ctx.textExtents(text);
     ctx.moveTo(cx - extents.width / 2 - extents.xBearing, cy - extents.height / 2 - extents.yBearing);

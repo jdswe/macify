@@ -52,7 +52,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
     result = [
         Step(_("Preparing the system"), _("Checks and installs the tools that are needed."),
              lambda log: _prepare(dry_run, log)),
-        Step(_("Installing San Francisco fonts"), _("The same typefaces as macOS across the whole system."),
+        Step(_("Installing the fonts"), _("Inter and JetBrains Mono, included with Macify under the SIL Open Font License."),
              lambda log: fonts.install(dry_run, log)),
         Step(_("macOS windows and buttons"), _("Title bars, colored buttons and apps in macOS style."),
              lambda log: themes.install_gtk(choices.appearance, dry_run, log)),

@@ -213,10 +213,10 @@ def check_icons() -> Check:
 
 
 def check_fonts() -> Check:
-    result = subprocess.run(["fc-list", ":family=SF Pro Text"], capture_output=True, text=True)
+    result = subprocess.run(["fc-list", ":family=Inter"], capture_output=True, text=True)
     if result.stdout.strip():
-        return Check(_("SF fonts"), OK, _("Installed."))
-    return Check(_("SF fonts"), FAIL, _("Not found."), lambda log: fonts.install(False, log))
+        return Check(_("Fonts"), OK, _("Installed."))
+    return Check(_("Fonts"), FAIL, _("Not found."), lambda log: fonts.install(False, log))
 
 
 def check_upkeep() -> Check:

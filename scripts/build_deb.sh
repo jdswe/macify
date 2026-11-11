@@ -51,7 +51,7 @@ Homepage: https://github.com/jdswe/macify
 Depends: python3, python3-gi, python3-pil, 7zip | p7zip-full, gir1.2-gtk-4.0, gir1.2-adw-1, pkexec | policykit-1, libglib2.0-bin, fontconfig, sassc, libxml2-utils, libglib2.0-dev-bin, curl
 Description: One-click macOS look for Ubuntu
  Assistant that turns the Ubuntu GNOME desktop into a macOS look: window
- buttons, icons, cursor, San Francisco fonts, animated dock, menu bar with
+ buttons, icons, cursor, Inter and JetBrains Mono fonts, animated dock, menu bar with
  app menus and Live Activities, wallpapers and accent colors. Everything is
  backed up first and can be restored or uninstalled without a trace.
 CTRL

@@ -1,0 +1,7 @@
+Macify — third-party notices
+
+Fonts bundled in macify/data/fonts (SIL Open Font License 1.1, full text in macify/data/fonts/OFL.txt):
+- Inter (Inter-Regular.otf, Inter-SemiBold.otf) — Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
+- JetBrains Mono (JetBrainsMono-Regular.ttf) — Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+Macify does not bundle or download Apple's San Francisco fonts.

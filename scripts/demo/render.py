@@ -26,10 +26,10 @@ OUT = Path(sys.argv[2])
 APP_SHOTS, SHELL_SHOTS = CAPTURES / "app", CAPTURES / "shell"
 WALLPAPER = REPO / "macify" / "data" / "wallpapers" / "lilac-dark.jpg"     # fondo original, no de Apple
 BOOT = Path.home() / ".cache" / "macify" / "plymouth"
-FONTS = Path.home() / ".local" / "share" / "fonts" / "macify-sf"
+FONTS = Path.home() / ".local" / "share" / "fonts" / "macify"
 W, H, FPS = 1920, 1080, 30
 OVERLAP = 0.6
-BOLD, SEMI, REG, MONO = "SF-Pro-Display-Bold", "SF-Pro-Display-Semibold", "SF-Pro-Display-Regular", "SF-Mono-Regular"
+BOLD, SEMI, REG, MONO = "Inter-Bold", "Inter-SemiBold", "Inter-Regular", "JetBrainsMono-Regular"
 
 
 def font(name, size):

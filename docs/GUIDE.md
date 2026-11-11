@@ -24,7 +24,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Apps view | Show Apps on frosted glass without workspaces, like macOS 27 |
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
 | Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |
-| Cursor & fonts | WhiteSur cursor, San Francisco fonts (SF Pro, SF Mono) |
+| Cursor & fonts | WhiteSur cursor, Inter and JetBrains Mono (included, SIL Open Font License) |
 | Wallpapers | Eight original 4K wallpapers, each in a light and a dark version (your choice stays in both appearances); your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
 | One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches windows, menus, bar and dock — the wallpaper stays. Night Light turns on right away, like Night Shift. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
 | Displays | Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change |
@@ -86,7 +86,7 @@ app/
 │   ├── wallpapers.py   wallpaper catalog and cached thumbnails
 │   ├── status_icons.py macOS-style battery, Wi‑Fi and Control Center icons
 │   ├── boot.py         boot (Plymouth) and login (GDM) screens
-│   ├── fonts.py        San Francisco fonts
+│   ├── fonts.py        Bundled fonts (Inter, JetBrains Mono)
 │   ├── deps.py         system packages
 │   ├── launcher.py     app menu entry and icon
 │   ├── uninstall.py    clean removal
@@ -111,5 +111,5 @@ python3 -m macify install --dry-run        # see every change without applying i
 
 - WhiteSur GTK theme, icons and cursors by vinceliuice — GPL-3.0, downloaded from GitHub at install time.
 - Extensions downloaded from extensions.gnome.org: User Themes, Blur my Shell, Just Perfection, Dash2Dock Animated, Compiz alike magic lamp effect — each under its own license.
-- San Francisco fonts are Apple's and are never bundled: Macify uses your own copy or downloads them from Apple's developer site.
+- Macify uses Inter and JetBrains Mono, both under the SIL Open Font License. No Apple fonts are used or downloaded.
 - macOS is a trademark of Apple Inc. Macify is not affiliated with Apple or Canonical.
