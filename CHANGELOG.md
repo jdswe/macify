@@ -1,5 +1,9 @@
 # Macify release notes
 
+## 0.17.1
+
+- The dock stops animating as soon as it is still. Dash2Dock Animated redraws both docks about 62 times a second for three quarters of a second after every focus change or window restack, even while hidden; with many apps open that happens constantly. Macify now ends that animation after about 90 ms without changes. Measured in an isolated GNOME Shell 50 with two displays and windows switching 2.4 times a second: 125 → 33 dock updates per second and 176–198 → 52–58 ms of shell main-thread time per second. Hover magnification, bounces, drags and slide in/out are unchanged.
+
 ## 0.17.0
 
 - Generated icons no longer come out tiny or blurry: Macify uses the largest version of an app's artwork that sits next to the one its launcher names (Spotify's 512 px image instead of the 128 px one), trims empty margins and scales the drawing to fill the macOS shape. Icons made by earlier versions are redrawn once.

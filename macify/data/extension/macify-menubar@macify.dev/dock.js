@@ -150,6 +150,59 @@ function pointerOnDock(dock) {
         py >= y - lift && py <= monitor.y + monitor.height;
 }
 
+// El dock se anima a ~66 cuadros por segundo durante tres cuartos de segundo cada vez que
+// cambia la ventana activa o el orden de las ventanas, aunque esté escondido y nada se mueva.
+// Con muchas apps abiertas eso pasa todo el rato (cada menú, aviso o ventana nueva) y el
+// escritorio gasta CPU sin dibujar nada distinto. Aquí se mira si el dock ya está quieto —
+// misma posición, opacidad y tamaño de cada icono durante varios cuadros seguidos— y se
+// termina la animación en ese momento, igual que la terminaría el dock un poco después.
+const SETTLE_FRAMES = 6;        // ~90 ms sin cambios
+
+function dockSignature(dock) {
+    const dash = dock.dash;
+    const back = dock._background;
+    let sum = dash.translationX + dash.translationY * 3 + dash.opacity * 7 +
+        (dock.renderArea?.opacity ?? 0) * 11 + (back?.width ?? 0) * 13 + (back?.x ?? 0) * 5 +
+        (back?.opacity ?? 0) * 2 + (dock._hidden ? 4096 : 0);
+    let n = 0;
+    for (const icon of dock._icons ?? []) {
+        const actor = icon._icon;
+        if (!actor)
+            continue;
+        n++;
+        sum += (actor.scaleX * 17 + actor.translationX + actor.translationY * 3) * (1 + n % 5);
+    }
+    return sum + n * 1000;
+}
+
+function endWhenSettled(dock) {
+    const busy = dock._dragging || dock._list?.visible || dock._preview > 0 || dock._fast_forward > 0 ||
+        dock._pauseBounce > 0 || dock._macifyRevealId || pointerOnDock(dock);
+    const signature = busy ? NaN : dockSignature(dock);
+    if (!(Math.abs(signature - dock._macifySignature) < 0.01)) {      // cambió algo (o NaN)
+        dock._macifySignature = signature;
+        dock._macifyStill = 0;
+        return;
+    }
+    if (++dock._macifyStill < SETTLE_FRAMES || dock._macifySettleId)
+        return;
+    // Fuera de la vuelta del temporizador del dock, que no admite cambios mientras corre.
+    dock._macifySettleId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+        dock._macifySettleId = 0;
+        dock._macifyStill = 0;
+        dock._macifySignature = NaN;
+        if (!dock._macifyDestroyed && dock.dash)
+            dock._endAnimation?.();
+        return GLib.SOURCE_REMOVE;
+    });
+}
+
+function forgetSettle(dock) {
+    if (dock._macifySettleId)
+        GLib.source_remove(dock._macifySettleId);
+    dock._macifySettleId = 0;
+}
+
 export class FullscreenDock {
     constructor() {
         global.display.connectObject('in-fullscreen-changed', () => this._update(), this);
@@ -249,7 +302,12 @@ export class FullscreenDock {
             // Un dock quitado (sin dash) que aún se anima sólo daría errores en cada cuadro.
             dock._macifyAnimate = dock.animate;
             dock.animate = function (...args) {
-                return this.dash ? this._macifyAnimate(...args) : undefined;
+                if (!this.dash)
+                    return undefined;
+                const result = this._macifyAnimate(...args);
+                if (this.dash)
+                    endWhenSettled(this);
+                return result;
             };
         }
         if (!dock._macifyWatched) {
@@ -258,6 +316,7 @@ export class FullscreenDock {
             dock.connectObject('destroy', () => {
                 dock._macifyDestroyed = true;
                 releaseComposited(dock);
+                forgetSettle(dock);
             }, this);
         }
         // Con ocultación automática el dock se alcanza también en pantalla completa (como en
@@ -346,6 +405,7 @@ export class FullscreenDock {
         try {
             for (const dock of this._docks()) {
                 releaseComposited(dock);
+                forgetSettle(dock);
                 dock.disconnectObject(this);
                 delete dock._macifyWatched;
                 if (dock._macifyAnimate) {
