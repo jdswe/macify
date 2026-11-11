@@ -52,7 +52,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
     result = [
         Step(_("Preparing the system"), _("Checks and installs the tools that are needed."),
              lambda log: _prepare(dry_run, log)),
-        Step(_("Installing the fonts"), _("Inter and JetBrains Mono, included with Macify under the SIL Open Font License."),
+        Step(_("Installing Macify fonts"), _("Inter and JetBrains Mono, bundled with their licenses."),
              lambda log: fonts.install(dry_run, log)),
         Step(_("macOS windows and buttons"), _("Title bars, colored buttons and apps in macOS style."),
              lambda log: themes.install_gtk(choices.appearance, dry_run, log)),
@@ -66,7 +66,7 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
                           extensions.install_menubar(dry_run, log))),
         Step(_("Checking every icon"), _("Creates missing icons and makes sure none is broken."),
              lambda log: _icons(dry_run, log)),
-        Step(_("Your apps"), _("VS Code, Firefox and Flatpak apps use the macOS buttons."),
+        Step(_("Your apps"), _("GTK apps, VS Code and Firefox use the macOS buttons where their toolkit allows it."),
              lambda log: apps.apply(dry_run, log)),
         Step(_("Automatic upkeep"), _("New apps get their macOS icon on their own; the dock switches at login."),
              lambda log: session.install(dry_run, log)),

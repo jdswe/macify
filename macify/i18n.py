@@ -70,10 +70,9 @@ SPANISH = {
     # Pasos
     "Preparing the system": "Preparando el sistema",
     "Checks and installs the tools that are needed.": "Comprueba e instala las herramientas que hacen falta.",
-    "Installing the fonts": "Instalando las fuentes",
-    "Inter and JetBrains Mono, included with Macify under the SIL Open Font License.":
-        "Inter y JetBrains Mono, incluidas en Macify con licencia SIL OFL.",
-    "The same typefaces as macOS across the whole system.": "Las mismas letras de macOS en todo el sistema.",
+    "Installing Macify fonts": "Instalando las fuentes de Macify",
+    "Inter and JetBrains Mono, bundled with their licenses.":
+        "Inter y JetBrains Mono, incluidas con sus licencias.",
     "macOS windows and buttons": "Ventanas y botones de macOS",
     "Title bars, colored buttons and apps in macOS style.": "Barras de título, botones de colores y apps en estilo macOS.",
     "macOS icons": "Iconos de macOS",
@@ -111,9 +110,13 @@ SPANISH = {
     "Install Macify's own extension in {path}": "Instalar extensión propia de Macify en {path}",
     "Remove {path}": "Borrar {path}",
     "Disable {name}": "Desactivar {name}",
-    "{name}: {count} fonts extracted": "{name}: {count} fuentes extraídas",
-    "Fonts: {count} files included with Macify (SIL Open Font License)": "Fuentes: {count} archivos incluidos en Macify (licencia SIL OFL)",
-    "your resources folder": "tu carpeta de recursos",
+    "{app}: original app icon not found; left unchanged": "{app}: no se encontró el icono original; se dejó sin cambios",
+    "{app}: original app icon preserved in Macify style → {name}":
+        "{app}: se conservó su icono original con estilo Macify → {name}",
+    "GitHub Copilot: link its window to the correct app icon":
+        "GitHub Copilot: vincular su ventana con el icono correcto de la app",
+    "Bundled font files are missing: {files}": "Faltan archivos de fuentes incluidos: {files}",
+    "Installing bundled fonts: {count} files": "Instalando fuentes incluidas: {count} archivos",
     "Skipped: schema {schema} does not exist on this system.": "Omitido: el esquema {schema} no existe en este sistema.",
     "Skipped: key {schema}/{key} does not exist.": "Omitido: la clave {schema}/{key} no existe.",
     "No backup: nothing to restore.": "No hay copia de seguridad: no hay nada que restaurar.",
@@ -182,7 +185,7 @@ SPANISH = {
     "Changed since install: {keys}": "Cambiaron desde la instalación: {keys}",
     "Icons": "Iconos",
     "Macify icon theme missing.": "Falta el tema de iconos de Macify.",
-    "Fonts": "Fuentes",
+    "Macify fonts": "Fuentes de Macify",
     "Installed.": "Instaladas.",
     "Not found.": "No encontradas.",
     "Watching for new apps.": "Vigilando apps nuevas.",
@@ -204,15 +207,15 @@ SPANISH = {
         "{name} está abierto: sus botones cambiarán en tu próximo inicio de sesión.",
     "{name}: use the system theme for its buttons": "{name}: usar el tema del sistema para sus botones",
     "{name}: restore its buttons": "{name}: restaurar sus botones",
-    "Flatpak apps: use the system theme and icons": "Apps Flatpak: usar el tema y los iconos del sistema",
-    "Flatpak apps: restore their default theme access": "Apps Flatpak: restaurar su acceso al tema",
+    "Flatpak permissions from an older Macify version were left unchanged to preserve your settings.":
+        "Los permisos de Flatpak de una versión anterior de Macify se dejaron intactos para conservar tus ajustes.",
     "Hide automatically": "Ocultar automáticamente",
     "When a window covers it. Move the pointer to the bottom edge to show it.":
         "Cuando una ventana lo tapa. Lleva el puntero al borde inferior para mostrarlo.",
     "{name} is open: its original look comes back at your next login.":
         "{name} está abierto: su aspecto original vuelve en tu próximo inicio de sesión.",
-    "VS Code, Firefox and Flatpak apps use the macOS buttons.":
-        "VS Code, Firefox y apps Flatpak usan los botones de macOS.",
+    "GTK apps, VS Code and Firefox use the macOS buttons where their toolkit allows it.":
+        "Las apps GTK, VS Code y Firefox usan los botones de macOS cuando su toolkit lo permite.",
     "Startup and login screens need Macify installed from the .deb package.":
         "El arranque y el inicio de sesión necesitan Macify instalado desde el paquete .deb.",
     "GTK 4 apps: {variant} style": "Apps GTK 4: estilo {variant}",

@@ -24,8 +24,6 @@ CHROMIUM_BROWSERS = [
     ("Microsoft Edge", "msedge", HOME / ".config" / "microsoft-edge" / "Default" / "Preferences"),
     ("Vivaldi", "vivaldi-bin", HOME / ".config" / "vivaldi" / "Default" / "Preferences"),
 ]
-FLATPAK_ACCESS = ["--filesystem=xdg-config/gtk-3.0:ro", "--filesystem=xdg-config/gtk-4.0:ro",
-                  "--filesystem=~/.themes:ro", "--filesystem=~/.local/share/icons:ro"]
 FIREFOX_PROFILES = [HOME / "snap" / "firefox" / "common" / ".mozilla" / "firefox", HOME / ".mozilla" / "firefox"]
 MISSING = "__missing__"
 
@@ -84,15 +82,10 @@ def _undo_chromium_gtk_mode(dry_run: bool, log, backup: dict) -> None:
         backup["chromium"].pop(name)
 
 
-def _flatpak(dry_run: bool, log, backup: dict) -> None:
-    """Apps Flatpak: acceso de solo lectura al tema, los iconos y la configuración GTK."""
-    if shutil.which("flatpak") is None or backup.get("flatpak"):
-        return
-    log(_("Flatpak apps: use the system theme and icons"))
-    if dry_run:
-        return
-    subprocess.run(["flatpak", "override", "--user", *FLATPAK_ACCESS], check=False, capture_output=True)
-    backup["flatpak"] = True
+def _restore_flatpak(backup: dict, log) -> None:
+    saved = backup.get("flatpak")
+    if saved is True:
+        log(_("Flatpak permissions from an older Macify version were left unchanged to preserve your settings."))
 
 
 def _firefox(dry_run: bool, log, backup: dict) -> None:
@@ -118,7 +111,7 @@ def _snaps(dry_run: bool, log, backup: dict) -> None:
 
 def apply(dry_run: bool, log) -> None:
     backup = _load_backup()
-    for tweak in (_vscode, _undo_chromium_gtk_mode, _firefox, _flatpak, _snaps):
+    for tweak in (_vscode, _undo_chromium_gtk_mode, _firefox, _snaps):
         try:
             tweak(dry_run, log, backup)
         except (OSError, ValueError, RuntimeError) as error:
@@ -154,10 +147,7 @@ def restore(dry_run: bool, log) -> None:
         if saved["custom_chrome_frame"] != MISSING:
             preferences.setdefault("browser", {})["custom_chrome_frame"] = saved["custom_chrome_frame"]
         preferences_path.write_text(json.dumps(preferences))
-    if backup.get("flatpak") and shutil.which("flatpak"):
-        log(_("Flatpak apps: restore their default theme access"))
-        if not dry_run:
-            subprocess.run(["flatpak", "override", "--user", "--reset"], check=False, capture_output=True)
+    _restore_flatpak(backup, log)
     if backup.get("firefox") and themes.repo_dir("gtk").exists():
         log(_("Firefox: remove the macOS theme"))
         if not dry_run:

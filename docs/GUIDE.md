@@ -21,15 +21,15 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Dock | Floating glass dock, magnification, bounce, red notification badges; reachable over maximized and full-screen apps (Dash2Dock Animated) |
 | Dock hover | Hover an icon: thumbnails of the app's windows (when it has several) and, on Files, the screenshots, screen recordings and downloads of the last two minutes (open or copy); after that the icon is just an icon. Previews open on the display you are using. In the right-click menu, each open window previews beside the menu |
 | Clipboard | Super+V: history of what you copied — text and images (thumbnails; hover for a larger view; copy and delete buttons per item; Delete key removes). Pick with the pointer, arrows + Enter or 1–9 and it pastes. Clear Clipboard empties it. Kept in memory only, never from password managers. GNOME's own Super+V (notifications) moves to Super+M while Macify is active |
-| Apps view | Show Apps on frosted glass without workspaces, like macOS 27 |
+| Apps view | Frosted-glass app grid without workspaces; the Ubuntu/GNOME Show Apps icon stays inherited and unchanged |
 | Effects | Magic lamp when minimizing, glass blur for Macify's window |
-| Icons | WhiteSur icon set; Macify creates a macOS-shaped icon for any app that lacks one |
-| Cursor & fonts | WhiteSur cursor, Inter and JetBrains Mono (included, SIL Open Font License) |
+| Icons | WhiteSur icon set; Macify uses each app's own artwork for generated macOS-shaped icons and does not substitute a different app's logo. GitHub Copilot's AppImage window is matched to its launcher so the dock shows the correct logo |
+| Cursor & fonts | WhiteSur cursor, Inter interface fonts and JetBrains Mono for terminals (both bundled with their licenses) |
 | Wallpapers | Eight original 4K wallpapers, each in a light and a dark version (your choice stays in both appearances); your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
 | One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches windows, menus, bar and dock — the wallpaper stays. Night Light turns on right away, like Night Shift. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
 | Displays | Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change |
 | Colors | Accent color taken from your wallpaper |
-| Apps | Traffic-light buttons in apt, Flatpak and snap GTK apps (also ones installed later), VS Code and Firefox |
+| Apps | GTK apps use the system theme where their toolkit and package allow it; Macify leaves Flatpak permissions unchanged, and apps built with other toolkits keep their own appearance |
 | Upkeep | New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login |
 | Updates | Software Update (or the install command) installs the new version and runs `macify upgrade`: only what changed is applied — a newer theme or extension, new settings — and old downloads and caches are removed. Your choices stay; nothing is reinstalled |
 
@@ -56,6 +56,8 @@ It checks system tools, theme and extension updates, extensions that fail to loa
 
 - **Restore Original Settings** (in the app) or `macify restore`: GNOME settings go back to how they were before Macify.
 - **Uninstall Everything** or `macify uninstall`: also removes themes, icons, extensions, fonts, the boot and login screens and the upkeep. Then `sudo apt remove macify`.
+
+Flatpak apps run in a sandbox. Macify does not change Flatpak permissions or force a theme. GTK apps use the system theme only when their runtime already exposes it; apps built with other toolkits are unchanged. Older Macify versions did not save the original Flatpak permissions, so restore leaves those legacy overrides alone rather than risk erasing settings that were already there. See Flatpak's [sandbox permissions](https://docs.flatpak.org/en/latest/sandbox-permissions.html) and [per-user override files](https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-override).
 
 ### If the login screen ever fails
 
@@ -86,7 +88,7 @@ app/
 │   ├── wallpapers.py   wallpaper catalog and cached thumbnails
 │   ├── status_icons.py macOS-style battery, Wi‑Fi and Control Center icons
 │   ├── boot.py         boot (Plymouth) and login (GDM) screens
-│   ├── fonts.py        Bundled fonts (Inter, JetBrains Mono)
+│   ├── fonts.py        bundled, freely redistributable fonts
 │   ├── deps.py         system packages
 │   ├── launcher.py     app menu entry and icon
 │   ├── uninstall.py    clean removal
@@ -111,5 +113,5 @@ python3 -m macify install --dry-run        # see every change without applying i
 
 - WhiteSur GTK theme, icons and cursors by vinceliuice — GPL-3.0, downloaded from GitHub at install time.
 - Extensions downloaded from extensions.gnome.org: User Themes, Blur my Shell, Just Perfection, Dash2Dock Animated, Compiz alike magic lamp effect — each under its own license.
-- Macify uses Inter and JetBrains Mono, both under the SIL Open Font License. No Apple fonts are used or downloaded.
+- Macify bundles Inter (SIL Open Font License 1.1) and JetBrains Mono (Apache-2.0), so font installation needs no Apple download or network connection. Their license notices are in `macify/data/fonts/`.
 - macOS is a trademark of Apple Inc. Macify is not affiliated with Apple or Canonical.

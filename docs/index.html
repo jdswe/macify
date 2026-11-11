@@ -28,7 +28,7 @@
 html { scroll-behavior: smooth; }
 body {
   margin: 0; color: var(--text); background: var(--bg);
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   line-height: 1.55; -webkit-font-smoothing: antialiased;
 }
 body::before {
@@ -150,13 +150,25 @@ details p { color: var(--muted); margin: 10px 0 0; }
 
 .gl { width: 18px; height: 18px; flex: none; }
 nav .with-icon { display: inline-flex; align-items: center; gap: 6px; }
-.footer-links { display: flex; flex-wrap: wrap; gap: 10px; }
-.footer-links a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
-  background: var(--glass); border: 1px solid var(--border); color: var(--muted); text-decoration: none;
-  transition: background 160ms ease, color 160ms ease, transform 160ms ease; }
-.footer-links a:hover { background: var(--glass-strong); color: var(--text); transform: translateY(-2px); }
-footer { padding: 48px 0 64px; color: var(--faint); font-size: 14px; border-top: 1px solid var(--border); }
-footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+footer { padding: 56px 0 48px; color: var(--faint); font-size: 14px; border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.03)); }
+footer a { color: var(--muted); text-decoration: none; transition: color 160ms ease; }
+footer a:hover { color: var(--text); }
+.foot-grid { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(120px, 1fr)); gap: 32px; }
+.foot-brand .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text); }
+.foot-brand .brand img { width: 28px; height: 28px; }
+.foot-brand p { margin: 12px 0 16px; max-width: 34ch; color: var(--muted); }
+.foot-source { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--border); }
+.foot-source:hover { background: var(--glass-strong); }
+.foot-col { display: flex; flex-direction: column; gap: 10px; }
+.foot-col h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.foot-bottom { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; margin-top: 40px;
+  padding-top: 20px; border-top: 1px solid var(--border); }
+.foot-note { margin: 12px 0 0; font-size: 13px; }
+.foot-note a { text-decoration: underline; }
+.privacy-more { color: var(--muted); margin-top: 20px; }
+@media (max-width: 720px) { .foot-grid { grid-template-columns: 1fr 1fr; } .foot-brand { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
@@ -207,10 +219,10 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/><path d="M6 6.5h1M9 6.5h3"/></svg></span><h3>Menu bar</h3><p>File, Edit, View, Window and Help menus for any app. Battery (with Energy Mode), Bluetooth, Wi‑Fi and Sound each open their own menu; Control Center keeps only the rest.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="3"/><path d="M7 11h6"/><path d="M15 21l2-4"/><rect x="12" y="13" width="7" height="5" rx="1.2"/></svg></span><h3>macOS touches</h3><p>Volume and brightness show a glass card at the top right. Screenshots slide in as a thumbnail you can paste right away or crop. Super+V opens a clipboard history of text and images that pastes for you.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4"/><path d="M8 11v2M11 10v4M14 11.5v1M17 10.5v3"/></svg></span><h3>Live Activities</h3><p>A bubble at the top for music, charging and connection. Click it for Now Playing with controls and volume.</p></div>
-      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></span><h3>Apps view</h3><p>Show Apps opens over frosted glass, without workspaces, like the Apps view in macOS 27.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></span><h3>Apps view</h3><p>The app grid opens over frosted glass without workspaces; GNOME's Ubuntu Show Apps icon stays inherited and unchanged.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="15.5" width="19" height="5" rx="2.5"/><rect x="5" y="9" width="4" height="4" rx="1.2"/><rect x="10" y="6" width="4" height="7" rx="1.2"/><rect x="15" y="9" width="4" height="4" rx="1.2"/></svg></span><h3>Animated dock</h3><p>Floating glass dock with magnification, bounce on launch, magic-lamp minimize and red notification badges. Hover an icon to see the app's windows as thumbnails — and, right after a screenshot or download, Files offers it to open or copy; in the right-click menu each open window previews as you move over it.</p></div>
-      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span><h3>Icons</h3><p>A macOS icon set. Apps without one get a new icon in the macOS shape — automatically, even later.</p></div>
-      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 19 8 5l5 14M4.8 14h6.4"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="M21 12v7"/></svg></span><h3>Inter and JetBrains Mono fonts</h3><p>Included with Macify under the SIL Open Font License. No Apple fonts.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span><h3>Icons</h3><p>macOS-shaped icons keep each app's own logo. Visual Studio Code, Kiro and GitHub Desktop resolve to their own artwork; GitHub Copilot's AppImage window is matched to its launcher so the dock shows its real logo. When an original is unavailable, Macify leaves the icon alone instead of substituting a lookalike.</p></div>
+      <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 19 8 5l5 14M4.8 14h6.4"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="M21 12v7"/></svg></span><h3>Open fonts</h3><p>Inter for the interface and JetBrains Mono for terminals, bundled with their licenses. No Apple download or network connection is needed.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.6 0-1-.8-1.4-.8-2.3 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg></span><h3>Wallpapers, light and dark</h3><p>Eight original 4K wallpapers, each in light and dark, plus your own folders and photos. Accent, dock glass and menu bar follow them.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.8 8.6a4.9 4.9 0 0 0-8.8-3 4.9 4.9 0 0 0-8.8 3c0 5.4 8.8 10.9 8.8 10.9s8.8-5.5 8.8-10.9z"/><path d="M3.5 11.5h4l2-3 3 6 2-3h6"/></svg></span><h3>Doctor</h3><p>Finds outdated or broken pieces — and new Macify versions — and fixes them in one click.</p></div>
       <div class="card"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><path d="M12 8v5l3 2"/></svg></span><h3>Software Update</h3><p>Installs the verified new version and applies only what changed, then cleans up old files. Nothing is reinstalled.</p></div>
@@ -281,7 +293,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
     <table>
       <tr><th>Kind of app</th><th>Window buttons &amp; theme</th><th>Icon</th></tr>
       <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><circle cx="6.5" cy="8" r="1.2" fill="#ff5f57" stroke="none"/><circle cx="10" cy="8" r="1.2" fill="#febc2e" stroke="none"/><circle cx="13.5" cy="8" r="1.2" fill="#28c840" stroke="none"/></svg></span><span>GTK apps from apt (Files, Settings, Terminal…)</span></span></td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></span><span>Flatpak apps</span></span></td><td class="yes">Yes — Macify grants read access to the theme</td><td class="yes">Yes</td></tr>
+      <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></span><span>GTK apps in Flatpak</span></span></td><td class="part">Only if the runtime already exposes the theme; Macify does not change permissions</td><td class="yes">Yes</td></tr>
       <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span>Snap apps</span></span></td><td class="yes">Yes — Macify puts the theme inside each snap, also for snaps you install later</td><td class="yes">Yes</td></tr>
       <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg></span><span>VS Code, Firefox</span></span></td><td class="yes">Yes — set up by Macify</td><td class="yes">Yes</td></tr>
       <tr><td><span class="app-kind"><span class="ic ic-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span>Chromium browsers, Electron and Flutter apps</span></span></td><td class="no">They draw their own title bar, so no outside theme can change it</td><td class="yes">Yes</td></tr>
@@ -300,30 +312,65 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
 <section id="faq">
   <div class="wrap">
     <h2>Questions</h2>
-    <details><summary>Does it slow Ubuntu down?</summary><p>The animated dock costs about 5% of one CPU core while idle. Macify's background upkeep runs in under a second, only at login and when apps are installed.</p></details>
+    <details><summary>Does it slow Ubuntu down?</summary><p>Macify avoids continuous background polling: its dock previews check pointer position only while you are interacting with the dock, and Live Activities stop their audio-bar updates when hidden, paused, locked or in fullscreen. Resource use depends on your hardware, GNOME extensions and workload, so we do not claim a fixed CPU or GPU percentage.</p></details>
     <details><summary>Can I go back to plain Ubuntu?</summary><p>Yes. Open Macify and choose <b>Restore Original Settings</b> or <b>Uninstall Everything</b>, then <code>sudo apt remove macify</code>.</p></details>
-    <details><summary>Do I need my own Apple fonts?</summary><p>No. Macify includes Inter and JetBrains Mono under the SIL Open Font License, and uses no Apple fonts.</p></details>
+    <details><summary>What does Macify change for Flatpak apps?</summary><p>Nothing in their permissions. Flatpak apps are sandboxed, so a GTK app uses the system theme only if its runtime already exposes it. Macify does not grant filesystem access or force a style; other toolkits remain unchanged. Older Macify versions did not record pre-existing Flatpak permissions, so restoring those installations leaves their old overrides untouched rather than risking user settings. See the <a href="https://docs.flatpak.org/en/latest/sandbox-permissions.html">Flatpak sandbox documentation</a>.</p></details>
+    <details><summary>Do I need to download fonts?</summary><p>No. Macify includes Inter and JetBrains Mono, two freely redistributable typefaces similar in feel to the clean macOS interface. They install locally with no network request; their licenses are included in the repository.</p></details>
     <details><summary>My login screen looks wrong — how do I recover?</summary><p>Press Ctrl+Alt+F3, sign in, run <code>sudo /usr/lib/macify/macify/data/root/macify-root.sh revert</code> and restart.</p></details>
     <details><summary>Is it affiliated with Apple or Canonical?</summary><p>No. macOS is a trademark of Apple Inc. Macify is an independent open-source project.</p></details>
+  </div>
+</section>
+<section id="privacy">
+  <div class="wrap">
+    <h2>Privacy &amp; cookies</h2>
+    <p class="lead">Macify runs on your computer. There is nothing to accept, because nothing is collected.</p>
+    <div class="grid">
+      <div class="card"><h3>No cookies</h3><p>This website sets no cookies and stores nothing in your browser, so there is no consent banner to click through.</p></div>
+      <div class="card"><h3>No tracking</h3><p>No analytics, no advertising and no third-party scripts. The app has no account and no telemetry, and sends no crash reports.</p></div>
+      <div class="card"><h3>What your browser contacts</h3><p>The site is hosted on GitHub Pages and reads the release list from GitHub's public API, so GitHub receives the usual request data (such as your IP address) under its own privacy statement.</p></div>
+    </div>
+    <p class="privacy-more">The app only goes online when you install or update a component, and checks each download against its published SHA-256 fingerprint. Read the full <a href="https://github.com/jdswe/macify/blob/main/PRIVACY.md">privacy policy</a>.</p>
   </div>
 </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <div>
-      <div>© 2026 Jose David Carranza Angarita. Macify is free software under the
-        <a href="https://github.com/jdswe/macify/blob/main/LICENSE">GNU GPL v3</a>.</div>
-      <div style="margin-top:6px">Built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a>
-        and <a href="https://extensions.gnome.org">GNOME extensions</a>, each under its own license.
-        macOS is a trademark of Apple Inc. Not affiliated with Apple or Canonical.</div>
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#"><img src="icon.svg" alt="">Macify</a>
+        <p>A one-click macOS look for Ubuntu, from the boot screen to the dock. Free software, fully reversible.</p>
+        <a class="foot-source" href="https://github.com/jdswe/macify"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
+      </div>
+      <div class="foot-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#releases">Releases</a>
+      </div>
+      <div class="foot-col">
+        <h4>Help</h4>
+        <a href="https://github.com/jdswe/macify/blob/main/docs/GUIDE.md">Guide</a>
+        <a href="#faq">Questions</a>
+        <a href="https://github.com/jdswe/macify/issues/new">Report a problem</a>
+        <a href="https://github.com/jdswe/macify/releases">All versions</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="#privacy">Privacy &amp; cookies</a>
+        <a href="https://github.com/jdswe/macify/blob/main/PRIVACY.md">Privacy policy</a>
+        <a href="https://github.com/jdswe/macify/blob/main/LICENSE">License (GPL v3)</a>
+        <a href="https://github.com/jdswe/macify/blob/main/NOTICE">Third-party notices</a>
+      </div>
     </div>
-    <div class="footer-links">
-      <a href="https://github.com/jdswe/macify" title="Source code"><svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
-      <a href="https://github.com/jdswe/macify/releases" title="All versions"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.2"/></svg>Releases</a>
-      <a href="https://github.com/jdswe/macify/blob/main/LICENSE" title="License"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>License</a>
-      <a href="https://github.com/jdswe/macify/issues/new" title="Report a problem"><svg class="gl" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M3 13h4M17 13h4M5 19l2.5-2M19 19l-2.5-2M5 7l2.5 2M19 7l-2.5 2M9 5l1.5 2M15 5l-1.5 2"/></svg>Report a problem</a>
+    <div class="foot-bottom">
+      <span>© 2026 Jose David Carranza Angarita. Macify is free software under the GNU GPL v3.</span>
+      <span>No cookies · No tracking · No account</span>
     </div>
+    <p class="foot-note">Built on <a href="https://github.com/vinceliuice/WhiteSur-gtk-theme">WhiteSur</a> and
+      <a href="https://extensions.gnome.org">GNOME extensions</a>, each under its own license. macOS is a trademark of
+      Apple Inc. Macify is an independent project, not affiliated with Apple or Canonical.</p>
   </div>
 </footer>
 

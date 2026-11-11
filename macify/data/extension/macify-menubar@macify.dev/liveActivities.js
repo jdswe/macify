@@ -32,7 +32,7 @@ const MAX_TEXT = 44;
 // espacio que queda libre de verdad (entre estos límites, en píxeles lógicos).
 const LABEL_MAX_PX = 320;
 const LABEL_MIN_PX = 48;
-const BARS_STEP_MS = 125;
+const BARS_STEP_MS = 167;
 const RESTING_BARS = [0.55, 0.95, 0.7, 0.45];
 const UPOWER_STATE = {CHARGING: 1, DISCHARGING: 2, FULL: 4};
 
@@ -188,8 +188,8 @@ export class LiveActivities {
 
     // ---------- barras de audio ----------
     // Se mueven todo el tiempo que suena algo, como en macOS (también con otra app delante).
-    // Un solo temporizador las cambia 8 veces por segundo, sin animar entre medias: la barra
-    // se repinta 8 veces y no 60, y en pausa o con la barra oculta (pantalla completa,
+    // Un solo temporizador las cambia 6 veces por segundo, sin animar entre medias: la barra
+    // se repinta 6 veces y no 60, y en pausa o con la barra oculta (pantalla completa,
     // bloqueo) se paran del todo.
 
     get _barsLive() {

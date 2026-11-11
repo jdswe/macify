@@ -119,6 +119,58 @@ class ProfileTests(unittest.TestCase):
         self.assertFalse(doctor._same("'WhiteSur-Dark'", "'WhiteSur-Light'"))
 
 
+class FontTests(unittest.TestCase):
+    def test_bundled_fonts_include_their_licenses(self):
+        from macify import fonts
+
+        self.assertEqual(len(fonts.FONT_FILES), 3)
+        for filename in fonts.FONT_FILES:
+            self.assertTrue((fonts.BUNDLED_DIR / filename).is_file(), filename)
+        inter_license = (fonts.BUNDLED_DIR / "Inter-COPYRIGHT.txt").read_text()
+        jetbrains_license = (fonts.BUNDLED_DIR / "JetBrainsMono-COPYRIGHT.txt").read_text()
+        apache_license = (fonts.BUNDLED_DIR / "LICENSE-Apache-2.0.txt").read_text()
+        self.assertIn("OFL-1.1", inter_license)
+        self.assertIn("Apache-2", jetbrains_license)
+        self.assertIn("Apache License", apache_license)
+
+    def test_install_uses_bundled_fonts_without_network(self):
+        import tempfile
+        from macify import fonts
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source, target, legacy = root / "source", root / "installed", root / "macify-sf"
+            source.mkdir()
+            for name in fonts.FONT_FILES:
+                (source / name).write_bytes(name.encode())
+            legacy.mkdir()
+            (legacy / "SF-Pro-Regular.otf").write_bytes(b"old")
+            messages = []
+            with mock.patch.object(fonts, "BUNDLED_DIR", source), \
+                 mock.patch.object(fonts, "FONT_DIR", target), \
+                 mock.patch.object(fonts, "LEGACY_FONT_DIR", legacy), \
+                 mock.patch.object(fonts.subprocess, "run") as run:
+                fonts.install(False, messages.append)
+            self.assertEqual(sorted(path.name for path in target.iterdir()), sorted(fonts.FONT_FILES))
+            self.assertFalse(legacy.exists())
+            run.assert_called_once_with(["fc-cache", "-f", str(target)], check=True)
+            self.assertIn("Installing bundled fonts: 3 files", messages[0])
+
+    def test_dry_run_does_not_install_bundled_fonts(self):
+        import tempfile
+        from macify import fonts
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "fonts"
+            messages = []
+            with mock.patch.object(fonts, "FONT_DIR", target), \
+                 mock.patch.object(fonts.subprocess, "run") as run:
+                fonts.install(True, messages.append)
+            self.assertFalse(target.exists())
+            run.assert_not_called()
+            self.assertTrue(messages)
+
+
 class WallpaperTests(unittest.TestCase):
     """Fondos con versión oscura, secciones por carpeta y la barra que se ajusta al fondo."""
 
@@ -262,6 +314,33 @@ class UpgradeTests(unittest.TestCase):
             self.assertTrue(used.exists())
             self.assertFalse(unused.exists())
             save.assert_called_once()
+
+
+class FlatpakRestoreTests(unittest.TestCase):
+    """Macify does not add Flatpak permissions that apps do not inherit themselves."""
+
+    def test_apply_does_not_override_flatpak_permissions(self):
+        from macify import apps
+
+        with mock.patch.object(apps, "_load_backup", return_value={}), \
+             mock.patch.object(apps, "_save_backup") as save, \
+             mock.patch.object(apps, "_vscode"), \
+             mock.patch.object(apps, "_undo_chromium_gtk_mode"), \
+             mock.patch.object(apps, "_firefox"), \
+             mock.patch.object(apps, "_snaps"), \
+             mock.patch.object(apps.subprocess, "run") as run:
+            apps.apply(False, lambda _message: None)
+        run.assert_not_called()
+        save.assert_called_once_with({})
+
+    def test_legacy_flatpak_backup_is_preserved_instead_of_reset(self):
+        from macify import apps
+
+        messages = []
+        with mock.patch.object(apps.subprocess, "run") as run:
+            apps._restore_flatpak({"flatpak": True}, messages.append)
+        run.assert_not_called()
+        self.assertIn("older Macify version", messages[0])
 
 
 class SupplyChainTests(unittest.TestCase):
@@ -574,6 +653,117 @@ class IconTests(unittest.TestCase):
                 self.assertFalse(icons._draw(source, target))
             draw.assert_not_called()
 
+    def test_known_apps_resolve_their_own_brand_art_not_theme_aliases(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vscode, kiro, github = (root / name for name in ("vscode.png", "kiro.png", "github.png"))
+            for path in (vscode, kiro, github):
+                path.write_bytes(b"original artwork")
+            with mock.patch.object(icons, "KIRO_ICON_PATHS", (kiro,)), \
+                 mock.patch.object(icons, "_find_source", side_effect={
+                     "visual-studio-code": vscode, "github-desktop": github,
+                 }.get):
+                source = icons._known_app_icon(
+                    "kiro.desktop", {"Name": "Kiro", "Icon": "code-oss"})
+                self.assertEqual(source, ("kiro", kiro))
+                source = icons._known_app_icon(
+                    "code_code.desktop", {"Name": "Visual Studio Code", "Icon": "code"})
+                self.assertEqual(source, ("visual-studio-code", vscode))
+                source = icons._known_app_icon(
+                    "io.github.shiftey.Desktop.desktop",
+                    {"Name": "GitHub Desktop", "Icon": "github"},
+                )
+                self.assertEqual(source, ("github-desktop", github))
+
+    def test_generate_wraps_original_assets_for_apps_even_when_theme_aliases_exist(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            apps, theme, overrides = root / "applications", root / "theme", root / "overrides"
+            apps.mkdir()
+            theme_folder = theme / "apps" / str(icons.ICON_SIZE)
+            theme_folder.mkdir(parents=True)
+            source_paths = {}
+            entries = {}
+            cases = (
+                ("code_code.desktop", "Visual Studio Code", "/original/vscode.png", "vscode"),
+                ("kiro.desktop", "Kiro", "code-oss", "kiro"),
+                ("io.github.shiftey.Desktop.desktop", "GitHub Desktop", "github", "github"),
+            )
+            for desktop_id, name, icon_name, source_name in cases:
+                launcher = apps / desktop_id
+                launcher.write_text(
+                    f"[Desktop Entry]\nType=Application\nName={name}\nIcon={icon_name}\nExec=test\n")
+                entries[desktop_id] = launcher
+                source = root / f"{source_name}.png"
+                source.write_bytes(b"original")
+                source_paths[source_name] = source
+
+            def known_icon(desktop_id, entry):
+                source_key = {
+                    "code_code.desktop": "vscode",
+                    "kiro.desktop": "kiro",
+                    "io.github.shiftey.Desktop.desktop": "github",
+                }[desktop_id]
+                return source_key, source_paths[source_key]
+
+            def draw(source, target):
+                target.write_bytes(source.read_bytes())
+                return True
+
+            logs = []
+            with mock.patch.object(icons, "THEME_DIR", theme), \
+                 mock.patch.object(icons, "OVERRIDES_DIR", overrides), \
+                 mock.patch.object(icons, "app_entries", return_value=entries), \
+                 mock.patch.object(icons, "_theme_stems", return_value={"code", "code-oss", "github"}), \
+                 mock.patch.object(icons, "_known_app_icon", side_effect=known_icon), \
+                 mock.patch.object(icons, "_draw", side_effect=draw), \
+                 mock.patch.object(icons, "base_theme", return_value="WhiteSur"), \
+                 mock.patch.object(icons.shutil, "which", return_value=None):
+                self.assertEqual(icons.generate(False, logs.append), len(cases))
+
+            for desktop_id, name, _icon, _source_name in cases:
+                stem = desktop_id.removesuffix(".desktop")
+                self.assertTrue((overrides / desktop_id).is_file())
+                override = (overrides / desktop_id).read_text()
+                self.assertIn(f"Icon=macify-{stem}", override)
+                self.assertTrue((theme_folder / f"macify-{stem}.png").is_file())
+            self.assertEqual(len(logs), len(cases))
+
+    def test_github_copilot_user_launcher_matches_its_running_window(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            launcher_dir = root / "applications"
+            launcher_dir.mkdir()
+            launcher = launcher_dir / "github-copilot.desktop"
+            launcher.write_text(
+                "[Desktop Entry]\nType=Application\nName=GitHub Copilot\n"
+                "Icon=/home/user/icons/copilot.png\nExec=/home/user/GitHub.AppImage\n")
+            logs = []
+            with mock.patch.object(icons, "app_entries", return_value={launcher.name: launcher}), \
+                 mock.patch.object(icons, "OVERRIDES_DIR", launcher_dir), \
+                 mock.patch.object(icons, "THEME_DIR", root / "theme"), \
+                 mock.patch.object(icons, "_theme_stems", return_value=set()), \
+                 mock.patch.object(icons, "base_theme", return_value="Adwaita"):
+                icons.generate(False, logs.append)
+
+            updated = launcher.read_text()
+            self.assertIn("StartupWMClass=github", updated)
+            self.assertIn("Icon=/home/user/icons/copilot.png", updated)
+            self.assertIn("Exec=/home/user/GitHub.AppImage", updated)
+            self.assertEqual(len(logs), 1)
+            icons.generate(False, logs.append)
+            self.assertEqual(launcher.read_text().count("StartupWMClass=github"), 1)
+            self.assertEqual(len(logs), 1)
+
     def test_second_pass_with_nothing_new_logs_nothing(self):
         """El vigilante corre a menudo: si nada cambió, no escribe en el registro."""
         import tempfile
@@ -674,6 +864,44 @@ class InterfaceTests(unittest.TestCase):
         with mock.patch.object(updates, "latest", return_value=None):
             app.run(None)
         self.assertEqual(len(built), 10)
+
+class LegibilityTests(unittest.TestCase):
+    """Arreglos de 0.17: cristal del dock legible e iconos que llenan su forma."""
+
+    def test_dock_glass_is_dense_enough_without_blur(self):
+        from macify import colors
+        self.assertGreaterEqual(colors.GLASS_DARK, 0.7)
+        self.assertGreaterEqual(colors.GLASS_LIGHT, 0.7)
+
+    def test_largest_sibling_is_used_for_small_launcher_images(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for size in (48, 128, 512):
+                (root / f"app-linux-{size}.png").write_bytes(b"x")
+            (root / "other-linux-1024.png").write_bytes(b"x")
+            self.assertEqual(icons._largest_sibling(root / "app-linux-128.png"), root / "app-linux-512.png")
+            self.assertEqual(icons._largest_sibling(root / "other-linux-1024.png"), root / "other-linux-1024.png")
+            (root / "icon.png").write_bytes(b"x")
+            self.assertEqual(icons._largest_sibling(root / "icon.png"), root / "icon.png")
+
+    def test_small_art_is_trimmed_and_scaled_up(self):
+        from PIL import Image
+        art = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+        art.paste((30, 200, 90, 255), (44, 44, 84, 84))          # dibujo de 40 px con márgenes vacíos
+        fitted = icons._fit(art, 280)
+        self.assertEqual(fitted.size, (280, 280))
+
+    def test_icons_from_an_older_drawing_are_redone_once(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "old.png").write_bytes(b"x")
+            icons._refresh_style(root)
+            self.assertFalse((root / "old.png").exists())
+            (root / "new.png").write_bytes(b"x")
+            icons._refresh_style(root)
+            self.assertTrue((root / "new.png").exists())
 
 
 if __name__ == "__main__":

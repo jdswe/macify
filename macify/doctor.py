@@ -213,10 +213,13 @@ def check_icons() -> Check:
 
 
 def check_fonts() -> Check:
-    result = subprocess.run(["fc-list", ":family=Inter"], capture_output=True, text=True)
-    if result.stdout.strip():
-        return Check(_("Fonts"), OK, _("Installed."))
-    return Check(_("Fonts"), FAIL, _("Not found."), lambda log: fonts.install(False, log))
+    families = [
+        subprocess.run(["fc-list", f":family={family}"], capture_output=True, text=True).stdout.strip()
+        for family in ("Inter", "JetBrains Mono")
+    ]
+    if all(families):
+        return Check(_("Macify fonts"), OK, _("Installed."))
+    return Check(_("Macify fonts"), FAIL, _("Not found."), lambda log: fonts.install(False, log))
 
 
 def check_upkeep() -> Check:

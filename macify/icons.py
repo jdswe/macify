@@ -9,9 +9,11 @@
 """
 
 import configparser
+import glob
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -28,6 +30,11 @@ ICON_SIZE = 512
 OVERRIDES_DIR = HOME / ".local" / "share" / "applications"
 OVERRIDE_MARK = "X-Macify-Override=true"
 OWN_ICONS = {"dev.macify.Macify"}     # ya tienen forma de macOS
+KIRO_ICON_PATHS = (
+    Path("/usr/share/kiro/resources/app/resources/linux/code.png"),
+    Path("/opt/kiro/resources/app/resources/linux/code.png"),
+    HOME / ".local" / "share" / "kiro" / "resources/app/resources/linux/code.png",
+)
 
 ICON_ROOTS = [HOME / ".local" / "share" / "icons", HOME / ".icons", Path("/usr/share/icons"),
               HOME / ".local" / "share" / "flatpak" / "exports" / "share" / "icons",
@@ -84,6 +91,24 @@ def _write_if_changed(path: Path, text: str) -> bool:
         return False
     path.write_text(text)
     return True
+
+
+def _add_startup_wm_class(path: Path, wm_class: str) -> bool:
+    """Añade la asociación de ventana sin cambiar el icono ni el comando del lanzador."""
+    lines = path.read_text(errors="ignore").splitlines()
+    in_entry = False
+    entry_index = None
+    for index, line in enumerate(lines):
+        if line.startswith("["):
+            in_entry = line.strip() == "[Desktop Entry]"
+            if in_entry:
+                entry_index = index
+        elif in_entry and line.startswith("StartupWMClass="):
+            return False
+    if entry_index is None:
+        return False
+    lines.insert(entry_index + 1, f"StartupWMClass={wm_class}")
+    return _write_if_changed(path, "\n".join(lines) + "\n")
 
 
 # ----- búsqueda de iconos -----
@@ -176,9 +201,43 @@ def _render(source: Path, size: int) -> Image.Image:
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(source), size, size, True)
         ok, data = pixbuf.save_to_bufferv("png", [], [])
         return Image.open(io.BytesIO(data)).convert("RGBA")
-    image = Image.open(source).convert("RGBA")
+    image = Image.open(_largest_sibling(source)).convert("RGBA")
     image.thumbnail((size, size), Image.LANCZOS)
     return image
+
+
+_SIZE_IN_NAME = re.compile(r"(?<!\d)(\d{2,4})(?!\d)")
+
+
+def _largest_sibling(source: Path) -> Path:
+    """La versión más grande del mismo dibujo en su carpeta.
+
+    Los lanzadores snap suelen apuntar a una imagen pequeña («spotify-linux-128.png») teniendo
+    al lado la de 512: con la pequeña el icono salía borroso o diminuto.
+    """
+    match = _SIZE_IN_NAME.search(source.stem)
+    if not match:
+        return source
+    best, best_size = source, int(match.group(1))
+    head, tail = source.stem[:match.start()], source.stem[match.end():]
+    try:
+        siblings = list(source.parent.glob(f"{glob.escape(head)}*{glob.escape(tail)}{source.suffix}"))
+    except OSError:
+        return source
+    for sibling in siblings:
+        middle = sibling.stem[len(head):len(sibling.stem) - len(tail)]
+        if middle.isdigit() and int(middle) > best_size and sibling.is_file():
+            best, best_size = sibling, int(middle)
+    return best
+
+
+def _fit(art: Image.Image, side: int) -> Image.Image:
+    """El dibujo sin sus márgenes vacíos, ajustado a «side» (también hacia arriba si es pequeño)."""
+    box = art.getchannel("A").getbbox()
+    if box:
+        art = art.crop(box)
+    scale = side / max(art.size)
+    return art.resize((max(1, round(art.width * scale)), max(1, round(art.height * scale))), Image.LANCZOS)
 
 
 def _plate_box(image: Image.Image) -> tuple[int, int, int, int] | None:
@@ -246,8 +305,7 @@ def mac_icon(source: Path) -> Image.Image:
         result.paste(layer, (0, 0), mask)
     else:
         result.paste(_background(canvas, dark=_is_light(art)), (0, 0), mask)
-        inner = int(body * 0.68)
-        art.thumbnail((inner, inner), Image.LANCZOS)
+        art = _fit(art, int(body * 0.68))
         result.alpha_composite(art, ((canvas - art.width) // 2, (canvas - art.height) // 2))
 
     ImageDraw.Draw(result).rounded_rectangle((margin, margin, margin + body, margin + body), radius,
@@ -305,12 +363,44 @@ def _override_text(source: Path, icon_name: str) -> str:
     return "\n".join(out) + "\n"
 
 
+STYLE_VERSION = "2"        # cambia cuando cambia el dibujo: los iconos ya creados se rehacen
+
+
+def _refresh_style(folder: Path) -> None:
+    """Borra los iconos hechos con un dibujo anterior, para que se creen de nuevo."""
+    stamp = folder / ".style"
+    if not folder.is_dir() or (stamp.exists() and stamp.read_text().strip() == STYLE_VERSION):
+        return
+    for png in folder.glob("*.png"):
+        png.unlink()
+    stamp.write_text(STYLE_VERSION)
+
+
 def _draw(source: Path, target: Path) -> bool:
     """Dibuja el icono sólo si falta o si el original cambió después."""
     if target.exists() and target.stat().st_mtime >= source.stat().st_mtime:
         return False
     mac_icon(source).save(target)
     return True
+
+
+def _known_app_icon(desktop_id: str, entry) -> tuple[str, Path | None] | None:
+    """Resolve well-known apps to their own artwork instead of ambiguous theme aliases."""
+    app_id = desktop_id.removesuffix(".desktop").casefold()
+    app_name = entry.get("Name", "").casefold()
+    icon = entry.get("Icon", "")
+    if app_name == "kiro" or app_id.startswith("kiro"):
+        source = next((path for path in KIRO_ICON_PATHS if path.is_file()), None)
+        return "kiro", source or _find_source("kiro")
+    if app_name in {"visual studio code", "vs code"} or app_id in {"code_code", "code", "visual-studio-code"}:
+        source = Path(icon) if icon.startswith("/") and Path(icon).is_file() else _find_source("visual-studio-code")
+        return "visual-studio-code", source
+    if "github desktop" in app_name or app_id in {
+        "github-desktop", "githubdesktop", "io.github.shiftey.desktop",
+    }:
+        source = Path(icon) if icon.startswith("/") and Path(icon).is_file() else _find_source("github-desktop")
+        return "github-desktop", source
+    return None
 
 
 def generate(dry_run: bool, log) -> int:
@@ -320,6 +410,8 @@ def generate(dry_run: bool, log) -> int:
     """
     mac = _theme_stems(base_theme()) if base_theme() != "Adwaita" else set()
     folder = THEME_DIR / "apps" / str(ICON_SIZE)
+    if not dry_run:
+        _refresh_style(folder)
     icons_wanted: set[str] = set()
     overrides_wanted: set[str] = set()
     handled = 0
@@ -331,27 +423,34 @@ def generate(dry_run: bool, log) -> int:
         icon = entry["Icon"]
         stem = desktop_id.removesuffix(".desktop")
         app = entry.get("Name", stem)
-        if icon.startswith("/"):
-            # Snap y similares: imagen fija. Se usa un nombre del tema si existe.
+        known_icon = _known_app_icon(desktop_id, entry)
+        if known_icon is not None or icon.startswith("/"):
             if path.parent == OVERRIDES_DIR:
-                continue  # lanzador propio del usuario: no se toca
-            alias = next((n for n in (stem.split("_")[0], stem, entry.get("Name", "").lower()) if n in mac), None)
-            name = alias or f"macify-{stem}"
+                if app.casefold() == "github copilot" and not entry.get("StartupWMClass"):
+                    if dry_run:
+                        log(_("GitHub Copilot: link its window to the correct app icon"))
+                    elif _add_startup_wm_class(path, "github"):
+                        log(_("GitHub Copilot: link its window to the correct app icon"))
+                        changed = True
+                continue  # no reemplazar un lanzador que pertenece al usuario
+            source = known_icon[1] if known_icon is not None else (Path(icon) if Path(icon).is_file() else None)
+            if source is None:
+                if known_icon is not None:
+                    log(_("{app}: original app icon not found; left unchanged").format(app=app))
+                continue
+            name = f"macify-{stem}"
             handled += 1
+            icons_wanted.add(name)
             overrides_wanted.add(desktop_id)
-            touched = dry_run
-            if alias is None and Path(icon).exists():
-                icons_wanted.add(name)
-                if not dry_run:
-                    touched |= _draw(Path(icon), folder / f"{name}.png")
+            touched = dry_run or _draw(source, folder / f"{name}.png")
             if not dry_run:
                 OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
                 touched |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name))
-            # El vigilante corre cada vez que cambia una carpeta de apps: sólo se anota lo nuevo.
             if touched:
-                log(_("{app}: fixed image icon → {name}").format(app=app, name=name))
+                log(_("{app}: original app icon preserved in Macify style → {name}").format(app=app, name=name))
             changed |= touched and not dry_run
-        elif icon not in mac:
+            continue
+        if icon not in mac:
             source = _find_source(icon)
             if source is None:
                 continue

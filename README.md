@@ -20,13 +20,14 @@
 - **macOS touches** — volume, brightness and microphone appear as a glass card at the top right; screenshots slide in as a thumbnail (copied already — paste with Ctrl+V, or crop it) that leaves after two seconds; the calendar marks today in red; Alt+Tab and the display switcher (Super+P) are glass panels; the music bars move while something plays; hover a Dock icon to see the app's windows as thumbnails; right after a screenshot or download, hovering Files offers it to open or copy; windows never hide under the menu bar; Super+V opens a clipboard history (text and images with thumbnails, enlarged on hover, copy/delete per item, in memory only) and pastes your pick.
 - **Live Activities** — a bubble at the top for music, charging and connection changes. Click it for Now Playing: cover, progress, controls, volume and the choice of source.
 - **Dock** — floating glass, magnification, bounce, magic-lamp minimize and red notification badges.
-- **Icons** — macOS icon set; missing icons are generated in the macOS shape.
+- **Apps view** — frosted-glass app grid without workspaces; GNOME's Ubuntu **Show Apps** icon stays inherited and unchanged.
+- **Icons** — macOS-shaped app icons use each app's own artwork where available, including dedicated logos for Visual Studio Code, Kiro and GitHub Desktop. GitHub Copilot's AppImage window is matched to its existing launcher so the dock shows its real logo; unmatched icons are left alone rather than replaced with a lookalike.
 - **Wallpapers, light and dark** — eight original folded-glass wallpapers, each in a light and a dark version — pick the one you like; it stays when you switch appearance. Your own folders become sections of the gallery. Changing the wallpaper also updates the login screen (one password), without reinstalling.
 - **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches windows, menus, bar and dock together — your wallpaper stays.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Software Update** — checks GitHub and installs new versions from inside the app. An update applies only what changed (new settings, a newer theme or extension) and cleans up old files — nothing is reinstalled.
-- **Every app type** — traffic-light buttons in apt, Flatpak and snap GTK apps, including ones you install later.
+- **GTK apps** — traffic-light buttons where the toolkit naturally uses the system theme. Macify leaves Flatpak permissions unchanged; a Flatpak app uses the theme only if its runtime already exposes it. Other toolkits keep their own appearance.
 - **Clean removal** — restore or uninstall everything in one click.
 
 <p align="center">
@@ -63,6 +64,8 @@ macify uninstall           # remove everything
 
 More in the [guide](docs/GUIDE.md).
 
+Release history and current preparation notes: [CHANGELOG.md](CHANGELOG.md).
+
 ## Security
 
 Everything runs as your user except the startup and login screens, which use one administrator password (pkexec) for a small packaged helper. That helper only runs code from root-owned folders, reads your files with your own permissions, accepts only images and text of limited size, and installs a pinned WhiteSur version whose SHA‑256 is checked before anything runs. The GNOME extensions it installs are pinned to tested versions and checked against their SHA‑256 too. Updates are verified against the fingerprint GitHub publishes, and nothing is installed without one. The installed files are writable only by root. Macify opens no network ports, runs no system services and loads no kernel modules.
@@ -82,4 +85,4 @@ The shell tests start a hidden, isolated GNOME Shell (its own bus and settings),
 
 © 2026 Jose David Carranza Angarita · [GPL-3.0](LICENSE).
 
-Built on [WhiteSur](https://github.com/vinceliuice/WhiteSur-gtk-theme) by vinceliuice and GNOME extensions from [extensions.gnome.org](https://extensions.gnome.org). Apple fonts are never bundled. Not affiliated with Apple or Canonical.
+Built on [WhiteSur](https://github.com/vinceliuice/WhiteSur-gtk-theme) by vinceliuice and GNOME extensions from [extensions.gnome.org](https://extensions.gnome.org). Macify bundles Inter (SIL Open Font License 1.1) and JetBrains Mono (Apache-2.0), with license notices in `macify/data/fonts/`. Not affiliated with Apple or Canonical.

@@ -14,9 +14,11 @@ analytics, and its website uses no cookies.
 ## Website (jdswe.github.io/macify)
 
 - No cookies, no local storage used for tracking, no analytics and no advertising.
-- No third-party scripts: the page loads only its own files.
-- The demo video is hosted with the site. Your browser may keep ordinary request logs as any web server does; the
-  project does not read or keep them.
+- No third-party scripts: the page runs only its own code.
+- The site is hosted on GitHub Pages and reads the list of releases from GitHub's public API. For those requests
+  GitHub receives the usual request data (such as your IP address) and handles it under its own privacy statement;
+  the Macify project has no access to it.
+- The demo video is hosted with the site.
 
 ## Your rights
 
@@ -27,4 +29,4 @@ its settings, run `macify uninstall`.
 
 Questions about this notice: open an issue at https://github.com/jdswe/macify/issues.
 
-*Last updated: 2026-11-10.*
+*Last updated: 2026-11-11.*

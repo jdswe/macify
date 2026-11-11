@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 from .assets import CONFIG_DIR, WALLPAPER_DIR, load_config, save_config_value
-from .colors import accent_for_wallpaper, glass_tint, top_brightness
+from .colors import GLASS_DARK, GLASS_LIGHT, accent_for_wallpaper, glass_tint, top_brightness
 
 DEFAULT_WALLPAPER = "lilac.jpg"       # con su versión oscura, lilac-dark.jpg
 
@@ -114,7 +114,7 @@ def settings(choices: Choices) -> dict:
     from .wallpapers import fitted             # aquí: wallpapers importa profile de forma indirecta
     uri = q("file://" + str(fitted(wallpaper)))
     glass = glass_tint(wallpaper, dark) if wallpaper.exists() else (
-        (0.12, 0.12, 0.14, 0.35) if dark else (1.0, 1.0, 1.0, 0.35))
+        (0.12, 0.12, 0.14, GLASS_DARK) if dark else (1.0, 1.0, 1.0, GLASS_LIGHT))
     return {
         "org.gnome.desktop.interface": {
             "gtk-theme": q(f"WhiteSur-{variant}-alt"),

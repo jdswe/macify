@@ -14,7 +14,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {_} from './i18n.js';
 
 const HOVER_DELAY_MS = 350;      // el puntero debe quedarse un momento sobre el icono
-const WATCH_MS = 150;            // mientras está abierto, se mira si el puntero sigue cerca
+const WATCH_MS = 200;            // mientras está abierto, se mira si el puntero sigue cerca
 const MARGIN = 14;               // tolerancia entre el icono y el panel
 const MAX_RECENTS = 8;
 const THUMB_W = 210;
@@ -186,7 +186,7 @@ export class DockPreview {
     _poll(dock) {
         if (this._pollId)
             return;
-        this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
+        this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
             if (dock._macifyDestroyed || !dock.dash || !this._pointerIn(dock.dash, 40)) {
                 this._pollId = 0;
                 if (!this._popup && this._timer) {
