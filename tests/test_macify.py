@@ -866,12 +866,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(len(built), 10)
 
 class LegibilityTests(unittest.TestCase):
-    """Arreglos de 0.17: cristal del dock legible e iconos que llenan su forma."""
-
-    def test_dock_glass_is_dense_enough_without_blur(self):
-        from macify import colors
-        self.assertGreaterEqual(colors.GLASS_DARK, 0.7)
-        self.assertGreaterEqual(colors.GLASS_LIGHT, 0.7)
+    """Arreglos de 0.17: iconos que llenan su forma."""
 
     def test_largest_sibling_is_used_for_small_launcher_images(self):
         import tempfile

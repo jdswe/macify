@@ -2,7 +2,6 @@
 
 ## 0.17.0
 
-- Dock glass is now readable over any window. The dock cannot blur what is behind it, so its glass was 35 % opaque and almost vanished over a web page or a document; it is now 72 % (dark) and 78 % (light), still tinted with the wallpaper.
 - Generated icons no longer come out tiny or blurry: Macify uses the largest version of an app's artwork that sits next to the one its launcher names (Spotify's 512 px image instead of the 128 px one), trims empty margins and scales the drawing to fill the macOS shape. Icons made by earlier versions are redrawn once.
 - Website: a Privacy & cookies section (no cookies, no tracking, and which GitHub services the page contacts) and a new footer with product, help and legal links. The privacy policy now states the GitHub Pages and GitHub API requests.
 - Includes everything prepared in 0.16.1–0.16.5 below, which was never published separately.

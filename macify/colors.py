@@ -54,19 +54,11 @@ def accent_for_wallpaper(path: Path) -> str:
     return accent_name(dominant_rgb(path))
 
 
-GLASS_DARK, GLASS_LIGHT = 0.72, 0.78      # opacidad del cristal del dock, sin desenfoque detrás
-
-
 def glass_tint(path: Path, dark: bool) -> tuple[float, float, float, float]:
-    """Cristal del dock: claro u oscuro según el aspecto, con un toque del color del fondo.
-
-    El dock no desenfoca lo que tiene detrás (el módulo de Blur my Shell falla con él), así que
-    el cristal tiene que ser denso: con poco color, sobre una página web o un documento los
-    iconos se mezclaban con el contenido y el dock no se distinguía.
-    """
+    """Cristal del dock: claro u oscuro según el aspecto, con un toque del color del fondo."""
     base, amount = ((0.12, 0.12, 0.14), 0.18) if dark else ((1.0, 1.0, 1.0), 0.12)
     tint = tuple(round(c * (1 - amount) + v / 255 * amount, 3) for c, v in zip(base, dominant_rgb(path)))
-    return (*tint, GLASS_DARK if dark else GLASS_LIGHT)
+    return (*tint, 0.35)
 
 
 def top_brightness(path: Path) -> float:
