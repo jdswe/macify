@@ -91,6 +91,10 @@ def sync(appearance: str, log=None) -> list[str]:
             target = _themes_dir(home) / theme
             changed += _link(THEMES / theme / "index.theme", target / "index.theme")
             changed += _mirror(THEMES / theme / "gtk-3.0", target / "gtk-3.0")
+            # Sin la parte GTK 4 del tema, las apps GTK 4 de la snap que no usan libadwaita
+            # (como el aviso «Refreshing Apps» de snapd) no tienen colores y salen transparentes.
+            if (THEMES / theme / "gtk-4.0").is_dir():
+                changed += _mirror(THEMES / theme / "gtk-4.0", target / "gtk-4.0")
         gtk4 = home / ".config" / "gtk-4.0"
         for file in GTK4_FILES:
             if (GTK4 / file).is_file():

@@ -1,5 +1,10 @@
 # Macify release notes
 
+## 0.17.2
+
+- File dialogs in web browsers (the “wants to open” window when you upload a file) and windows of some snap apps, such as snap's “Refreshing Apps” notice, no longer come out transparent with white, unreadable text. WhiteSur's GTK 4 style used colors that only libadwaita apps define; every other GTK 4 window got no background at all. Those colors now fall back to WhiteSur's own, and libadwaita apps keep exactly the colors they had (checked pixel by pixel). Nothing is forced on apps that set their own style. The Doctor detects and repairs this on existing installations.
+- Snap apps now also receive the GTK 4 part of the WhiteSur theme, not only the GTK 3 part.
+
 ## 0.17.1
 
 - The dock stops animating as soon as it is still. Dash2Dock Animated redraws both docks about 62 times a second for three quarters of a second after every focus change or window restack, even while hidden; with many apps open that happens constantly. Macify now ends that animation after about 90 ms without changes. Measured in an isolated GNOME Shell 50 with two displays and windows switching 2.4 times a second: 125 → 33 dock updates per second and 176–198 → 52–58 ms of shell main-thread time per second. Hover magnification, bounces, drags and slide in/out are unchanged.

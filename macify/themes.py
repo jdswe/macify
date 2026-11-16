@@ -158,22 +158,86 @@ def variant_installed(appearance: str) -> bool:
 _COLOR_MIX_WITHOUT_COMMA = re.compile(r"(color-mix\(in \w+, [^,()]+? \d+(?:\.\d+)?%) (?=[#@\w])")
 
 
+# El estilo de ~/.config/gtk-4.0 lo carga toda app GTK 4, pero usa colores que sólo define
+# libadwaita (@window_bg_color...). Una app GTK 4 sin libadwaita que tampoco tenga el tema
+# WhiteSur a mano (una snap, el selector de archivos de un navegador) los recibe vacíos y pinta
+# sus ventanas transparentes, con el texto blanco. Se cambian por var(--window-bg-color, <color
+# de WhiteSur>): libadwaita define esas variables con el mismo valor, así que sus apps no cambian,
+# y las demás reciben el color de WhiteSur en vez de nada. No se fuerza ningún color nuevo.
+_LIBADWAITA_COLORS = (
+    "accent_bg_color", "accent_fg_color", "card_bg_color", "dialog_bg_color",
+    "headerbar_backdrop_color", "headerbar_bg_color", "headerbar_darker_shade_color",
+    "headerbar_fg_color", "headerbar_shade_color", "popover_bg_color", "sidebar_bg_color",
+    "sidebar_fg_color", "view_bg_color", "window_bg_color", "window_fg_color",
+)
+_NAMED_COLOR = re.compile(r"@(" + "|".join(_LIBADWAITA_COLORS) + r")\b")
+_DEFINE_COLOR = re.compile(r"^@define-color (\w+) ([^;@]+);", re.M)
+# «--accent-bg-color: @accent_bg_color;» repite la variable de libadwaita; sin libadwaita la
+# deja inválida y con ella todo lo que la usa. Sobra: se quita.
+_SAME_VARIABLE = re.compile(r"^[ \t]*--([a-z-]+): @([a-z_]+);\n", re.M)
+
+
+def _libadwaita_css() -> list[Path]:
+    folder = Path.home() / ".config" / "gtk-4.0"
+    return [f for f in folder.glob("gtk-*.css") if f.is_file() and not f.is_symlink()]
+
+
 def _css_files() -> list[Path]:
-    home = Path.home()
-    files = list((home / ".config" / "gtk-4.0").glob("gtk-*.css"))
-    files += list((home / ".themes").glob("WhiteSur-*/gtk-4.0/*.css"))
+    files = _libadwaita_css()
+    files += list((Path.home() / ".themes").glob("WhiteSur-*/gtk-4.0/*.css"))
     return [f for f in files if f.is_file() and not f.is_symlink()]
 
 
+def _fallbacks(path: Path) -> dict[str, str]:
+    """Los colores con que WhiteSur pinta sus apps GTK 4 (claro u oscuro, según el archivo)."""
+    variant = "Dark" if "dark" in path.stem.lower() else "Light"
+    theme = Path.home() / ".themes" / f"WhiteSur-{variant}-alt" / "gtk-4.0" / "gtk.css"
+    if not theme.is_file():
+        return {}
+    defined = dict(_DEFINE_COLOR.findall(theme.read_text(errors="ignore")))
+    return {name: defined[name].strip() for name in _LIBADWAITA_COLORS if name in defined}
+
+
+def harden_css(text: str, fallbacks: dict[str, str]) -> str:
+    """Colores de libadwaita con respaldo para las apps GTK 4 que no la usan."""
+    if not fallbacks:
+        return text
+    text = _SAME_VARIABLE.sub(
+        lambda m: "" if m[2] in fallbacks and m[1] == m[2].replace("_", "-") else m[0], text)
+
+    def variable(match: re.Match) -> str:
+        name = match[1]
+        if name not in fallbacks:
+            return match[0]
+        return f"var(--{name.replace('_', '-')}, {fallbacks[name]})"
+
+    # Las líneas @define-color no admiten var(): se dejan como están.
+    lines = text.splitlines(keepends=True)
+    return "".join(line if line.startswith("@define-color") else _NAMED_COLOR.sub(variable, line)
+                   for line in lines)
+
+
+def _needs_hardening(path: Path) -> bool:
+    text = path.read_text(errors="ignore")
+    return harden_css(text, _fallbacks(path)) != text
+
+
 def broken_css() -> list[Path]:
-    """Archivos del tema con el error de color-mix de WhiteSur."""
-    return [f for f in _css_files() if _COLOR_MIX_WITHOUT_COMMA.search(f.read_text(errors="ignore"))]
+    """Archivos del tema con el error de color-mix de WhiteSur o con colores sin respaldo."""
+    broken = [f for f in _css_files() if _COLOR_MIX_WITHOUT_COMMA.search(f.read_text(errors="ignore"))]
+    broken += [f for f in _libadwaita_css() if f not in broken and _needs_hardening(f)]
+    return broken
 
 
 def repair_css(log) -> int:
     fixed = 0
     for path in broken_css():
         text, count = _COLOR_MIX_WITHOUT_COMMA.subn(r"\1, ", path.read_text())
+        if path in _libadwaita_css():
+            hardened = harden_css(text, _fallbacks(path))
+            count += len(_NAMED_COLOR.findall(text)) - len(_NAMED_COLOR.findall(hardened))
+            text = hardened
+        # Se escribe sobre el mismo archivo: las copias de las snaps son enlaces duros a él.
         path.write_text(text)
         fixed += count
     if fixed:

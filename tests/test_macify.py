@@ -113,6 +113,23 @@ class ProfileTests(unittest.TestCase):
         valid = "a { color: color-mix(in srgb, black 6%, #fff); }"
         self.assertEqual(themes._COLOR_MIX_WITHOUT_COMMA.sub(r"\1, ", valid), valid)
 
+    def test_libadwaita_colors_get_a_fallback(self):
+        from macify import themes
+
+        css = (":root {\n  --accent-color: @accent_bg_color;\n  --accent-bg-color: @accent_bg_color;\n}\n"
+               "@define-color theme_bg_color @window_bg_color;\n"
+               ".background { background-color: color-mix(in srgb, @window_bg_color 96%, transparent); }\n"
+               ".x { color: @colorpad_color; }\n")
+        fallbacks = {"window_bg_color": "#f5f5f5", "accent_bg_color": "#0860F2"}
+        hardened = themes.harden_css(css, fallbacks)
+        self.assertNotIn("--accent-bg-color:", hardened)
+        self.assertIn("--accent-color: var(--accent-bg-color, #0860F2);", hardened)
+        self.assertIn("@define-color theme_bg_color @window_bg_color;", hardened)
+        self.assertIn("color-mix(in srgb, var(--window-bg-color, #f5f5f5) 96%, transparent)", hardened)
+        self.assertIn("@colorpad_color", hardened)
+        self.assertEqual(themes.harden_css(hardened, fallbacks), hardened)
+        self.assertEqual(themes.harden_css(css, {}), css)
+
     def test_values_compare_without_format_noise(self):
         self.assertTrue(doctor._same("uint32 48", "48"))
         self.assertTrue(doctor._same("(0.12, 0.12, 0.14, 0.34999999999999998)", "(0.12, 0.12, 0.14, 0.35)"))
@@ -609,6 +626,8 @@ class SnapThemeTests(unittest.TestCase):
                 (paths["THEMES"] / variant / "gtk-3.0").mkdir(parents=True)
                 (paths["THEMES"] / variant / "index.theme").write_text("[Desktop Entry]\n")
                 (paths["THEMES"] / variant / "gtk-3.0" / "gtk.css").write_text(variant)
+                (paths["THEMES"] / variant / "gtk-4.0").mkdir()
+                (paths["THEMES"] / variant / "gtk-4.0" / "gtk.css").write_text(variant)
             (paths["GTK4"] / "assets").mkdir(parents=True)
             (paths["GTK4"] / "assets" / "close.svg").write_text("<svg/>")
             for name in snaps.GTK4_FILES:
@@ -618,6 +637,8 @@ class SnapThemeTests(unittest.TestCase):
                 home = paths["SNAP_HOMES"] / "editor" / "current"
                 linked = home / "themes" / "WhiteSur-Dark-alt" / "gtk-3.0" / "gtk.css"
                 self.assertTrue(os.path.samefile(linked, paths["THEMES"] / "WhiteSur-Dark-alt" / "gtk-3.0" / "gtk.css"))
+                gtk4 = home / "themes" / "WhiteSur-Dark-alt" / "gtk-4.0" / "gtk.css"
+                self.assertTrue(os.path.samefile(gtk4, paths["THEMES"] / "WhiteSur-Dark-alt" / "gtk-4.0" / "gtk.css"))
                 self.assertEqual(os.readlink(home / ".config" / "gtk-4.0" / "gtk.css"), "gtk-Dark.css")
                 snaps.sync("light")
                 self.assertEqual(os.readlink(home / ".config" / "gtk-4.0" / "gtk.css"), "gtk-Light.css")
