@@ -4,6 +4,11 @@ import argparse
 import sys
 from pathlib import Path
 
+# Claude Code runs this on every permission request: answer without loading the rest of Macify.
+if __name__ == "__main__" and len(sys.argv) > 2 and sys.argv[1] == "agent-hook":
+    from .agent_hook import run as _agent_hook
+    sys.exit(_agent_hook(sys.argv[2]))
+
 from .i18n import _
 from . import boot, doctor, icons, installer, profile, session, system
 from .uninstall import uninstall
@@ -27,6 +32,8 @@ def cli(argv: list[str]) -> int:
     p_look.add_argument("--appearance", choices=["light", "dark"])
     p_look.add_argument("--wallpaper", help="An image to use as wallpaper (its -dark twin is used in dark mode).")
     p_look.add_argument("--login", action="store_true", help="Also put it on the login screen (asks for a password).")
+    p_claude = sub.add_parser("claude", help="Approve Claude Code requests from the menu bar island.")
+    p_claude.add_argument("action", choices=["connect", "disconnect", "status"])
     p_restore = sub.add_parser("restore", help="Restore the original GNOME settings.")
     p_restore.add_argument("--dry-run", action="store_true")
     p_uninstall = sub.add_parser("uninstall", help="Revert everything and remove what Macify installed.")
@@ -73,6 +80,17 @@ def cli(argv: list[str]) -> int:
         installer.apply_look(choices, print)
         if args.login:
             boot.apply(profile.desktop_wallpaper(choices), False, print)
+    elif args.command == "claude":
+        from . import claude_hooks
+        if args.action == "connect":
+            claude_hooks.install(False, print)
+            choices.claude_approvals = True
+            profile.save_choices(choices)
+        elif args.action == "disconnect":
+            claude_hooks.remove(False, print)
+            choices.claude_approvals = False
+            profile.save_choices(choices)
+        print(_("Connected") if claude_hooks.installed() else _("Not connected"))
     elif args.command == "restore":
         system.restore(args.dry_run, print)
     elif args.command == "uninstall":

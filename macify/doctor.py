@@ -275,6 +275,17 @@ def check_dictado() -> Check | None:
     return Check(name, WARN, _("Installed; it starts after you log in again."))
 
 
+def check_claude() -> Check | None:
+    """Sólo si la persona eligió conectar Claude Code a la barra de menús."""
+    if not profile.load_choices().claude_approvals:
+        return None
+    from . import claude_hooks
+    name = _("Claude Code in the menu bar")
+    if claude_hooks.installed():
+        return Check(name, OK, _("Connected."))
+    return Check(name, WARN, _("Not connected."), lambda log: claude_hooks.install(False, log))
+
+
 def run(online: bool = True) -> list[Check]:
     checks = [check_macify(online), check_tools(), *check_themes(), check_theme_css(), *check_extensions(online), check_settings(),
               check_icons(), check_fonts(), check_upkeep()]
@@ -284,6 +295,9 @@ def run(online: bool = True) -> list[Check]:
     voice = check_dictado()
     if voice:
         checks.append(voice)
+    claude = check_claude()
+    if claude:
+        checks.append(claude)
     return checks
 
 

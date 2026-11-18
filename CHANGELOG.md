@@ -1,5 +1,10 @@
 # Macify release notes
 
+## 0.21.0
+
+- **Approve Claude Code from the menu bar.** Turn on **Claude Code in the menu bar** on the last setup page (or run `macify claude connect`). When Claude Code asks for permission, the island shows what it wants to do, with the project, the tool and the exact command or file, and **Allow**, **Deny** and, when Claude Code offers to remember the rule, **Always**. Your answer reaches Claude Code at once, so you never have to switch to its terminal. If you are already looking at that terminal, if Macify is not running, or if nobody answers within 45 seconds, Claude Code asks in its terminal as always. The island also tells you when Claude Code finished, with the start of its last message, and when it is waiting for you. Macify adds only its own hooks to `~/.claude/settings.json`, keeps every other setting, saves a backup first, and removes exactly those hooks with `macify claude disconnect` or Uninstall Everything. Everything stays on the computer.
+- Fixed: after answering an agent, the island's card could not be opened again until music played.
+
 ## 0.20.0
 
 - **Voice dictation, optional.** The last setup page offers **Voice dictation (Dictado)**, off by default. [Dictado](https://github.com/jdswe/dictado) is a separate open-source app: speak and it types where the cursor is, and it transcribes calls (what you hear and what you say, labelled “Me” and “Others”) and audio or video files. Speech is recognised locally by Whisper; about 350 MB of models download once and no audio leaves the computer. Macify runs Dictado's verified installer (no sudo; it only asks for your password if `ffmpeg` or Python's venv module are missing), the Doctor checks it when you chose it, and Uninstall Everything removes it too (your dictations and transcripts are kept). If Dictado is already installed, the option shows it.

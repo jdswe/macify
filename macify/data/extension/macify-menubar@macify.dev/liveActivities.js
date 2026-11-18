@@ -76,11 +76,20 @@ class LiveButton extends PanelMenu.Button {
         // «Ahora suena».
         this.clickAction = null;
         const toggle = this.menu.toggle.bind(this.menu);
-        this.menu.toggle = () => (this.clickAction ? this.clickAction() : toggle());
+        // El menú se rellena antes de abrirse: GNOME no abre un menú que parece vacío.
+        this.beforeOpen = null;
+        this.menu.toggle = () => {
+            if (this.clickAction)
+                return this.clickAction();
+            if (!this.menu.isOpen)
+                this.beforeOpen?.();
+            return toggle();
+        };
     }
 });
 
 const AGENT_LOOK = {
+    approve: ['dialog-password-symbolic', 'macify-island-agent-waiting'],
     waiting: ['dialog-question-symbolic', 'macify-island-agent-waiting'],
     failed: ['dialog-error-symbolic', 'macify-island-agent-failed'],
     done: ['object-select-symbolic', 'macify-island-agent-done'],
@@ -113,6 +122,7 @@ export class LiveActivities {
             this._render();
         }, this);
         this._cards = new AgentCards(this._button.menu, this._agents);
+        this._button.beforeOpen = () => this._fillMenu();
         this._button.menu.connectObject('open-state-changed', (_menu, open) => {
             if (open)
                 this._fillMenu();
@@ -131,7 +141,7 @@ export class LiveActivities {
         const event = this._event;
         const voice = this._dictado;
         const dictating = !event && voice.dictation !== 'idle';
-        const waitingAgent = this._agents.current?.state === 'waiting';
+        const waitingAgent = ['waiting', 'approve'].includes(this._agents.current?.state);
         const recording = !event && !dictating && !waitingAgent && voice.transcription === 'recording';
         const agent = event || dictating || recording ? null : this._agents.current;
         const busy = dictating || recording;
@@ -155,7 +165,7 @@ export class LiveActivities {
             this._show('media-record-symbolic', this._recText(), false);
         } else if (agent) {
             const waiting = this._agents.waitingCount;
-            const text = agent.state === 'waiting' && waiting > 1
+            const text = ['waiting', 'approve'].includes(agent.state) && waiting > 1
                 ? _('{n} agents waiting', {n: waiting}) : agent.text;
             this._show(AGENT_LOOK[agent.state][0], text, false);
         } else if (player) {
@@ -229,8 +239,9 @@ export class LiveActivities {
 
     _agentLook(state) {
         const pill = this._button.pill;
-        for (const [key, [, style]] of Object.entries(AGENT_LOOK)) {
-            if (key === state)
+        const wanted = AGENT_LOOK[state]?.[1];
+        for (const style of new Set(Object.values(AGENT_LOOK).map(look => look[1]))) {
+            if (style === wanted)
                 pill.add_style_class_name(style);
             else
                 pill.remove_style_class_name(style);

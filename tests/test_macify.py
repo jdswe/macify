@@ -130,6 +130,58 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(themes.harden_css(hardened, fallbacks), hardened)
         self.assertEqual(themes.harden_css(css, {}), css)
 
+    def test_agent_hook_answers(self):
+        import io
+        from unittest import mock
+        from macify import agent_hook
+
+        data = {"tool_name": "Bash", "cwd": "/home/me/project",
+                "tool_input": {"command": "rm -rf node_modules", "description": "Remove node_modules"},
+                "permission_suggestions": [{"type": "addRules", "behavior": "allow", "destination": "localSettings",
+                                            "rules": [{"toolName": "Bash", "ruleContent": "rm -rf node_modules"}]}]}
+        request = agent_hook.request(data)
+        self.assertEqual((request["project"], request["tool"], request["detail"]), ("project", "Bash", "rm -rf node_modules"))
+        self.assertTrue(request["canAlways"])
+        allow = agent_hook.decision("allow", data)["hookSpecificOutput"]
+        self.assertEqual((allow["hookEventName"], allow["decision"]), ("PermissionRequest", {"behavior": "allow"}))
+        always = agent_hook.decision("always", data)["hookSpecificOutput"]["decision"]
+        self.assertEqual(always["updatedPermissions"], data["permission_suggestions"])
+        self.assertEqual(agent_hook.decision("deny", data)["hookSpecificOutput"]["decision"]["behavior"], "deny")
+        self.assertIsNone(agent_hook.decision("", data))          # sin respuesta: pregunta la terminal
+        self.assertIn(__import__("os").getpid(), agent_hook.ancestors())
+        out = io.StringIO()
+        with mock.patch.object(agent_hook, "_call", return_value=("allow",)):
+            agent_hook.run("permission", io.StringIO(__import__("json").dumps(data)), out)
+        self.assertIn('"behavior": "allow"', out.getvalue())
+        out = io.StringIO()
+        with mock.patch.object(agent_hook, "_call", side_effect=RuntimeError("no Macify")):
+            self.assertEqual(agent_hook.run("permission", io.StringIO(__import__("json").dumps(data)), out), 0)
+        self.assertEqual(out.getvalue(), "")                      # Macify apagado: Claude Code sigue igual
+
+    def test_claude_hooks_keep_other_settings(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from macify import claude_hooks
+
+        with tempfile.TemporaryDirectory() as folder:
+            settings = Path(folder) / "settings.json"
+            mine = {"model": "opus", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "say done"}]}]}}
+            settings.write_text(json.dumps(mine))
+            with mock.patch.object(claude_hooks, "SETTINGS", settings):
+                claude_hooks.install(False, lambda *_: None)
+                claude_hooks.install(False, lambda *_: None)          # dos veces: sin duplicados
+                data = json.loads(settings.read_text())
+                self.assertEqual(data["model"], "opus")
+                self.assertEqual(len(data["hooks"]["Stop"]), 2)
+                self.assertEqual(len(data["hooks"]["PermissionRequest"]), 1)
+                self.assertTrue(claude_hooks.installed())
+                self.assertTrue((Path(folder) / "settings.json.macify-backup").is_file())
+                claude_hooks.remove(False, lambda *_: None)
+                self.assertEqual(json.loads(settings.read_text()), mine)
+                self.assertFalse(claude_hooks.installed())
+
     def test_dictado_is_an_optional_step(self):
         from macify import installer, profile
 

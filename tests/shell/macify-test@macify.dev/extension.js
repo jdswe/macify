@@ -461,6 +461,72 @@ async function testAgentIsland(macify) {
     check('island goes back to normal', !live._agents.current, label());
 }
 
+// Claude Code conectado: el hook real (macify agent-hook) pregunta en la isla y espera la respuesta.
+function agentHook(event, input) {
+    const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE});
+    launcher.set_cwd(GLib.getenv('MACIFY_TEST_REPO'));
+    const proc = launcher.spawnv(['python3', '-m', 'macify', 'agent-hook', event]);
+    return new Promise(resolve => proc.communicate_utf8_async(JSON.stringify(input), null, (p, result) => {
+        try {
+            resolve(p.communicate_utf8_finish(result)[1] ?? '');
+        } catch (e) {
+            resolve(`error: ${e.message}`);
+        }
+    }));
+}
+
+async function testClaudeApprovals(macify) {
+    const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
+    const label = () => live._button.visible ? live._button.label.text : '';
+    const findCards = actor => [...(actor._allowButton ? [actor] : []), ...(actor.get_children?.() ?? []).flatMap(findCards)];
+    const ask = {
+        hook_event_name: 'PermissionRequest', cwd: '/home/me/shop-api', tool_name: 'Bash',
+        tool_input: {command: 'npm run migrate -- --env staging', description: 'Run the staging migrations'},
+        permission_suggestions: [{type: 'addRules', behavior: 'allow', destination: 'localSettings',
+            rules: [{toolName: 'Bash', ruleContent: 'npm run migrate:*'}]}],
+    };
+    const answered = agentHook('permission', ask);
+    await until(() => live._agents.current?.state === 'approve', 8000);
+    await sleep(300);
+    check('a Claude Code permission request shows in the island', /Run the staging migrations/.test(label()) &&
+        live._button.pill.has_style_class_name('macify-island-agent-waiting'), label());
+    if (!live._button.menu.isOpen)
+        live._button.menu.toggle();
+    await sleep(600);
+    let cards = findCards(live._cards.section.actor);
+    const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)].filter(Boolean);
+    check('the card shows the exact command', cards.length === 1 && texts(cards[0]).some(t => t.includes('npm run migrate -- --env staging')),
+        cards[0] ? texts(cards[0]).join('|') : 'no card');
+    await screenshot('claude-approval');
+    cards[0]?._allowButton.emit('clicked', 1);
+    const out = await answered;
+    check('Allow answers Claude Code at once', /"behavior": "allow"/.test(out), out);
+    check('the island clears after answering', !live._agents.items.some(i => i.state === 'approve'));
+
+    const denied = agentHook('permission', {...ask, tool_input: {command: 'rm -rf build', description: 'Delete build'}});
+    await until(() => live._agents.current?.state === 'approve', 8000);
+    if (!live._button.menu.isOpen)
+        live._button.menu.toggle();
+    await sleep(400);
+    cards = findCards(live._cards.section.actor);
+    const wasOpen = live._button.menu.isOpen;
+    if (!cards.length && live._agents.current?.state === 'approve')
+        live._agents.answer(live._agents.current, 'deny');   // sin tarjeta: que no espere 45 s
+    cards[0]?._denyButton.emit('clicked', 1);
+    const deniedOut = await denied;
+    check('Deny answers Claude Code', /"behavior": "deny"/.test(deniedOut) && cards.length === 1,
+        `${cards.length} cards, open=${wasOpen}, items=${live._agents.items.map(i => i.state).join(',')}, sensitive=${live._button.reactive}: ${deniedOut}`);
+
+    // Si el puente no contesta (por ejemplo, Macify apagado), el hook no decide nada.
+    const finished = agentHook('stop', {hook_event_name: 'Stop', cwd: '/home/me/shop-api', stop_hook_active: false,
+        last_assistant_message: 'Migrations ran on staging; 3 tables changed.'});
+    await finished;
+    await until(() => live._agents.current?.state === 'done', 5000);
+    check('Claude Code finishing shows in the island', live._agents.current?.state === 'done' &&
+        /Migrations ran on staging/.test(live._agents.current?.text ?? ''), live._agents.current?.text ?? 'none');
+    live._button.menu.close();
+}
+
 // Dictado en la isla, con un Dictado falso en el bus de la prueba (sin micrófono).
 function dictadoCall(method, args = null) {
     return new Promise((resolve, reject) => Gio.DBus.session.call('dev.dictado.Dictado', '/dev/dictado/Dictado',
@@ -1210,6 +1276,7 @@ async function run() {
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'agents') {
             await testAgentIsland(macify);
+            await testClaudeApprovals(macify);
             await testDictadoIsland(macify);
             throw new Error('only agents requested');
         }
@@ -1259,6 +1326,7 @@ async function run() {
         await testBadges();
         await testDockBounce();
         await testAgentIsland(macify);
+        await testClaudeApprovals(macify);
         await testDictadoIsland(macify);
         await testAppVolume();
         await testEditor();

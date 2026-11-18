@@ -13,7 +13,9 @@ import {_} from './i18n.js';
 
 const VERTICAL = Clutter.Orientation.VERTICAL;
 const MAX_TEXT = 600;
+const MAX_DETAIL = 900;
 const LOOK = {
+    approve: ['dialog-password-symbolic', 'Needs your approval'],
     waiting: ['dialog-question-symbolic', 'Needs you'],
     failed: ['dialog-error-symbolic', 'Failed'],
     done: ['object-select-symbolic', 'Done'],
@@ -65,6 +67,8 @@ export class AgentCards {
     }
 
     _card(item) {
+        if (item.state === 'approve')
+            return this._approval(item);
         const [icon, state] = LOOK[item.state] ?? LOOK.waiting;
         const card = new St.BoxLayout({orientation: VERTICAL, style_class: `macify-agent-card macify-agent-${item.state}`,
             x_expand: true});
@@ -100,6 +104,53 @@ export class AgentCards {
         card.add_child(actions);
         card._openButton = open;
         card._dismissButton = dismiss;
+        return card;
+    }
+
+    _button(label, style, action) {
+        const button = new St.Button({label, style_class: `macify-agent-button ${style}`, can_focus: true});
+        button.connect('clicked', action);
+        return button;
+    }
+
+    // Una petición de permiso: qué quiere hacer (el comando o archivo exacto) y la respuesta.
+    _approval(item) {
+        const request = item.request ?? {};
+        const card = new St.BoxLayout({orientation: VERTICAL, style_class: 'macify-agent-card macify-agent-approve',
+            x_expand: true});
+        const header = new St.BoxLayout({style_class: 'macify-agent-header'});
+        header.add_child(new St.Icon({icon_name: LOOK.approve[0], icon_size: 16, style_class: 'macify-agent-icon',
+            y_align: Clutter.ActorAlign.CENTER}));
+        header.add_child(new St.Label({text: item.name, style_class: 'macify-agent-name', y_align: Clutter.ActorAlign.CENTER}));
+        const where = [request.project, ago(item.realTime)].filter(Boolean).join(' · ');
+        header.add_child(new St.Label({text: where, style_class: 'macify-agent-meta', x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER}));
+        card.add_child(header);
+        card.add_child(wrapped(_('Wants to use {tool}', {tool: request.tool || '?'}), 'macify-agent-title'));
+        if (request.summary && request.summary !== request.detail)
+            card.add_child(wrapped(request.summary, 'macify-agent-body'));
+        if (request.detail) {
+            const detail = request.detail.length > MAX_DETAIL ? `${request.detail.slice(0, MAX_DETAIL - 1)}…` : request.detail;
+            const code = wrapped(detail, 'macify-agent-code');
+            card.add_child(new St.Bin({style_class: 'macify-agent-code-box', child: code, x_expand: true}));
+        }
+        const actions = new St.BoxLayout({style_class: 'macify-agent-actions', x_align: Clutter.ActorAlign.END});
+        const answer = value => () => {
+            this._agents.answer(item, value);
+            if (this.count)
+                this.fill();
+            else
+                this._menu.close();
+        };
+        const deny = this._button(_('Deny'), 'macify-agent-deny', answer('deny'));
+        actions.add_child(deny);
+        if (request.canAlways)
+            actions.add_child(this._button(_('Always'), '', answer('always')));
+        const allow = this._button(_('Allow'), 'macify-agent-allow', answer('allow'));
+        actions.add_child(allow);
+        card.add_child(actions);
+        card._allowButton = allow;
+        card._denyButton = deny;
         return card;
     }
 

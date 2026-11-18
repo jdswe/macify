@@ -7,7 +7,7 @@ from pathlib import Path
 from .i18n import _
 import subprocess
 
-from . import apps, boot, dictado, extensions, fonts, icons, launcher, session, system
+from . import apps, boot, claude_hooks, dictado, extensions, fonts, icons, launcher, session, system
 from .assets import CACHE_DIR, CONFIG_DIR, DATA_DIR
 
 HOME = Path.home()
@@ -51,6 +51,7 @@ def uninstall(dry_run: bool, log) -> None:
     icons.remove(dry_run, log)
     fonts.remove(dry_run, log)
     launcher.remove(dry_run, log)
+    claude_hooks.remove(dry_run, log)
     # Dictado sólo si se instaló desde Macify; tus dictados y transcripciones se conservan.
     from .profile import load_choices
     if load_choices().dictado:
