@@ -158,6 +158,21 @@ SPANISH = {
     "Black boot screen with your logo and the macOS login screen. Asks for your password once.":
         "Arranque negro con tu logo y la pantalla de inicio de sesión de macOS. Pide tu contraseña una vez.",
     "Startup and login screens": "Arranque e inicio de sesión",
+    "Voice dictation (Dictado)": "Dictado por voz (Dictado)",
+    "Speak and it types where the cursor is; transcribes calls and files. About 350 MB of speech models download once; everything runs on this computer.":
+        "Hablas y escribe donde está el cursor; transcribe llamadas y archivos. Unos 350 MB de modelos de voz se descargan una vez; todo funciona en este equipo.",
+    "Speak and it types where the cursor is; also transcribes calls and files. About 350 MB of speech models download once; everything runs on this computer, nothing is sent online.":
+        "Hablas y escribe donde está el cursor; también transcribe llamadas y archivos. Unos 350 MB de modelos de voz se descargan una vez; todo funciona en este equipo, nada se envía a internet.",
+    "Installed. Speak and it types where the cursor is; also transcribes calls and files.":
+        "Instalado. Hablas y escribe donde está el cursor; también transcribe llamadas y archivos.",
+    "Dictado is already installed.": "Dictado ya está instalado.",
+    "Install Dictado from {url} (about 350 MB of speech models download once)":
+        "Instalar Dictado desde {url} (unos 350 MB de modelos de voz se descargan una vez)",
+    "Dictado is installed. Log out and back in to use its shortcut.":
+        "Dictado está instalado. Cierra sesión y vuelve a entrar para usar su atajo.",
+    "Dictado could not be installed. See the messages above.": "No se pudo instalar Dictado. Mira los mensajes de arriba.",
+    "Uninstall Dictado": "Desinstalar Dictado",
+    "Ready. Press its shortcut to dictate.": "Listo. Pulsa su atajo para dictar.",
     "macOS style from the moment you turn on your computer. Asks for your password once.":
         "Estilo macOS desde que enciendes el equipo. Pide tu contraseña una vez.",
     "Startup and login screens: one administrator password":

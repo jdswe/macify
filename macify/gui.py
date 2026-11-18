@@ -361,9 +361,24 @@ class MacifyWindow(Adw.ApplicationWindow):
         login.connect("notify::active", self._on_login_toggle)
         self.summary_options = Adw.PreferencesGroup()
         self.summary_options.add(login)
+        from . import dictado
+        voice = Adw.SwitchRow(title=_("Voice dictation (Dictado)"),
+                              subtitle=_("Speak and it types where the cursor is; also transcribes calls and files. "
+                                         "About 350 MB of speech models download once; everything runs on this "
+                                         "computer, nothing is sent online."))
+        if dictado.installed():
+            voice.set_subtitle(_("Installed. Speak and it types where the cursor is; also transcribes calls and files."))
+        voice.set_active(self.choices.dictado or dictado.installed())
+        self.choices.dictado = voice.get_active()
+        voice.connect("notify::active", self._on_dictado_toggle)
+        self.summary_options.add(voice)
         self.summary_title = text(_("Ready to begin"), "mf-title")
         self.summary_detail = text(_("Takes a few minutes. You'll be asked to restart at the end."), "mf-subtitle")
         return self._page(self.summary_title, self.summary_detail, self.summary, self.summary_options)
+
+    def _on_dictado_toggle(self, row: Adw.SwitchRow, _param) -> None:
+        self.choices.dictado = row.get_active()
+        self._fill_summary()
 
     def _on_login_toggle(self, row: Adw.SwitchRow, _param) -> None:
         self.choices.login_screen = row.get_active()

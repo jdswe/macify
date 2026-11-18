@@ -72,6 +72,18 @@
 .macify-live-button:hover .macify-island,
 .macify-live-button:active .macify-island { background-color: rgba(30, 30, 34, 0.92); }
 .macify-island-icon { color: #ffffff; }
+/* Agentes: naranja si esperan tu respuesta, verde si terminaron, rojo si fallaron. */
+.macify-island.macify-island-agent-waiting { border-color: rgba(255, 159, 10, 0.95); }
+.macify-island-agent-waiting .macify-island-icon { color: #ff9f0a; }
+.macify-island-agent-done .macify-island-icon { color: #30d158; }
+.macify-island.macify-island-agent-failed { border-color: rgba(255, 69, 58, 0.95); }
+.macify-island-agent-failed .macify-island-icon { color: #ff453a; }
+/* Dictado: escuchando (micrófono rojo y barras con tu voz), escribiendo, grabando. */
+.macify-island-voice-recording .macify-island-icon,
+.macify-island-voice-rec .macify-island-icon { color: #ff453a; }
+.macify-island-voice-recording .macify-island-bar { background-color: #ff453a; }
+.macify-island-voice-processing .macify-island-icon { color: #0a84ff; }
+.macify-island.macify-island-voice-rec { border-color: rgba(255, 69, 58, 0.95); }
 .macify-island-label { font-size: 12px; font-weight: 600; text-shadow: none; }
 .macify-island-bars { spacing: 2px; height: 12px; }
 .macify-island-bar { width: 3px; height: 12px; border-radius: 2px; background-color: #30d158; }
@@ -80,6 +92,29 @@
 
 .macify-np-menu .popup-menu-content { padding: 14px; min-width: 300px; }
 .macify-np.popup-menu-item { padding: 0; }
+/* El menú de la isla, opaco (nada se transparenta): claro u oscuro como el sistema. */
+.macify-np-menu.macify-np-light .popup-menu-content { background: rgba(246, 246, 248, 0.98) !important; background-color: rgba(246, 246, 248, 0.98) !important; color: #1d1d1f; }
+.macify-np-menu.macify-np-dark .popup-menu-content { background: rgba(34, 34, 38, 0.98) !important; background-color: rgba(34, 34, 38, 0.98) !important; color: #f5f5f7; }
+/* Tarjeta de los agentes */
+.macify-agents.popup-menu-item { padding: 0 0 10px; }
+.macify-agents-list { spacing: 8px; max-width: 380px; }
+.macify-agent-card { padding: 10px 12px; spacing: 6px; border-radius: 12px; background-color: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.18); min-width: 300px; }
+.macify-agent-waiting { border-color: rgba(255, 159, 10, 0.75); }
+.macify-agent-failed { border-color: rgba(255, 69, 58, 0.75); }
+.macify-agent-header { spacing: 8px; }
+.macify-agent-waiting .macify-agent-icon { color: #ff9f0a; }
+.macify-agent-done .macify-agent-icon { color: #30d158; }
+.macify-agent-failed .macify-agent-icon { color: #ff453a; }
+.macify-agent-name { font-weight: bold; font-size: 13px; }
+.macify-agent-meta { font-size: 11px; color: rgba(128, 128, 128, 0.95); }
+.macify-agent-title { font-weight: 600; font-size: 13px; }
+.macify-agent-body { font-size: 12px; }
+.macify-agent-actions { spacing: 6px; padding-top: 2px; }
+.macify-agent-button { padding: 4px 12px; border-radius: 999px; font-size: 12px; background-color: rgba(128, 128, 128, 0.18); }
+.macify-agent-button:hover { background-color: rgba(128, 128, 128, 0.30); }
+.macify-agent-open { background-color: -st-accent-color; color: #ffffff; }
+.macify-agent-open:hover { background-color: -st-accent-color; color: #ffffff; box-shadow: inset 0 0 0 99px rgba(255, 255, 255, 0.15); }
 .macify-np-box { spacing: 10px; }
 .macify-np-header { spacing: 12px; }
 .macify-np-sources { spacing: 6px; }
@@ -102,6 +137,8 @@
 .macify-np-button:active { background-color: rgba(128, 128, 128, 0.30); }
 .macify-np-play StIcon { icon-size: 26px; }
 .macify-np-volume { spacing: 8px; }
+.macify-np-app-volume { padding-bottom: 6px; }
+.macify-np-volume-label { font-size: 11px; color: rgba(128, 128, 128, 0.9); max-width: 76px; min-width: 44px; }
 /* Todos los deslizadores (música, volumen, micrófono) gruesos, como el de Sonido. */
 .macify-slider,
 .macify-np-menu .slider {
@@ -257,35 +294,68 @@
 /* ---------- historial del portapapeles (Super+V) ---------- */
 
 .macify-clip {
-  min-width: 420px;
-  max-width: 560px;
-  padding: 12px;
-  spacing: 2px;
-  border-radius: 22px;
+  padding: 10px;
+  spacing: 0;
+  border-radius: 20px;
   color: #ffffff;
-  background-color: rgba(38, 38, 40, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), inset 0 -1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.4);
+  background-color: rgba(30, 30, 32, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 48px rgba(0, 0, 0, 0.45);
 }
-.macify-clip-header { padding: 2px 8px 8px; spacing: 8px; }
-.macify-clip-icon { color: rgba(255, 255, 255, 0.8); }
-.macify-clip-text { font-size: 13px; }
-.macify-clip-detail { font-size: 11px; color: rgba(255, 255, 255, 0.5); padding-top: 1px; }
-.macify-clip-hint { font-size: 11px; color: rgba(255, 255, 255, 0.45); text-align: center; padding: 8px 0 2px; }
+.macify-clip-header { padding: 4px 6px 10px; spacing: 10px; }
+.macify-clip-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #ffffff;
+  background-gradient-direction: vertical;
+  background-gradient-start: #3a9bff;
+  background-gradient-end: #0a6cff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
 .macify-clip-title { font-weight: bold; font-size: 14px; }
-.macify-clip-clear { font-size: 12px; padding: 2px 10px; border-radius: 999px; color: rgba(255, 255, 255, 0.75); }
-.macify-clip-clear:hover { background-color: rgba(255, 255, 255, 0.16); }
-.macify-clip-empty { padding: 14px 8px; color: rgba(255, 255, 255, 0.6); }
+.macify-clip-count { font-size: 11px; color: rgba(255, 255, 255, 0.5); }
+.macify-clip-clear { font-size: 11px; padding: 4px 12px; border-radius: 999px; color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.08); }
+.macify-clip-clear:hover { background-color: rgba(255, 69, 58, 0.85); color: #ffffff; }
+.macify-clip-close { width: 24px; height: 24px; border-radius: 999px; color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.08); }
+.macify-clip-close:hover { background-color: rgba(255, 255, 255, 0.22); color: #ffffff; }
+.macify-clip-scroll { border-radius: 14px; }
+.macify-clip-list { spacing: 2px; }
+.macify-clip-empty { padding: 22px 8px; color: rgba(255, 255, 255, 0.55); text-align: center; }
 .macify-clip-row { border-radius: 12px; padding: 0 4px 0 0; }
-.macify-clip-open { padding: 7px 10px; text-align: left; border-radius: 12px; }
+.macify-clip-open { padding: 6px 8px; text-align: left; border-radius: 12px; }
 .macify-clip-open StBoxLayout { spacing: 10px; }
-.macify-clip-number { min-width: 14px; color: rgba(255, 255, 255, 0.5); font-size: 12px; }
+.macify-clip-number {
+  min-width: 18px;
+  padding: 1px 0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.macify-clip-tile {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 255, 255, 0.09);
+}
 .macify-clip-thumb { border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.18); }
-.macify-clip-row:hover,
-.macify-clip-row:selected { background-color: rgba(255, 255, 255, 0.16); }
+.macify-clip-text { font-size: 13px; max-width: 290px; }
+.macify-clip-detail { font-size: 11px; color: rgba(255, 255, 255, 0.5); padding-top: 1px; }
+.macify-clip-row:hover { background-color: rgba(255, 255, 255, 0.10); }
+.macify-clip-row:selected { background-color: rgba(10, 108, 255, 0.85); }
+.macify-clip-row:selected .macify-clip-detail { color: rgba(255, 255, 255, 0.75); }
+.macify-clip-row:selected .macify-clip-number,
+.macify-clip-row:selected .macify-clip-tile { background-color: rgba(255, 255, 255, 0.22); color: #ffffff; }
 .macify-clip-actions { spacing: 2px; }
-.macify-clip-action { padding: 6px 8px; border-radius: 9px; color: rgba(255, 255, 255, 0.8); }
+.macify-clip-action { padding: 6px 8px; border-radius: 9px; color: rgba(255, 255, 255, 0.85); }
 .macify-clip-action:hover { background-color: rgba(255, 255, 255, 0.22); }
+.macify-clip-hint { font-size: 10px; color: rgba(255, 255, 255, 0.4); text-align: center; padding: 10px 0 2px; }
 .macify-clip-big {
   padding: 8px;
   max-width: 500px;

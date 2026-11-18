@@ -19,16 +19,20 @@ import {imageContent} from './cropEditor.js';
 import {monitorAt} from './dockPreview.js';
 import {_} from './i18n.js';
 
-const MAX_ITEMS = 20;
+// Diez como mucho: lo de macOS. Con más la tarjeta crecía hasta tapar la pantalla.
+const MAX_ITEMS = 10;
+const VISIBLE_ROWS = 6;                     // filas a la vista; las demás, con desplazamiento
+const ROW_H = 54;
 const MAX_CHARS = 20000;                    // un texto enorme no se guarda
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;    // ni una imagen enorme
-const MAX_IMAGES = 5;
-const LABEL_CHARS = 56;
-const THUMB_W = 140;
-const THUMB_H = 64;
+const MAX_IMAGES = 4;
+const LABEL_CHARS = 48;
+const THUMB_W = 56;
+const THUMB_H = 38;
 const BIG_W = 480;
 const BIG_H = 340;
 const PREVIEW_DELAY_MS = 250;
+const CARD_W = 440;
 const PASSWORD_APPS = /keepass|bitwarden|1password|seahorse|enpass|proton.?pass|gnome-keyring/i;
 const TERMINALS = /terminal|ptyxis|kgx|konsole|tilix|alacritty|kitty|wezterm|xterm|console/i;
 const KEYBINDINGS = 'org.gnome.shell.keybindings';
@@ -152,23 +156,50 @@ export class ClipboardHistory {
             return;
         const card = new St.BoxLayout({style_class: 'macify-clip', vertical: true, reactive: true, can_focus: true});
         const header = new St.BoxLayout({style_class: 'macify-clip-header'});
-        header.add_child(new St.Icon({icon_name: 'edit-paste-symbolic', icon_size: 16, style_class: 'macify-clip-icon'}));
-        header.add_child(new St.Label({text: _('Clipboard'), style_class: 'macify-clip-title', x_expand: true,
-            y_align: Clutter.ActorAlign.CENTER}));
-        const clear = new St.Button({label: _('Clear Clipboard'), style_class: 'macify-clip-clear'});
+        const badge = new St.Bin({style_class: 'macify-clip-badge', y_align: Clutter.ActorAlign.CENTER,
+            child: new St.Icon({icon_name: 'edit-paste-symbolic', icon_size: 14})});
+        header.add_child(badge);
+        const titles = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        titles.add_child(new St.Label({text: _('Clipboard'), style_class: 'macify-clip-title'}));
+        const count = this._items.length;
+        titles.add_child(new St.Label({style_class: 'macify-clip-count',
+            text: count === 1 ? _('1 item') : _('{n} items', {n: count})}));
+        header.add_child(titles);
+        const clear = new St.Button({label: _('Clear Clipboard'), style_class: 'macify-clip-clear',
+            y_align: Clutter.ActorAlign.CENTER, visible: count > 0});
         clear.connect('clicked', () => {
             this._items = [];
             this._close();
         });
         header.add_child(clear);
+        // Cerrar con un clic, además de Esc o un clic fuera.
+        const close = new St.Button({style_class: 'macify-clip-close', y_align: Clutter.ActorAlign.CENTER,
+            accessible_name: _('Close'), child: new St.Icon({icon_name: 'window-close-symbolic', icon_size: 12})});
+        close.connect('clicked', () => this._close());
+        header.add_child(close);
+        this._closeButton = close;
         card.add_child(header);
         this._rows = [];
         if (this._items.length === 0)
             card.add_child(new St.Label({text: _('Nothing copied yet'), style_class: 'macify-clip-empty'}));
-        this._items.forEach((item, i) => card.add_child(this._row(item, i)));
+        if (this._items.length) {
+            // La lista nunca pasa de unas pocas filas: lo demás se desplaza dentro de la tarjeta.
+            const list = new St.BoxLayout({vertical: true, style_class: 'macify-clip-list'});
+            this._items.forEach((item, i) => list.add_child(this._row(item, i)));
+            const monitor = Main.layoutManager.currentMonitor ?? Main.layoutManager.primaryMonitor;
+            const rows = Math.min(this._items.length, VISIBLE_ROWS);
+            const height = Math.min(rows * ROW_H, Math.round(monitor.height * 0.5));
+            const scroll = new St.ScrollView({style_class: 'macify-clip-scroll',
+                hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC,
+                overlay_scrollbars: true, height});
+            scroll.set_child(list);
+            card.add_child(scroll);
+            this._scroll = scroll;
+        }
         if (this._items.length)
             card.add_child(new St.Label({text: _('↑↓ choose · Enter paste · Delete remove · Esc close'),
                 style_class: 'macify-clip-hint'}));
+        card.set_width(CARD_W);
         card.connect('key-press-event', (_actor, event) => this._navigate(event));
         Main.uiGroup.add_child(card);
         this._card = card;
@@ -176,7 +207,7 @@ export class ClipboardHistory {
         const [width, height] = card.get_size();
         card.set_position(Math.round(monitor.x + (monitor.width - width) / 2),
             Math.round(Math.max(monitor.y + 40, monitor.y + monitor.height * 0.28 - height / 4)));
-        this._grab = Main.pushModal(card);
+        this._modal = Main.pushModal(card);
         this._previous = global.display.focus_window;
         this._selected = 0;
         this._mark();
@@ -196,18 +227,21 @@ export class ClipboardHistory {
         const open = new St.Button({style_class: 'macify-clip-open', x_expand: true, x_align: Clutter.ActorAlign.FILL});
         const line = new St.BoxLayout({x_expand: true, x_align: Clutter.ActorAlign.START});
         line.add_child(new St.Label({text: index < 9 ? `${index + 1}` : '', style_class: 'macify-clip-number',
-            y_align: Clutter.ActorAlign.CENTER}));
+            y_align: Clutter.ActorAlign.CENTER, visible: index < 9}));
         if (item.kind === 'image') {
             const {width, height} = item.pixbuf;          // copia reducida; el tamaño real va en item
             const scale = Math.min(THUMB_W / width, THUMB_H / height, 1);
             line.add_child(new St.Widget({
-                style_class: 'macify-clip-thumb', content: imageContent(item.pixbuf),
+                style_class: 'macify-clip-thumb', y_align: Clutter.ActorAlign.CENTER, content: imageContent(item.pixbuf),
                 content_gravity: Clutter.ContentGravity.RESIZE_ASPECT,
                 width: Math.round(width * scale), height: Math.round(height * scale),
             }));
             line.add_child(this._describe(_('Image'), `${item.width} × ${item.height} · ${ago(item.time)}`));
         } else {
             const chars = item.text.length;
+            line.add_child(new St.Bin({style_class: 'macify-clip-tile', y_align: Clutter.ActorAlign.CENTER,
+                child: new St.Icon({icon_name: /^https?:\/\//.test(item.text.trim()) ? 'web-browser-symbolic'
+                    : 'text-x-generic-symbolic', icon_size: 16})}));
             line.add_child(this._describe(this._label(item.text),
                 `${chars === 1 ? _('1 character') : _('{n} characters', {n: chars})} · ${ago(item.time)}`));
         }
@@ -245,7 +279,9 @@ export class ClipboardHistory {
 
     _describe(title, detail) {
         const column = new St.BoxLayout({vertical: true, y_align: Clutter.ActorAlign.CENTER});
-        column.add_child(new St.Label({text: title, style_class: 'macify-clip-text'}));
+        const label = new St.Label({text: title, style_class: 'macify-clip-text'});
+        label.clutter_text.ellipsize = 3;                   // Pango.EllipsizeMode.END
+        column.add_child(label);
         column.add_child(new St.Label({text: detail, style_class: 'macify-clip-detail'}));
         return column;
     }
@@ -317,6 +353,18 @@ export class ClipboardHistory {
             else
                 row.remove_style_pseudo_class('selected');
         });
+        // Con las flechas, la fila elegida se mantiene a la vista dentro de la lista.
+        const row = this._rows[this._selected];
+        const adjustment = this._scroll?.vadjustment;
+        if (!row || !adjustment)
+            return;
+        const box = row.get_allocation_box();
+        if (box.y2 <= box.y1)
+            return;
+        if (box.y1 < adjustment.value)
+            adjustment.value = box.y1;
+        else if (box.y2 > adjustment.value + adjustment.page_size)
+            adjustment.value = box.y2 - adjustment.page_size;
     }
 
     _navigate(event) {
@@ -379,12 +427,13 @@ export class ClipboardHistory {
         if (this._outside)
             global.stage.disconnect(this._outside);
         this._outside = 0;
-        if (this._grab) {
-            Main.popModal(this._grab);
-            this._grab = null;
+        if (this._modal) {
+            Main.popModal(this._modal);
+            this._modal = null;
         }
         this._card?.destroy();
         this._card = null;
+        this._scroll = null;
         this._rows = [];
     }
 

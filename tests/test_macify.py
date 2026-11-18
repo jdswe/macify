@@ -130,6 +130,33 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(themes.harden_css(hardened, fallbacks), hardened)
         self.assertEqual(themes.harden_css(css, {}), css)
 
+    def test_dictado_is_an_optional_step(self):
+        from macify import installer, profile
+
+        titles = lambda choices: [step.title for step in installer.steps(choices, dry_run=True)]
+        self.assertNotIn("Voice dictation (Dictado)", titles(profile.Choices()))
+        self.assertIn("Voice dictation (Dictado)", titles(profile.Choices(dictado=True)))
+        self.assertFalse(profile.Choices().dictado)
+
+    def test_window_backgrounds_become_opaque(self):
+        from macify import themes
+
+        css = (".background { background-color: color-mix(in srgb, var(--window-bg-color, #f5f5f5) 96%, transparent); }\n"
+               ".sidebar { background-color: var(--sidebar-bg-color, rgba(240, 240, 240, 0.96)); }\n"
+               "menu { background: alpha(#ffffff,0.92); }\n"
+               "@define-color sidebar_bg_color rgba(240, 240, 240, 0.96);\n"
+               "button:hover { background-color: alpha(currentColor,0.15); }\n"
+               ".x { box-shadow: 0 1px rgba(0, 0, 0, 0.9); background-color: rgba(0, 0, 0, 0.35); }\n")
+        solid = themes.opaque_css(css)
+        self.assertIn("background-color: var(--window-bg-color, #f5f5f5);", solid)
+        self.assertIn("var(--sidebar-bg-color, rgb(240, 240, 240))", solid)
+        self.assertIn("background: #ffffff;", solid)
+        self.assertIn("@define-color sidebar_bg_color rgb(240, 240, 240);", solid)
+        self.assertIn("alpha(currentColor,0.15)", solid)          # tintes suaves, intactos
+        self.assertIn("box-shadow: 0 1px rgba(0, 0, 0, 0.9)", solid)
+        self.assertIn("rgba(0, 0, 0, 0.35)", solid)
+        self.assertEqual(themes.opaque_css(solid), solid)
+
     def test_values_compare_without_format_noise(self):
         self.assertTrue(doctor._same("uint32 48", "48"))
         self.assertTrue(doctor._same("(0.12, 0.12, 0.14, 0.34999999999999998)", "(0.12, 0.12, 0.14, 0.35)"))

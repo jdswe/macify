@@ -37,6 +37,9 @@ mkdir -p "$work/pictures"
 echo "XDG_PICTURES_DIR=\"$work/pictures\"" > "$work/config/user-dirs.dirs"
 ln -s "$HOME/.local/share/fonts" "$work/data/fonts"
 ln -s "$HOME/.local/share/icons" "$work/data/icons"
+# El estilo GTK 4 de Macify (una copia: las ventanas GTK de la prueba no deben tocar el real).
+[ -d "$HOME/.config/gtk-4.0" ] && cp -rL "$HOME/.config/gtk-4.0" "$work/config/gtk-4.0"
+ln -s "$HOME/.themes" "$work/data/themes" 2>/dev/null || true
 
 dconf dump / > "$work/settings.ini"
 python3 - "$work/settings.ini" <<'EOF'
@@ -59,7 +62,7 @@ for size in ${MACIFY_MONITORS:-1920x1080}; do
     monitors="$monitors --virtual-monitor $size"
 done
 env XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" \
-    XDG_DATA_DIRS="$HOME/.local/share:/usr/local/share:/usr/share" MACIFY_TEST_OUT="$out" \
+    XDG_DATA_DIRS="$HOME/.local/share:/usr/local/share:/usr/share" MACIFY_TEST_OUT="$out" MACIFY_TEST_REPO="$repo" \
     MACIFY_SCALE="${MACIFY_SCALE:-1}" MACIFY_TEST_ONLY="${MACIFY_TEST_ONLY:-}" \
     MACIFY_TEST_SETTINGS="${MACIFY_TEST_SETTINGS:-}" \
     dbus-run-session -- bash -c "

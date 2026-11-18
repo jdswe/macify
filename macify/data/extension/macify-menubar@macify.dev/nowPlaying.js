@@ -5,12 +5,14 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 
 import {_} from './i18n.js';
+import {AppVolume} from './systemVolume.js';
 
 const VERTICAL = Clutter.Orientation.VERTICAL;
 
@@ -85,6 +87,25 @@ export class NowPlaying {
         this._play.add_style_class_name('macify-np-play');
         [this._previous, this._play, this._next].forEach(b => controls.add_child(b));
 
+        // Volumen sólo de esta app (Spotify, el navegador con YouTube...), sin tocar el general.
+        this._appVolume = new AppVolume();
+        this._appVolumeRow = new St.BoxLayout({style_class: 'macify-np-volume macify-np-app-volume'});
+        this._appVolumeIcon = new St.Icon({icon_name: 'audio-x-generic-symbolic', icon_size: 16,
+            style_class: 'macify-np-app-icon'});
+        this._appVolumeSlider = new Slider.Slider(0);
+        this._appVolumeSlider.add_style_class_name('macify-slider');
+        this._appVolumeSlider.add_style_class_name('macify-np-app-slider');
+        this._appVolumeSlider.accessible_name = _('App volume');
+        this._appVolumeSlider.connect('notify::value', () => {
+            if (!this._syncing)
+                this._appVolume.setLevel(this._player, this._appVolumeSlider.value);
+        });
+        this._appVolumeLabel = new St.Label({text: _('App'), style_class: 'macify-np-volume-label',
+            y_align: Clutter.ActorAlign.CENTER});
+        this._appVolumeRow.add_child(this._appVolumeIcon);
+        this._appVolumeRow.add_child(this._appVolumeSlider);
+        this._appVolumeRow.add_child(this._appVolumeLabel);
+
         this._volumeRow = new St.BoxLayout({style_class: 'macify-np-volume'});
         this._volumeSlider = new Slider.Slider(0);
         this._volumeSlider.add_style_class_name('macify-slider');
@@ -94,11 +115,13 @@ export class NowPlaying {
         });
         this._volumeRow.add_child(new St.Icon({icon_name: 'audio-volume-low-symbolic', icon_size: 16}));
         this._volumeRow.add_child(this._volumeSlider);
-        this._volumeRow.add_child(new St.Icon({icon_name: 'audio-volume-high-symbolic', icon_size: 16}));
+        this._volumeRow.add_child(new St.Label({text: _('System'), style_class: 'macify-np-volume-label',
+            y_align: Clutter.ActorAlign.CENTER}));
 
-        [this._sources, header, this._progress, times, controls, this._volumeRow].forEach(w => box.add_child(w));
+        [this._sources, header, this._progress, times, controls, this._appVolumeRow, this._volumeRow].forEach(w => box.add_child(w));
         item.add_child(box);
         menu.addMenuItem(item);
+        this.item = item;
 
         menu.connect('open-state-changed', (_m, open) => (open ? this._startTicking() : this._stopTicking()));
     }
@@ -124,6 +147,27 @@ export class NowPlaying {
         this._next.opacity = player.canNext ? 255 : 90;
         this._progress.reactive = player.canSeek;
         this._volumeRow.visible = this._volume.available;
+        this._syncAppVolume();
+    }
+
+    _syncAppVolume() {
+        const player = this._player;
+        const found = this._appVolume.available(player);
+        this._appVolumeRow.visible = found;
+        if (!found)
+            return;
+        const system = Shell.AppSystem.get_default();
+        const name = player.appName ?? '';
+        const app = system.lookup_desktop_wmclass(name) ?? system.lookup_startup_wmclass(name) ??
+            system.lookup_heuristic_basename?.(`${name.toLowerCase()}.desktop`) ?? null;
+        this._appVolumeIcon.gicon = app?.get_icon() ?? null;
+        if (!app)
+            this._appVolumeIcon.icon_name = 'audio-x-generic-symbolic';
+        this._appVolumeLabel.text = player.appName || _('App');
+        const syncing = this._syncing;
+        this._syncing = true;
+        this._appVolumeSlider.value = this._appVolume.level(player);
+        this._syncing = syncing;
     }
 
     _showSources(active, players) {
@@ -171,6 +215,8 @@ export class NowPlaying {
 
     _startTicking() {
         this._syncVolume();
+        if (this._player)
+            this._syncAppVolume();
         this._tick();
         this._tickId ??= GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
             this._tick();

@@ -375,6 +375,214 @@ async function testDockScanout() {
     await sleep(500);
 }
 
+// Al abrir una app su icono rebota: el dock no debe dar su animación por terminada a mitad
+// del rebote (el dock se quedaba congelado al abrir apps).
+async function testDockBounce() {
+    const dock = Main.extensionManager.lookup('dash2dock-lite@icedman.github.com')?.stateObj?.docks?.[0];
+    const appwell = dock?._findIcons?.().find(icon => icon._appwell)?._appwell;
+    if (!dock?.animator?._macifyBounceIcon || !appwell) {
+        check('dock keeps animating while an icon bounces', false, 'bounce not patched or no icon');
+        return;
+    }
+    let ended = 0;
+    const end = dock._endAnimation;
+    dock._endAnimation = function (...args) {
+        ended++;
+        return end.apply(this, args);
+    };
+    dock._beginAnimation();
+    dock.animator.bounceIcon(appwell);
+    await sleep(700);
+    check('dock keeps animating while an icon bounces', ended === 0, `ended ${ended} times during the bounce`);
+    await sleep(2600);
+    check('dock still settles after the bounce', ended > 0, `ended ${ended} times`);
+    dock._endAnimation = end;
+}
+
+// Agentes en la isla: un aviso de Claude Code pidiendo permiso se queda en la cápsula hasta
+// atenderlo; uno de Codex que terminó se ve en verde; con varios esperando se cuentan.
+function notify(app, title, body) {
+    return Gio.Subprocess.new(['notify-send', '-a', app, title, body], Gio.SubprocessFlags.NONE);
+}
+
+async function testAgentIsland(macify) {
+    const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
+    if (!live?._agents) {
+        check('agents part', false, 'missing');
+        return;
+    }
+    const label = () => live._button.visible ? live._button.label.text : '';
+    notify('Claude Code', 'Claude Code', 'Claude needs your permission to use Bash');
+    await until(() => live._agents.current?.state === 'waiting', 5000);
+    await sleep(500);
+    check('agent waiting shows in the island', /Claude Code/.test(label()) &&
+        live._button.pill.has_style_class_name('macify-island-agent-waiting'), label());
+    await screenshot('agent-waiting');
+    notify('Codex', 'Codex', 'Task complete: tests passed');
+    await until(() => live._agents._items.some(i => i.name === 'Codex'), 5000);
+    check('waiting agent stays first over a finished one', live._agents.current?.name === 'Claude Code', label());
+    notify('ChatGPT', 'ChatGPT', 'Waiting for your approval');
+    await until(() => live._agents.waitingCount === 2, 5000);
+    await sleep(300);
+    check('several waiting agents are counted', /2/.test(label()), label());
+    await screenshot('agents-waiting');
+    live._button.menu.toggle();          // un clic en la cápsula: la tarjeta con cada aviso
+    await sleep(400);
+    const findCards = actor => [...(actor._openButton ? [actor] : []), ...(actor.get_children?.() ?? []).flatMap(findCards)];
+    const cards = findCards(live._cards.section.actor);
+    const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)].filter(Boolean);
+    check('clicking the island previews every agent notification', live._button.menu.isOpen && cards.length === 3 &&
+        cards.some(card => texts(card).some(t => /permission to use Bash/.test(t))), `open=${live._button.menu.isOpen} ${cards.length} cards: ${cards[0] ? texts(cards[0]).join('|') : ''}`);
+    await sleep(600);
+    const box = live._button.menu.actor;
+    const content = live._button.menu.box;
+    check('agent card menu is opaque', box.opacity === 255 && content.get_theme_node().get_background_color().alpha >= 240,
+        `opacity ${box.opacity}, background alpha ${content.get_theme_node().get_background_color().alpha}, classes ${box.get_style_class_name()}`);
+    await screenshot('agent-cards');
+    cards[0]._openButton.emit('clicked', 1);
+    await sleep(500);
+    check('Open from the card opens the agent and clears it', live._agents.waitingCount === 1 &&
+        !live._button.menu.isOpen, `${live._agents.waitingCount} waiting, ${label()}`);
+    live._button.menu.toggle();
+    await sleep(300);
+    const left = findCards(live._cards.section.actor);
+    left[0]?._dismissButton.emit('clicked', 1);
+    await sleep(300);
+    live._button.menu.close();
+    check('Dismiss removes the notification', live._agents.waitingCount === 0, `${live._agents.waitingCount} waiting`);
+    check('finished agent shows after the waiting ones', live._agents.current?.state === 'done' &&
+        live._button.pill.has_style_class_name('macify-island-agent-done'), label());
+    await screenshot('agent-done');
+    notify('Thunderbird', 'New mail', 'Claude sent you the invoice');
+    await sleep(1500);
+    check('other apps mentioning an agent are ignored', !live._agents._items.some(i => i.source?.title === 'Thunderbird'));
+    Main.messageTray.getSources().forEach(source => source.destroy());
+    await until(() => !live._agents.current, 9000);
+    check('island goes back to normal', !live._agents.current, label());
+}
+
+// Dictado en la isla, con un Dictado falso en el bus de la prueba (sin micrófono).
+function dictadoCall(method, args = null) {
+    return new Promise((resolve, reject) => Gio.DBus.session.call('dev.dictado.Dictado', '/dev/dictado/Dictado',
+        'dev.dictado.Dictado1', method, args, null, Gio.DBusCallFlags.NONE, 3000, null, (bus, result) => {
+            try {
+                resolve(bus.call_finish(result).deepUnpack());
+            } catch (e) {
+                reject(e);
+            }
+        }));
+}
+
+async function testDictadoIsland(macify) {
+    const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
+    const repo = GLib.getenv('MACIFY_TEST_REPO');
+    const fake = Gio.Subprocess.new(['python3', `${repo}/tests/shell/fake_dictado.py`], Gio.SubprocessFlags.NONE);
+    const label = () => live._button.visible ? live._button.label.text : '';
+    try {
+        await until(() => { try { return Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
+            'org.freedesktop.DBus', 'NameHasOwner', new GLib.Variant('(s)', ['dev.dictado.Dictado']), null,
+            Gio.DBusCallFlags.NONE, 1000, null).deepUnpack()[0]; } catch (e) { return false; } }, 5000);
+        await dictadoCall('TestSet', new GLib.Variant('(ss)', ['recording', 'idle']));
+        await until(() => live._dictado.dictation === 'recording', 3000);
+        await dictadoCall('TestLevel', new GLib.Variant('(d)', [0.35]));
+        await sleep(400);
+        const scales = live._button.barActors.map(b => b.scale_y.toFixed(2)).join(',');
+        check('dictation shows in the island', /Listening/.test(label()) &&
+            live._button.pill.has_style_class_name('macify-island-voice-recording'), label());
+        check('island bars follow the voice level', live._button.bars.visible && scales !== '0.55,0.95,0.70,0.45', scales);
+        await screenshot('dictado-listening');
+        live._button.menu.toggle();          // clic: termina el dictado
+        await until(() => live._dictado.dictation === 'idle', 3000);
+        const [calls] = await dictadoCall('TestCalls');
+        check('clicking the island stops dictation', calls.includes('StopDictation'), calls.join(','));
+        await dictadoCall('TestSet', new GLib.Variant('(ss)', ['processing', 'idle']));
+        await until(() => live._dictado.dictation === 'processing', 3000);
+        await sleep(300);
+        check('island says it is writing', /Writing/.test(label()), label());
+        await dictadoCall('TestSet', new GLib.Variant('(ss)', ['idle', 'recording']));
+        await until(() => live._dictado.transcription === 'recording', 3000);
+        await sleep(1300);
+        check('transcription shows REC and its time', /REC · 1:0\d/.test(label()), label());
+        await screenshot('dictado-rec');
+        live._button.menu.toggle();
+        await until(() => live._dictado.transcription === 'idle', 3000);
+        const [after] = await dictadoCall('TestCalls');
+        check('clicking the island stops the transcription', after.includes('StopTranscription'), after.join(','));
+    } catch (e) {
+        check('Dictado island test', false, e.message);
+    } finally {
+        fake.force_exit();
+    }
+    await until(() => !live._dictado.busy, 3000);
+    check('island goes back when Dictado leaves', !live._dictado.busy);
+}
+
+// Volumen de una sola app: baja su flujo de audio y deja el general como estaba.
+async function testAppVolume() {
+    const path = Main.extensionManager.lookup('macify-menubar@macify.dev').path;
+    const {AppVolume} = await import(`file://${path}/systemVolume.js`);
+    const Volume = await import('resource:///org/gnome/shell/ui/status/volume.js');
+    const control = Volume.getMixerControl();
+    // Un flujo silencioso con nombre de app, como el de un reproductor.
+    const silence = Gio.Subprocess.new(['pw-cat', '--playback', '--raw', '--format', 's16', '--rate', '48000',
+        '--channels', '2', '-P', '{ application.name = Macifytunes media.name = music }', '/dev/zero'], Gio.SubprocessFlags.NONE);
+    const volume = new AppVolume();
+    // pw-cat se anuncia a PipeWire con su propio nombre, como haría un reproductor.
+    const player = {busName: 'org.mpris.MediaPlayer2.pwcat', appName: 'pw-cat'};
+    await until(() => volume.available(player), 8000);
+    const sink = control.get_default_sink();
+    const before = sink?.volume;
+    const streamBefore = volume.level(player);
+    volume.setLevel(player, 0.3);
+    await sleep(600);
+    check('app volume finds the player\'s audio stream', volume.available(player),
+        control.get_sink_inputs().map(s => `${s.get_name()}|${s.get_application_id()}|${s.get_icon_name()}`).join(', '));
+    check('app volume lowers only that app', Math.abs(volume.level(player) - 0.3) < 0.02 && sink?.volume === before,
+        `app ${volume.level(player).toFixed(2)} (was ${streamBefore.toFixed(2)}), system ${before} -> ${sink?.volume}`);
+    check('other players are not matched', !volume.available({busName: 'org.mpris.MediaPlayer2.spotify', appName: 'Spotify'}) ||
+        !volume._streams({busName: 'org.mpris.MediaPlayer2.spotify', appName: 'Spotify'}).some(s => s.get_name() === 'pw-cat'));
+    silence.force_exit();
+    await sleep(300);
+}
+
+// Ventanas GTK 4 reales dibujadas por el compositor: ninguna debe salir transparente.
+async function testGtkWindowsOpaque() {
+    const repo = GLib.getenv('MACIFY_TEST_REPO');
+    for (const kind of ['plain', 'chooser', 'adw']) {
+        const before = new Set(global.get_window_actors().map(a => a.meta_window));
+        const proc = Gio.Subprocess.new(['python3', `${repo}/tests/shell/gtk_windows.py`, kind],
+            Gio.SubprocessFlags.NONE);
+        await until(() => global.get_window_actors().some(a => !before.has(a.meta_window)), 8000);
+        await sleep(1500);
+        const actor = global.get_window_actors().find(a => !before.has(a.meta_window));
+        if (!actor) {
+            check(`GTK ${kind} window opens`, false, 'no window');
+        } else {
+            const rect = actor.meta_window.get_frame_rect();
+            await screenshotArea(`gtk-${kind}`, rect);
+            check(`GTK ${kind} window drawn`, true, `${rect.width}x${rect.height}`);
+        }
+        proc.force_exit();
+        await sleep(500);
+    }
+}
+
+function screenshotArea(name, rect) {
+    return new Promise(resolve => {
+        const file = Gio.File.new_for_path(`${OUT}/${name}.png`);
+        const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
+        new Shell.Screenshot().screenshot_area(rect.x, rect.y, rect.width, rect.height, stream, (shooter, result) => {
+            try {
+                shooter.screenshot_area_finish(result);
+            } catch (e) {
+                console.log(`MACIFY-TEST screenshot ${name}: ${e.message}`);
+            }
+            stream.close(null);
+            resolve();
+        });
+    });
+}
+
 async function testBadges() {
     const dock = Main.extensionManager.lookup('dash2dock-lite@icedman.github.com')?.stateObj;
     if (!dock) {
@@ -614,6 +822,28 @@ async function testClipboardHistory(macify) {
     await screenshot('clipboard');
     clip._close();
     check('clipboard card closes', !clip._card && !clip._big);
+    // Con muchas copias se guardan sólo las diez últimas y la tarjeta no crece sin fin.
+    for (let i = 1; i <= 14; i++) {
+        board.set_text(St.ClipboardType.CLIPBOARD, `macify many ${i} ${'texto largo '.repeat(i)}`);
+        await until(() => clip._items[0]?.text?.startsWith(`macify many ${i} `), 3000);
+    }
+    check('clipboard history keeps at most ten items', clip._items.length === 10, `${clip._items.length} items`);
+    clip.open();
+    await sleep(200);
+    const monitor = Main.layoutManager.primaryMonitor;
+    const [, cardHeight] = clip._card.get_transformed_size();
+    check('clipboard card never covers the screen', cardHeight <= monitor.height * 0.6,
+        `${Math.round(cardHeight)} px of ${monitor.height}`);
+    for (let i = 0; i < 9; i++)
+        clip._navigate({get_key_symbol: () => Clutter.KEY_Down});
+    await sleep(100);
+    const adjustment = clip._scroll?.vadjustment;
+    check('keyboard selection scrolls into view', Boolean(adjustment) && adjustment.value > 0,
+        adjustment ? `scrolled ${Math.round(adjustment.value)}` : 'no scroll');
+    await screenshot('clipboard-many');
+    clip._closeButton.emit('clicked', 1);
+    check('clipboard close button closes the card', !clip._card, clip._card ? 'still open' : 'closed');
+    clip._close();
     // Con una app con el foco, como en la vida real: Super+V la abre.
     const now = () => GLib.get_monotonic_time();
     keyboard.notify_keyval(now(), Clutter.KEY_Super_L, Clutter.KeyState.PRESSED);
@@ -978,6 +1208,23 @@ async function run() {
             await testDockPreviewEveryDisplay(macify);
             throw new Error('only dock hover requested');
         }
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'agents') {
+            await testAgentIsland(macify);
+            await testDictadoIsland(macify);
+            throw new Error('only agents requested');
+        }
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'gtk') {
+            await testGtkWindowsOpaque();
+            throw new Error('only GTK windows requested');
+        }
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'quick') {
+            await testDockBounce();
+            await testAgentIsland(macify);
+            await testAppVolume();
+            await testClipboardHistory(macify);
+            await testGtkWindowsOpaque();
+            throw new Error('only quick checks requested');
+        }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'demo') {
             await captureDemo(macify);
             throw new Error('only demo captures requested');
@@ -1010,6 +1257,10 @@ async function run() {
         await testLiveActivities(macify);
         await testDockScanout();
         await testBadges();
+        await testDockBounce();
+        await testAgentIsland(macify);
+        await testDictadoIsland(macify);
+        await testAppVolume();
         await testEditor();
         await testDockPreview(macify);
         await testClipboardHistory(macify);
@@ -1017,8 +1268,10 @@ async function run() {
         await testDisplaySwitcherKeys();
         await testTerminal();
         await testDisplayChanges();
+        await testGtkWindowsOpaque();
     } catch (e) {
-        check('unexpected error', false, `${e.message} ${e.stack}`);
+        if (!/^only .* requested$/.test(e.message))
+            check('unexpected error', false, `${e.message} ${e.stack}`);
     }
     const file = Gio.File.new_for_path(`${OUT}/results.json`);
     file.replace_contents(JSON.stringify(results, null, 2), null, false, Gio.FileCreateFlags.NONE, null);

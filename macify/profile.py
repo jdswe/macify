@@ -33,6 +33,7 @@ class Choices:
     magic_lamp: bool = True         # efecto lámpara mágica al minimizar
     dock_autohide: bool = True      # se esconde cuando una ventana lo tapa; reaparece en el borde inferior
     login_screen: bool = True       # arranque e inicio de sesión estilo macOS (pide contraseña)
+    dictado: bool = False           # dictado por voz y transcripción (Dictado, opcional)
 
 
 def load_choices() -> Choices:

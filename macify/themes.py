@@ -222,10 +222,61 @@ def _needs_hardening(path: Path) -> bool:
     return harden_css(text, _fallbacks(path)) != text
 
 
+# WhiteSur «normal» pinta los fondos de las ventanas casi opacos (96 %, menús al 92 %) para que
+# Blur my Shell los vuelva cristal. Pero las ventanas que nadie desenfoca —el selector de archivos
+# de un navegador, el aviso de una snap— dejan ver lo de detrás, y con algunas GPU (o formatos de
+# superficie con poco canal alfa) ese 4 % se vuelve una ventana casi invisible con el texto
+# flotando. Ninguna ventana debe transparentarse: los fondos casi opacos pasan a opacos. Sólo se
+# tocan fondos (no sombras ni bordes) y sólo colores al 85 % o más: los tintes suaves a propósito
+# (un botón al pasar el puntero, una fila elegida) se quedan como están.
+_OPAQUE_FROM = 0.85
+_BACKGROUND = re.compile(r"(\bbackground(?:-color)?\s*:\s*)([^;{}]+)")
+_DEFINE_BG = re.compile(r"^(@define-color \w*bg\w* )([^;]+)", re.M)
+_RGBA = re.compile(r"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d*\.?\d+)\s*\)")
+_ALPHA = re.compile(r"alpha\(\s*([^(),]+(?:\([^()]*\))?)\s*,\s*(\d*\.?\d+)\s*\)")
+_MIX_TRANSPARENT = re.compile(
+    r"color-mix\(in srgb,\s*(var\(--[\w-]+,\s*[^()]*(?:\([^()]*\))?\)|rgb\([^()]*\)|[#@]?[\w-]+)\s+"
+    r"(\d+(?:\.\d+)?)%,\s*transparent\)")
+
+
+def _opaque_value(value: str) -> str:
+    def rgba(m: re.Match) -> str:
+        return f"rgb({m[1]}, {m[2]}, {m[3]})" if _OPAQUE_FROM <= float(m[4]) < 1 else m[0]
+
+    def alpha(m: re.Match) -> str:
+        return m[1].strip() if _OPAQUE_FROM <= float(m[2]) < 1 else m[0]
+
+    def mix(m: re.Match) -> str:
+        return m[1] if _OPAQUE_FROM * 100 <= float(m[2]) < 100 else m[0]
+
+    value = _RGBA.sub(rgba, value)
+    value = _ALPHA.sub(alpha, value)
+    return _MIX_TRANSPARENT.sub(mix, value)
+
+
+def opaque_css(text: str) -> str:
+    """Fondos casi opacos de WhiteSur, opacos del todo: ninguna ventana deja ver lo de detrás."""
+    text = _DEFINE_BG.sub(lambda m: m[1] + _opaque_value(m[2]), text)
+    return _BACKGROUND.sub(lambda m: m[1] + _opaque_value(m[2]), text)
+
+
+def _gtk_theme_css() -> list[Path]:
+    themes = Path.home() / ".themes"
+    files = list(themes.glob("WhiteSur-*/gtk-4.0/*.css")) + list(themes.glob("WhiteSur-*/gtk-3.0/*.css"))
+    return [f for f in files if f.is_file() and not f.is_symlink()]
+
+
+def _translucent(path: Path) -> bool:
+    text = path.read_text(errors="ignore")
+    return opaque_css(text) != text
+
+
 def broken_css() -> list[Path]:
-    """Archivos del tema con el error de color-mix de WhiteSur o con colores sin respaldo."""
+    """Archivos del tema con el error de color-mix de WhiteSur, colores sin respaldo o fondos
+    que se transparentan."""
     broken = [f for f in _css_files() if _COLOR_MIX_WITHOUT_COMMA.search(f.read_text(errors="ignore"))]
     broken += [f for f in _libadwaita_css() if f not in broken and _needs_hardening(f)]
+    broken += [f for f in _libadwaita_css() + _gtk_theme_css() if f not in broken and _translucent(f)]
     return broken
 
 
@@ -237,6 +288,10 @@ def repair_css(log) -> int:
             hardened = harden_css(text, _fallbacks(path))
             count += len(_NAMED_COLOR.findall(text)) - len(_NAMED_COLOR.findall(hardened))
             text = hardened
+        solid = opaque_css(text)
+        if solid != text:
+            count += sum(a != b for a, b in zip(text.splitlines(), solid.splitlines()))
+            text = solid
         # Se escribe sobre el mismo archivo: las copias de las snaps son enlaces duros a él.
         path.write_text(text)
         fixed += count

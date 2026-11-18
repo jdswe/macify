@@ -1,5 +1,24 @@
 # Macify release notes
 
+## 0.20.0
+
+- **Voice dictation, optional.** The last setup page offers **Voice dictation (Dictado)**, off by default. [Dictado](https://github.com/jdswe/dictado) is a separate open-source app: speak and it types where the cursor is, and it transcribes calls (what you hear and what you say, labelled “Me” and “Others”) and audio or video files. Speech is recognised locally by Whisper; about 350 MB of models download once and no audio leaves the computer. Macify runs Dictado's verified installer (no sudo; it only asks for your password if `ffmpeg` or Python's venv module are missing), the Doctor checks it when you chose it, and Uninstall Everything removes it too (your dictations and transcripts are kept). If Dictado is already installed, the option shows it.
+- **Dictado in the island.** While you dictate, the bubble shows a red microphone with bars that follow your voice, then “Writing…” while it turns speech into text; during a transcription it shows **REC** and the elapsed time. A click finishes the dictation or stops the transcription. Macify only listens to Dictado's status: it never touches the audio, and Dictado types the text itself.
+- **Read and open agent notifications from the island.** Clicking the island when an agent has news opens a card with each notification in full — who, what happened, how long ago and the whole text — with **Open** and **Dismiss**. Open brings the agent to the front, even for terminal agents whose notification has no action: Macify finds the window running it. If music is playing, Now Playing stays below.
+- The island's menu is now opaque, light or dark like the system, so it is readable over any wallpaper (Blur my Shell made it 65 % transparent).
+- The island no longer stays hidden when something new appears while it is closing.
+
+## 0.19.0
+
+- **Coding agents in the island.** When Claude Code, Codex/ChatGPT, Copilot, Cursor, Gemini, Aider, Windsurf or OpenCode sends a notification, the island in the menu bar shows it: orange while the agent waits for you (a permission, a question), a green check when it finished, red when it failed. Waiting agents stay until you deal with them; with several, the island says how many are waiting. Clicking the island opens the agent, like clicking its notification. Only the notifications those apps already send are read; agents are recognised by their app name or notification title, never by the text, so an email that mentions Claude is ignored. Nothing leaves the computer.
+
+## 0.18.0
+
+- **No window is see-through any more.** WhiteSur's "normal" style paints window backgrounds, title bars, sidebars and menus at 92–96 % opacity so Blur my Shell can turn them into glass. Windows that nothing blurs — the file picker browsers open, snap notices such as “Refreshing Apps” — showed whatever was behind them, and on some GPUs that small transparency turned into an almost invisible window with floating text. Every near-opaque background in the GTK 3 and GTK 4 theme is now fully opaque; soft tints (hover, selection) and shadows are unchanged. The Doctor detects and repairs this on existing installations; reopen the browser afterwards.
+- **The dock no longer freezes when an app opens.** Since 0.17.1 Macify ended the dock animation once it looked still, but the bounce of a launching app moves actors that check did not see, so the animation was cut after about 90 ms and the dock stood still. The dock now keeps animating for the whole bounce and still settles right after it.
+- **Per-app volume in Now Playing.** Under the playback controls there is a new slider for the app that is playing (Spotify, the browser with YouTube…): it lowers only that app, while the System slider below still changes everything.
+- **Clipboard history, tidier.** It keeps the last 10 copies (4 images at most) instead of 20, shows at most six rows and scrolls the rest, so it never covers the screen. New header with the number of items, file or link icons, a highlighted selection that follows the arrow keys, and a close button in addition to Esc and clicking outside.
+
 ## 0.17.2
 
 - File dialogs in web browsers (the “wants to open” window when you upload a file) and windows of some snap apps, such as snap's “Refreshing Apps” notice, no longer come out transparent with white, unreadable text. WhiteSur's GTK 4 style used colors that only libadwaita apps define; every other GTK 4 window got no background at all. Those colors now fall back to WhiteSur's own, and libadwaita apps keep exactly the colors they had (checked pixel by pixel). Nothing is forced on apps that set their own style. The Doctor detects and repairs this on existing installations.

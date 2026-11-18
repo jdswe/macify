@@ -4,6 +4,9 @@
 //   se abre «Ahora suena» (controles y volumen); con la rueda se cambia el volumen.
 // - Al enchufar o desenchufar el cargador, carga completa y batería baja.
 // - Al perder o recuperar la conexión.
+// - Agentes de programación (Claude Code, Codex...): si esperan tu respuesta, terminaron o
+//   fallaron. Lo que espera de ti se queda hasta que lo atiendes; un clic abre el agente.
+// - Dictado (si está instalado): escuchando, escribiendo o grabando una transcripción.
 // Todo funciona por avisos del sistema. Las barras se mueven unos segundos al empezar una
 // canción o al pasar el puntero, y luego descansan: sin redibujar la barra sin necesidad.
 
@@ -18,6 +21,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
+import {AgentCards} from './agentCards.js';
+import {Agents} from './agents.js';
+import {DictadoStatus} from './dictadoStatus.js';
 import {_} from './i18n.js';
 import {MediaPlayers} from './mediaPlayers.js';
 import {NowPlaying} from './nowPlaying.js';
@@ -66,8 +72,19 @@ class LiveButton extends PanelMenu.Button {
         });
         [this.icon, this.label, this.bars].forEach(w => this.pill.add_child(w));
         this.add_child(this.pill);
+        // Con un agente o Dictado en la cápsula, el clic actúa sobre ellos en vez de abrir
+        // «Ahora suena».
+        this.clickAction = null;
+        const toggle = this.menu.toggle.bind(this.menu);
+        this.menu.toggle = () => (this.clickAction ? this.clickAction() : toggle());
     }
 });
+
+const AGENT_LOOK = {
+    waiting: ['dialog-question-symbolic', 'macify-island-agent-waiting'],
+    failed: ['dialog-error-symbolic', 'macify-island-agent-failed'],
+    done: ['object-select-symbolic', 'macify-island-agent-done'],
+};
 
 export class LiveActivities {
     constructor() {
@@ -89,6 +106,19 @@ export class LiveActivities {
         Main.screenShield?.connectObject?.('locked-changed', () => this._wakeBars(), this);
 
         this._players.connectObject('changed', () => this._render(), this);
+        this._agents = new Agents();
+        this._agents.connectObject('changed', () => {
+            if (this._button.menu.isOpen)
+                this._fillMenu();
+            this._render();
+        }, this);
+        this._cards = new AgentCards(this._button.menu, this._agents);
+        this._button.menu.connectObject('open-state-changed', (_menu, open) => {
+            if (open)
+                this._fillMenu();
+        }, this);
+        this._dictado = new DictadoStatus();
+        this._dictado.connectObject('changed', () => this._render(), 'level', () => this._showLevel(), this);
         this._watchPower();
         this._watchPowerNotices();
         this._watchNetwork();
@@ -99,11 +129,35 @@ export class LiveActivities {
     _render() {
         const player = this._players.active;
         const event = this._event;
-        this._button.setSensitive(Boolean(player) && !event);
-        if (!player && this._button.menu.isOpen)
+        const voice = this._dictado;
+        const dictating = !event && voice.dictation !== 'idle';
+        const waitingAgent = this._agents.current?.state === 'waiting';
+        const recording = !event && !dictating && !waitingAgent && voice.transcription === 'recording';
+        const agent = event || dictating || recording ? null : this._agents.current;
+        const busy = dictating || recording;
+        this._button.setSensitive((Boolean(player) || Boolean(agent) || busy) && !event);
+        if (((!player && !this._cards.count) || busy) && this._button.menu.isOpen)
             this._button.menu.close();
+        // Con agentes, el clic abre su tarjeta (el aviso entero, Abrir y Descartar).
+        this._button.clickAction = busy ? () => voice.stop() : null;
+        this._agentLook(agent?.state);
+        this._voiceLook(dictating ? voice.dictation : recording ? 'rec' : null);
+        this._tickRec(recording);
         if (event) {
             this._show(event.icon, event.text, false);
+        } else if (dictating) {
+            const listening = voice.dictation === 'recording';
+            this._show(listening ? 'audio-input-microphone-symbolic' : 'document-edit-symbolic',
+                listening ? _('Listening…') : _('Writing…'), listening);
+            if (listening)
+                this._showLevel();
+        } else if (recording) {
+            this._show('media-record-symbolic', this._recText(), false);
+        } else if (agent) {
+            const waiting = this._agents.waitingCount;
+            const text = agent.state === 'waiting' && waiting > 1
+                ? _('{n} agents waiting', {n: waiting}) : agent.text;
+            this._show(AGENT_LOOK[agent.state][0], text, false);
         } else if (player) {
             this._nowPlaying.show(player, this._players.visible);
             const text = [player.title, player.artist].filter(Boolean).join(' — ') || player.appName;
@@ -113,6 +167,73 @@ export class LiveActivities {
         } else {
             this._lastPlaying = null;
             this._hide();
+        }
+    }
+
+    // La tarjeta muestra los avisos de los agentes y, si suena algo, «Ahora suena» debajo.
+    _fillMenu() {
+        // Fondo opaco, claro u oscuro como el sistema: el texto se lee sobre cualquier fondo.
+        this._interface ??= new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
+        const box = this._button.menu.actor;
+        box.remove_style_class_name(dark ? 'macify-np-light' : 'macify-np-dark');
+        box.add_style_class_name(dark ? 'macify-np-dark' : 'macify-np-light');
+        this._cards.fill();
+        this._nowPlaying.item.visible = Boolean(this._players.active);
+    }
+
+    _voiceLook(state) {
+        const pill = this._button.pill;
+        for (const key of ['recording', 'processing', 'rec']) {
+            if (key === state)
+                pill.add_style_class_name(`macify-island-voice-${key}`);
+            else
+                pill.remove_style_class_name(`macify-island-voice-${key}`);
+        }
+    }
+
+    // Las barras siguen el volumen de tu voz (Dictado lo manda ~10 veces por segundo).
+    _showLevel() {
+        const voice = this._dictado;
+        if (voice.dictation !== 'recording' || !this._button.bars.visible)
+            return;
+        this._restBarsTimer();
+        const level = Math.min(1, voice.level * 2.5);
+        this._button.barActors.forEach((bar, i) => {
+            bar.scale_y = Math.max(0.15, Math.min(1, level * (0.6 + 0.4 * Math.abs(Math.sin(i * 1.7 + level * 9)))));
+        });
+    }
+
+    _recText() {
+        const started = this._dictado.started;
+        const seconds = started ? Math.max(0, Math.floor((Date.now() - started) / 1000)) : 0;
+        const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+        return `${_('REC')} · ${time}`;
+    }
+
+    _tickRec(on) {
+        if (on && !this._recId) {
+            this._recId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+                if (this._dictado.transcription !== 'recording' || this._button.icon.icon_name !== 'media-record-symbolic') {
+                    this._recId = 0;
+                    return GLib.SOURCE_REMOVE;
+                }
+                this._button.label.text = this._recText();
+                return GLib.SOURCE_CONTINUE;
+            });
+        } else if (!on && this._recId) {
+            GLib.source_remove(this._recId);
+            this._recId = 0;
+        }
+    }
+
+    _agentLook(state) {
+        const pill = this._button.pill;
+        for (const [key, [, style]] of Object.entries(AGENT_LOOK)) {
+            if (key === state)
+                pill.add_style_class_name(style);
+            else
+                pill.remove_style_class_name(style);
         }
     }
 
@@ -154,7 +275,16 @@ export class LiveActivities {
         button.bars.visible = playing;
         if (!playing)
             this._restBars();
-        if (!button.visible) {
+        if (button.visible && this._hiding) {
+            // Se estaba escondiendo: vuelve sin esperar a que termine (si no, al terminar la
+            // animación la cápsula quedaría oculta con algo que mostrar).
+            this._hiding = false;
+            button.pill.remove_all_transitions();
+            button.pill.ease({
+                opacity: 255, scale_x: 1, scale_y: 1, duration: 300,
+                mode: Clutter.AnimationMode.EASE_OUT_BACK,
+            });
+        } else if (!button.visible) {
             button.visible = true;
             button.pill.opacity = 0;
             button.pill.scale_x = 0.55;
@@ -176,12 +306,16 @@ export class LiveActivities {
         const button = this._button;
         if (!button.visible)
             return;
+        if (this._hiding)
+            return;
+        this._hiding = true;
         button.pill.ease({
             opacity: 0, scale_x: 0.6, scale_y: 0.8, duration: 220,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onComplete: () => {
-                if (button.pill.opacity === 0)
+                if (this._hiding && button.pill.opacity === 0)
                     button.visible = false;
+                this._hiding = false;
             },
         });
     }
@@ -212,6 +346,13 @@ export class LiveActivities {
                 bar.scale_y = 0.25 + Math.random() * 0.75;
             return GLib.SOURCE_CONTINUE;
         });
+    }
+
+    // Para el movimiento al azar sin devolver las barras a su sitio (las mueve tu voz).
+    _restBarsTimer() {
+        if (this._barsId)
+            GLib.source_remove(this._barsId);
+        this._barsId = 0;
     }
 
     _restBars() {
@@ -364,6 +505,13 @@ export class LiveActivities {
         this._monitor.disconnectObject(this);
         Main.messageTray.disconnectObject(this);
         Main.messageTray.getSources().forEach(source => source.disconnectObject(this));
+        this._agents.disconnectObject(this);
+        this._agents.destroy();
+        this._button.menu.disconnectObject(this);
+        this._cards.destroy();
+        this._dictado.disconnectObject(this);
+        this._dictado.destroy();
+        this._tickRec(false);
         this._players.disconnectObject(this);
         this._players.destroy();
         this._nowPlaying.destroy();

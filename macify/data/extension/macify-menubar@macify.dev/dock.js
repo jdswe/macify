@@ -175,9 +175,41 @@ function dockSignature(dock) {
     return sum + n * 1000;
 }
 
+// El rebote de un icono al abrir su app lo anima el temporizador del dock sobre otros actores
+// (el icono de la app y su copia dibujada), que la firma no ve; cortar la animación del dock a
+// mitad de un rebote dejaba el dock congelado sin animar la app que se abría.
+const BOUNCE_MS = 250 * 4;          // subida y caída con rebotes, por cada repetición
+
+function bouncing(dock) {
+    if (GLib.get_monotonic_time() < (dock._macifyBounceUntil ?? 0))
+        return true;
+    return (dock._icons ?? []).some(icon => icon._appwell?._bounce);
+}
+
+function watchBounces(dock) {
+    const animator = dock.animator;
+    if (!animator || typeof animator.bounceIcon !== 'function' || animator._macifyBounceIcon)
+        return;
+    animator._macifyBounceIcon = animator.bounceIcon;
+    animator.bounceIcon = function (...args) {
+        const times = [3, 1, 2, 3][dock.extension?.animation_bounce_frequency || 0] ?? 3;
+        dock._macifyBounceUntil = GLib.get_monotonic_time() + (BOUNCE_MS * times + 100) * 1000;
+        return this._macifyBounceIcon(...args);
+    };
+}
+
+function unwatchBounces(dock) {
+    const animator = dock.animator;
+    if (animator?._macifyBounceIcon) {
+        animator.bounceIcon = animator._macifyBounceIcon;
+        delete animator._macifyBounceIcon;
+    }
+    delete dock._macifyBounceUntil;
+}
+
 function endWhenSettled(dock) {
     const busy = dock._dragging || dock._list?.visible || dock._preview > 0 || dock._fast_forward > 0 ||
-        dock._pauseBounce > 0 || dock._macifyRevealId || pointerOnDock(dock);
+        dock._pauseBounce > 0 || dock._macifyRevealId || bouncing(dock) || pointerOnDock(dock);
     const signature = busy ? NaN : dockSignature(dock);
     if (!(Math.abs(signature - dock._macifySignature) < 0.01)) {      // cambió algo (o NaN)
         dock._macifySignature = signature;
@@ -298,6 +330,7 @@ export class FullscreenDock {
     _patch(dock) {
         enableBadges(dock);
         this._preview.attach(dock);
+        watchBounces(dock);
         if (typeof dock.animate === 'function' && !dock._macifyAnimate) {
             // Un dock quitado (sin dash) que aún se anima sólo daría errores en cada cuadro.
             dock._macifyAnimate = dock.animate;
@@ -406,6 +439,7 @@ export class FullscreenDock {
             for (const dock of this._docks()) {
                 releaseComposited(dock);
                 forgetSettle(dock);
+                unwatchBounces(dock);
                 dock.disconnectObject(this);
                 delete dock._macifyWatched;
                 if (dock._macifyAnimate) {

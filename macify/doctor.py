@@ -258,12 +258,32 @@ def check_boot() -> Check | None:
                  lambda log: boot.apply(profile.wallpaper_path(profile.load_choices()), False, log))
 
 
+def check_dictado() -> Check | None:
+    """Sólo si la persona eligió Dictado al instalar."""
+    if not profile.load_choices().dictado:
+        return None
+    from . import dictado
+    name = _("Voice dictation (Dictado)")
+    if not dictado.installed():
+        return Check(name, FAIL, _("Not installed."), lambda log: dictado.install(False, log))
+    state = _shell_state(dictado.EXTENSION)
+    if state == "ACTIVE":
+        return Check(name, OK, _("Ready. Press its shortcut to dictate."))
+    if state in ("ERROR", "OUT OF DATE"):
+        return Check(name, FAIL, _("GNOME reports: {state}.").format(state=state),
+                     lambda log: (dictado.uninstall(False, log), dictado.install(False, log)))
+    return Check(name, WARN, _("Installed; it starts after you log in again."))
+
+
 def run(online: bool = True) -> list[Check]:
     checks = [check_macify(online), check_tools(), *check_themes(), check_theme_css(), *check_extensions(online), check_settings(),
               check_icons(), check_fonts(), check_upkeep()]
     boot = check_boot()
     if boot:
         checks.append(boot)
+    voice = check_dictado()
+    if voice:
+        checks.append(voice)
     return checks
 
 
