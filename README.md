@@ -23,7 +23,7 @@
 - **Apps view** — frosted-glass app grid without workspaces; GNOME's Ubuntu **Show Apps** icon stays inherited and unchanged.
 - **Icons** — macOS-shaped app icons use each app's own artwork where available, including dedicated logos for Visual Studio Code, Kiro and GitHub Desktop. GitHub Copilot's AppImage window is matched to its existing launcher so the dock shows its real logo; unmatched icons are left alone rather than replaced with a lookalike.
 - **Wallpapers, light and dark** — eight original folded-glass wallpapers, each in a light and a dark version — pick the one you like; it stays when you switch appearance. Your own folders become sections of the gallery. Changing the wallpaper also updates the login screen (one password), without reinstalling.
-- **One look** — the accent color, the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches windows, menus, bar and dock together — your wallpaper stays.
+- **One look** — pick one of nine accent colors or let the wallpaper choose it; the dock's glass and the menu bar text (dark over light wallpapers) follow your wallpaper and appearance; switching Dark Style in Control Center switches windows, menus, bar and dock together — your wallpaper stays.
 - **Customize** — change look, wallpaper and dock live, without reinstalling.
 - **Doctor** — finds outdated or broken pieces and fixes them.
 - **Software Update** — checks GitHub and installs new versions from inside the app. An update applies only what changed (new settings, a newer theme or extension) and cleans up old files — nothing is reinstalled.

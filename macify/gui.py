@@ -12,7 +12,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from . import __version__, boot, doctor, info, installer, launcher, profile, system, updates, wallpapers  # noqa: E402
 from .assets import install_bundled_data, load_config, save_config_value  # noqa: E402
-from .colors import accent_for_wallpaper, accent_label, dominant_rgb  # noqa: E402
+from .colors import ACCENT_COLORS, accent_for_wallpaper, accent_label  # noqa: E402
 from .i18n import _, language  # noqa: E402
 from .uninstall import uninstall  # noqa: E402
 
@@ -219,20 +219,32 @@ class MacifyWindow(Adw.ApplicationWindow):
     def _wallpaper_page(self) -> Gtk.Widget:
         self.wallpaper_sections = vbox(12)
         self.wallpaper_flows: list[Gtk.FlowBox] = []
-        self.accent_dot = Gtk.Box(css_classes=["mf-accent"], valign=Gtk.Align.CENTER)
-        self.accent_dot.set_size_request(18, 18)
-        self.accent_css = Gtk.CssProvider()
-        self.accent_dot.get_style_context().add_provider(self.accent_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        # Como en macOS: un círculo por color; el primero deja que el fondo elija.
         self.accent_label = text("", "mf-subtitle")
-        accent_row = Gtk.Box(spacing=10)
-        accent_row.append(self.accent_dot)
+        swatches = Gtk.Box(spacing=12)
+        self.accent_buttons: dict[str, Gtk.ToggleButton] = {}
+        group = None
+        for name in ["", *ACCENT_COLORS]:
+            swatch = Gtk.ToggleButton(css_classes=["mf-swatch", f"mf-swatch-{name or 'auto'}"],
+                                      tooltip_text=_("Automatic") if not name else accent_label(name).capitalize(),
+                                      valign=Gtk.Align.CENTER)
+            swatch.set_size_request(26, 26)
+            if group:
+                swatch.set_group(group)
+            group = group or swatch
+            swatch.set_active(self.choices.accent == name)
+            swatch.connect("toggled", self._on_accent, name)
+            swatches.append(swatch)
+            self.accent_buttons[name] = swatch
+        accent_row = vbox(10)
+        accent_row.append(swatches)
         accent_row.append(self.accent_label)
         add = Gtk.Button(label=_("Add Photos…"), halign=Gtk.Align.START, css_classes=["mf-ghost"])
         add.connect("clicked", self._on_add_photos)
         install_bundled_data()
         self._fill_wallpapers()
         return self._page(text(_("Choose your wallpaper"), "mf-title"),
-                          text(_("Buttons and system colors come from your wallpaper."), "mf-subtitle"),
+                          text(_("Pick the color of buttons, menus and highlights, or let your wallpaper choose."), "mf-subtitle"),
                           accent_row, self.wallpaper_sections, add)
 
     def _fill_wallpapers(self) -> None:
@@ -282,13 +294,21 @@ class MacifyWindow(Adw.ApplicationWindow):
         self._update_backdrop()
         self._live()
 
-    def _update_accent(self) -> None:
-        wallpaper = profile.desktop_wallpaper(self.choices)
-        if not wallpaper.exists():
+    def _on_accent(self, button: Gtk.ToggleButton, name: str) -> None:
+        if not button.get_active() or self.choices.accent == name:
             return
-        r, g, b = dominant_rgb(wallpaper)
-        self.accent_css.load_from_string(f".mf-accent {{ background: rgb({r}, {g}, {b}); border-radius: 999px; }}")
-        self.accent_label.set_label(_("Accent color: {color}").format(color=accent_label(accent_for_wallpaper(wallpaper))))
+        self.choices.accent = name
+        self._update_accent()
+        self._live()
+
+    def _update_accent(self) -> None:
+        if self.choices.accent in ACCENT_COLORS:
+            self.accent_label.set_label(_("Accent color: {color}").format(color=accent_label(self.choices.accent)))
+            return
+        wallpaper = profile.desktop_wallpaper(self.choices)
+        if wallpaper.exists():
+            self.accent_label.set_label(_("Accent color: automatic ({color}, from your wallpaper)").format(
+                color=accent_label(accent_for_wallpaper(wallpaper))))
 
     def _on_add_photos(self, _button: Gtk.Button) -> None:
         dialog = Gtk.FileDialog(title=_("Add your photos"))

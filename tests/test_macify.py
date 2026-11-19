@@ -1093,3 +1093,13 @@ class OldHooksTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AccentChoiceTests(unittest.TestCase):
+    def test_chosen_accent_wins_over_wallpaper(self):
+        from macify.colors import ACCENT_COLORS
+        choices = profile.Choices(accent="pink")
+        self.assertEqual(profile.settings(choices)["org.gnome.desktop.interface"]["accent-color"], "'pink'")
+        auto = profile.accent(profile.Choices())
+        self.assertIn(auto, [*ACCENT_COLORS, "blue"])
+        self.assertEqual(profile.accent(profile.Choices(accent="neon")), auto)

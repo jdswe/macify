@@ -29,8 +29,11 @@ SPANISH = {
     "Light": "Claro",
     "Dark": "Oscuro",
     "Choose your wallpaper": "Elige tu fondo",
-    "Buttons and system colors come from your wallpaper.": "El color de los botones y del sistema sale de tu fondo.",
     "Accent color: {color}": "Color de acento: {color}",
+    "Accent color: automatic ({color}, from your wallpaper)": "Color de acento: automático ({color}, según tu fondo)",
+    "Automatic": "Automático",
+    "Pick the color of buttons, menus and highlights, or let your wallpaper choose.":
+        "Elige el color de botones, menús y resaltados, o deja que lo elija tu fondo.",
     "Add Photos…": "Agregar fotos…",
     "Add your photos": "Agrega tus fotos",
     "Images": "Imágenes",

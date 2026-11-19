@@ -1,5 +1,9 @@
 # Macify release notes
 
+## 0.24.0
+
+- **Choose your accent color.** The wallpaper page has a row of color circles, like Appearance on a Mac: blue, purple, pink, red, orange, yellow, green, teal and graphite. The first circle, **Automatic**, keeps taking the color from your wallpaper, as before. The color you pick is used for buttons, switches, selections and highlights across GNOME and its apps, and in **Customize** it changes live. Doctor and updates keep your choice.
+
 ## 0.23.0
 
 - **Removed: coding agents and Claude Code approvals in the island.** The menu bar island no longer shows notifications from Claude Code, Codex, ChatGPT, Copilot or Cursor, and the **Claude Code in the menu bar** option, `macify claude` and `macify agent-hook` are gone. If you had connected it, updating removes Macify's hooks from `~/.claude/settings.json` and leaves every other setting as it was. Notifications from those apps show like any other app's. The island keeps music, the volume of just the playing app, charging, connection and Dictado.

@@ -17,6 +17,13 @@ ACCENTS = [
 ]
 
 
+# Los colores reales de cada acento de GNOME, en el orden de macOS (Ajustes > Apariencia).
+ACCENT_COLORS = {
+    "blue": "#3584e4", "purple": "#9141ac", "pink": "#d56199", "red": "#e62d42", "orange": "#ed5b00",
+    "yellow": "#c88800", "green": "#3a944a", "teal": "#2190a4", "slate": "#6f8396",
+}
+
+
 def dominant_rgb(path: Path) -> tuple[int, int, int]:
     stat = path.stat()
     return _dominant_rgb(str(path), stat.st_size, stat.st_mtime_ns)

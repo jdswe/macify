@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 
 from .assets import CONFIG_DIR, WALLPAPER_DIR, load_config, save_config_value
-from .colors import accent_for_wallpaper, glass_tint, top_brightness
+from .colors import ACCENT_COLORS, accent_for_wallpaper, glass_tint, top_brightness
 
 DEFAULT_WALLPAPER = "lilac.jpg"       # con su versión oscura, lilac-dark.jpg
 
@@ -34,6 +34,7 @@ class Choices:
     dock_autohide: bool = True      # se esconde cuando una ventana lo tapa; reaparece en el borde inferior
     login_screen: bool = True       # arranque e inicio de sesión estilo macOS (pide contraseña)
     dictado: bool = False           # dictado por voz y transcripción (Dictado, opcional)
+    accent: str = ""                # color de acento elegido; vacío = según el fondo
 
 
 def load_choices() -> Choices:
@@ -58,6 +59,8 @@ def desktop_wallpaper(choices: Choices) -> Path:
 
 
 def accent(choices: Choices) -> str:
+    if choices.accent in ACCENT_COLORS:
+        return choices.accent
     wallpaper = desktop_wallpaper(choices)
     return accent_for_wallpaper(wallpaper) if wallpaper.exists() else "blue"
 

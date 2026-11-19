@@ -28,7 +28,7 @@ Tested on **Ubuntu 26.04.1 LTS, GNOME 50, Wayland**. The app follows your system
 | Wallpapers | Eight original 4K wallpapers, each in a light and a dark version (your choice stays in both appearances); your folder's subfolders become sections; your own photos. The **Wallpaper** tile changes it (and the login screen) without reinstalling |
 | One look | Accent color, dock glass and menu bar text follow the wallpaper and the appearance; Dark Style in Control Center switches windows, menus, bar and dock — the wallpaper stays. Night Light turns on right away, like Night Shift. From a terminal: `macify look --appearance dark` or `macify look --wallpaper ~/Pictures/photo.jpg --login` |
 | Displays | Super+P (Mirror, Join Displays, External Only, Built-in Only) as a glass panel; the dock rebuilds itself after any display change |
-| Colors | Accent color taken from your wallpaper |
+| Colors | Pick one of nine accent colors (blue, purple, pink, red, orange, yellow, green, teal, graphite), or let your wallpaper choose |
 | Apps | GTK apps use the system theme where their toolkit and package allow it; Macify leaves Flatpak permissions unchanged, and apps built with other toolkits keep their own appearance |
 | Upkeep | New apps (apt, snap, Flatpak) get their icon automatically; a health check runs at login |
 | Updates | Software Update (or the install command) installs the new version and runs `macify upgrade`: only what changed is applied — a newer theme or extension, new settings — and old downloads and caches are removed. Your choices stay; nothing is reinstalled |

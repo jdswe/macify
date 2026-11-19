@@ -64,3 +64,20 @@ button.mf-tile:active { transform: scale(0.98); }
 button.mf-tile-primary { background: linear-gradient(135deg, rgba(79, 134, 255, 0.60), rgba(155, 92, 255, 0.60)); }
 button.mf-tile-primary:hover { background: linear-gradient(135deg, rgba(102, 151, 255, 0.75), rgba(171, 112, 255, 0.75)); }
 button.mf-tile-danger:hover { background: rgba(255, 80, 80, 0.22); }
+
+/* Color de acento: círculos como en Ajustes > Apariencia de macOS. */
+button.mf-swatch { min-width: 26px; min-height: 26px; padding: 0; border-radius: 999px; border: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); outline: 2px solid transparent; outline-offset: 3px;
+  transition: outline-color 150ms, transform 150ms; }
+button.mf-swatch:hover { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 0 0 99px rgba(255, 255, 255, 0.12); }
+button.mf-swatch:checked { outline-color: rgba(255, 255, 255, 0.92); }
+button.mf-swatch-auto, button.mf-swatch-auto:hover, button.mf-swatch-auto:checked { background-image: linear-gradient(135deg, #e62d42, #ed5b00 22%, #c88800 40%, #3a944a 58%, #3584e4 78%, #9141ac); }
+button.mf-swatch-blue, button.mf-swatch-blue:hover, button.mf-swatch-blue:checked { background: #3584e4; }
+button.mf-swatch-purple, button.mf-swatch-purple:hover, button.mf-swatch-purple:checked { background: #9141ac; }
+button.mf-swatch-pink, button.mf-swatch-pink:hover, button.mf-swatch-pink:checked { background: #d56199; }
+button.mf-swatch-red, button.mf-swatch-red:hover, button.mf-swatch-red:checked { background: #e62d42; }
+button.mf-swatch-orange, button.mf-swatch-orange:hover, button.mf-swatch-orange:checked { background: #ed5b00; }
+button.mf-swatch-yellow, button.mf-swatch-yellow:hover, button.mf-swatch-yellow:checked { background: #c88800; }
+button.mf-swatch-green, button.mf-swatch-green:hover, button.mf-swatch-green:checked { background: #3a944a; }
+button.mf-swatch-teal, button.mf-swatch-teal:hover, button.mf-swatch-teal:checked { background: #2190a4; }
+button.mf-swatch-slate, button.mf-swatch-slate:hover, button.mf-swatch-slate:checked { background: #6f8396; }

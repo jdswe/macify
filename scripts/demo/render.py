@@ -391,7 +391,7 @@ SCENES = [
     (7.5, terminal),
     (3.2, app_scene("01-welcome", "Open Macify", "A setup assistant, like a new Mac")),
     (3.0, app_scene("02-appearance", "Light or dark", "Windows, menus and apps follow your choice")),
-    (3.8, app_scene("03-wallpaper", "Eight new wallpapers", "Original 4K art in a gallery, or your own photos")),
+    (3.8, app_scene("03-wallpaper", "Wallpaper and accent color", "Original 4K art or your own photos · nine accent colors, or automatic")),
     (3.4, app_scene("04-dock", "Set up your dock", "Size, magnification, magic lamp and auto-hide, with a live preview")),
     (3.0, app_scene("05-summary", "Review every change", "Everything is backed up first and can be undone")),
     (4.8, two_app_scene("06-progress-a", "07-progress-b", "Watch it work", "Real-time progress, step by step")),

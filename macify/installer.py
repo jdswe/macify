@@ -40,7 +40,10 @@ def _icons(dry_run: bool, log: Log) -> None:
 
 
 def _settings(choices: Choices, dry_run: bool, log: Log) -> None:
-    log(_("Accent color from your wallpaper: {color}").format(color=_(profile.accent(choices))))
+    if choices.accent:
+        log(_("Accent color: {color}").format(color=_(profile.accent(choices))))
+    else:
+        log(_("Accent color from your wallpaper: {color}").format(color=_(profile.accent(choices))))
     values = profile.settings(choices)
     values.update(extensions.enabled_settings(magic_lamp=choices.magic_lamp))
     system.apply_settings(values, dry_run, log)
