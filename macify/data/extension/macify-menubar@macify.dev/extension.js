@@ -24,6 +24,7 @@ import {MacOsd} from './osd.js';
 import {ScreenshotPreview} from './screenshotPreview.js';
 import {StatusBar} from './statusBar.js';
 import {WindowGuard} from './windowGuard.js';
+import {WindowLinks} from './windowLinks.js';
 import {_} from './i18n.js';
 
 
@@ -84,6 +85,7 @@ const PARTS = [
     ['live', () => new LiveActivities()],
     ['osd', () => new MacOsd()],
     ['windows', () => new WindowGuard()],
+    ['links', () => new WindowLinks()],
     ['displays', () => new DisplaySwitcher()],
     ['clipboard', () => new ClipboardHistory()],
     ['screenshots', () => new ScreenshotPreview()],

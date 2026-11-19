@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -345,7 +346,8 @@ def app_entries() -> dict[str, Path]:
     return found
 
 
-def _override_text(source: Path, icon_name: str) -> str:
+def _override_text(source: Path, icon_name: str | None, wm_class: str | None = None) -> str:
+    """Macify's copy of a launcher: optionally a new icon and the window class its windows use."""
     lines = source.read_text(errors="ignore").splitlines()
     out, in_entry, replaced = [], False, False
     for line in lines:
@@ -354,13 +356,142 @@ def _override_text(source: Path, icon_name: str) -> str:
             out.append(line)
             if in_entry:
                 out.append(OVERRIDE_MARK)
+                if wm_class:
+                    out.append(f"StartupWMClass={wm_class}")
             continue
-        if in_entry and not replaced and line.startswith("Icon="):
+        if in_entry and wm_class and line.startswith("StartupWMClass="):
+            continue
+        if in_entry and icon_name and not replaced and line.startswith("Icon="):
             out.append(f"Icon={icon_name}")
             replaced = True
             continue
         out.append(line)
     return "\n".join(out) + "\n"
+
+
+# ----- windows that GNOME cannot link to their launcher -----
+#
+# GNOME shows an app's icon in the dock only when the window's class (the Wayland app_id or
+# the X11 WM_CLASS) matches the launcher's StartupWMClass or file name, exactly. Many apps
+# ship a launcher that does not match (Kilo: StartupWMClass=Kilo, window class "kilo"), so
+# the dock shows a generic icon. The menu bar extension reports such windows; Macify finds
+# their launcher and writes a copy with the right StartupWMClass.
+
+WINDOW_CLASSES_FILE = HOME / ".config" / "macify" / "window-classes.json"
+# Programs that run many different apps: their path says nothing about which app it is.
+GENERIC_PROGRAMS = re.compile(
+    r"^(python[\d.]*|perl|ruby|node|nodejs|java|bash|sh|dash|env|electron[\d.]*|wine.*|bwrap|"
+    r"flatpak.*|snap|appimage.*|gjs|mono|dotnet|qemu.*)$")
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", text.casefold())
+
+
+def _exec_program(entry) -> str | None:
+    """The real file a launcher starts (symlinks resolved), or None for env/wrappers."""
+    try:
+        words = shlex.split(entry.get("Exec", ""))
+    except ValueError:
+        return None
+    while words and (words[0] == "env" or "=" in words[0].split("/")[-1]):
+        words.pop(0)
+    if not words:
+        return None
+    program = shutil.which(words[0]) if "/" not in words[0] else words[0]
+    return os.path.realpath(program) if program and os.path.exists(program) else None
+
+
+def find_launcher(wm_class: str, program: str | None, entries: dict[str, Path] | None = None) -> str | None:
+    """The launcher a window with this class (run by this program) belongs to, if it is certain."""
+    entries = app_entries() if entries is None else entries
+    wanted = _norm(wm_class)
+    if not wanted:
+        return None
+    program = os.path.realpath(program) if program else None
+    if program and GENERIC_PROGRAMS.match(Path(program).name):
+        program = None
+    by_class, by_name, by_program = set(), set(), set()
+    for desktop_id, path in entries.items():
+        entry = _read_entry(path)
+        if entry is None:
+            continue
+        if _norm(entry.get("StartupWMClass", "")) == wanted:
+            by_class.add(desktop_id)
+        if wanted in {_norm(desktop_id.removesuffix(".desktop")), _norm(entry.get("Name", ""))}:
+            by_name.add(desktop_id)
+        if program and _exec_program(entry) == program:
+            by_program.add(desktop_id)
+    # Same program and same name agree: certain. Otherwise one clue alone must be unique.
+    for found in (by_program & (by_class | by_name), by_class, by_program, by_name):
+        if len(found) == 1:
+            return next(iter(found))
+    return None
+
+
+def load_window_classes() -> dict[str, str]:
+    try:
+        data = json.loads(WINDOW_CLASSES_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)} \
+        if isinstance(data, dict) else {}
+
+
+def _set_startup_wm_class(path: Path, wm_class: str) -> bool:
+    """Set StartupWMClass in a launcher that belongs to the user, changing nothing else."""
+    lines = path.read_text(errors="ignore").splitlines()
+    out, in_entry, done = [], False, False
+    for line in lines:
+        if line.startswith("["):
+            in_entry = line.strip() == "[Desktop Entry]"
+            out.append(line)
+            if in_entry and not done:
+                out.append(f"StartupWMClass={wm_class}")
+                done = True
+            continue
+        if in_entry and line.startswith("StartupWMClass="):
+            continue
+        out.append(line)
+    return done and _write_if_changed(path, "\n".join(out) + "\n")
+
+
+def link_window(wm_class: str, pid: int | None, log) -> bool:
+    """Make the dock show the right icon for a window GNOME could not link to any app."""
+    if not re.fullmatch(r"[\w .+@-]{1,128}", wm_class):
+        return False
+    program = None
+    if pid:
+        try:
+            program = os.readlink(f"/proc/{pid}/exe")
+        except OSError:
+            pass
+    entries = app_entries()
+    desktop_id = find_launcher(wm_class, program, entries)
+    if desktop_id is None:
+        return False
+    entry = _read_entry(entries[desktop_id])
+    if entry is not None and entry.get("StartupWMClass") == wm_class:
+        return False        # already right: GNOME links it by itself
+    classes = load_window_classes()
+    if classes.get(desktop_id) != wm_class:
+        classes[desktop_id] = wm_class
+        WINDOW_CLASSES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        WINDOW_CLASSES_FILE.write_text(json.dumps(classes, indent=2, sort_keys=True) + "\n")
+    source = entries[desktop_id]
+    OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
+    target = OVERRIDES_DIR / desktop_id
+    if source.parent == OVERRIDES_DIR:
+        changed = _set_startup_wm_class(source, wm_class)
+    else:
+        icon = None
+        if target.exists() and OVERRIDE_MARK in target.read_text(errors="ignore"):
+            icon = _read_entry(target).get("Icon") if _read_entry(target) is not None else None
+        changed = _write_if_changed(target, _override_text(source, icon, wm_class))
+    if changed:
+        log(_("{app}: its windows now show the app icon in the dock").format(
+            app=entry.get("Name", desktop_id) if entry is not None else desktop_id))
+    return changed
 
 
 STYLE_VERSION = "2"        # cambia cuando cambia el dibujo: los iconos ya creados se rehacen
@@ -416,7 +547,9 @@ def generate(dry_run: bool, log) -> int:
     overrides_wanted: set[str] = set()
     handled = 0
     changed = False
-    for desktop_id, path in app_entries().items():
+    entries = app_entries()
+    classes = load_window_classes()
+    for desktop_id, path in entries.items():
         entry = _read_entry(path)
         if entry is None or not entry.get("Icon") or entry["Icon"] in OWN_ICONS:
             continue
@@ -445,7 +578,7 @@ def generate(dry_run: bool, log) -> int:
             touched = dry_run or _draw(source, folder / f"{name}.png")
             if not dry_run:
                 OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
-                touched |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name))
+                touched |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, name, classes.get(desktop_id)))
             if touched:
                 log(_("{app}: original app icon preserved in Macify style → {name}").format(app=app, name=name))
             changed |= touched and not dry_run
@@ -460,6 +593,15 @@ def generate(dry_run: bool, log) -> int:
             if dry_run or drawn:
                 log(_("{app}: no macOS-style icon → created").format(app=app))
             changed |= drawn
+    # Apps whose windows the dock could not link (see link_window): keep their copy.
+    for desktop_id, wm_class in classes.items():
+        path = entries.get(desktop_id)
+        if desktop_id in overrides_wanted or path is None or path.parent == OVERRIDES_DIR:
+            continue
+        overrides_wanted.add(desktop_id)
+        if not dry_run:
+            OVERRIDES_DIR.mkdir(parents=True, exist_ok=True)
+            changed |= _write_if_changed(OVERRIDES_DIR / desktop_id, _override_text(path, None, wm_class))
     if not dry_run:
         changed |= _prune(folder, icons_wanted, overrides_wanted, log)
         if changed and shutil.which("gtk-update-icon-cache"):

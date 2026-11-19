@@ -864,6 +864,100 @@ class IconTests(unittest.TestCase):
             self.assertEqual(launcher.read_text().count("StartupWMClass=github"), 1)
             self.assertEqual(len(logs), 1)
 
+    def _window_link_env(self, root):
+        from unittest import mock
+
+        system, overrides = root / "system", root / "overrides"
+        system.mkdir()
+        program = root / "kilo-bin"
+        program.write_text("")
+        program.chmod(0o755)
+        (system / "kilo-desktop.desktop").write_text(
+            "[Desktop Entry]\nType=Application\nName=Kilo\nStartupWMClass=Kilo\n"
+            f"Exec={program} %U\nIcon=kilo-desktop\n")
+        (system / "other.desktop").write_text(
+            "[Desktop Entry]\nType=Application\nName=Other\nExec=/usr/bin/python3 other.py\nIcon=other\n")
+        (system / "ghost.desktop").write_text(
+            "[Desktop Entry]\nType=Application\nName=kilo\nNoDisplay=true\nExec=ghost\n")
+
+        def entries():
+            found = {p.name: p for p in sorted(overrides.glob("*.desktop"))
+                     if icons.OVERRIDE_MARK not in p.read_text()} if overrides.is_dir() else {}
+            for p in sorted(system.glob("*.desktop")):
+                found.setdefault(p.name, p)
+            return found
+
+        patches = [mock.patch.object(icons, "app_entries", side_effect=entries),
+                   mock.patch.object(icons, "OVERRIDES_DIR", overrides),
+                   mock.patch.object(icons, "WINDOW_CLASSES_FILE", root / "config" / "window-classes.json")]
+        return program, overrides, patches
+
+    def test_window_class_finds_its_launcher_only_when_certain(self):
+        import tempfile
+        from contextlib import ExitStack
+
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            program, _overrides, patches = self._window_link_env(Path(tmp))
+            for patch in patches:
+                stack.enter_context(patch)
+            self.assertEqual(icons.find_launcher("kilo", None), "kilo-desktop.desktop")       # case only
+            self.assertEqual(icons.find_launcher("Electron", str(program)), "kilo-desktop.desktop")
+            self.assertIsNone(icons.find_launcher("unknown", None))
+            # An interpreter runs many apps: its path is no clue.
+            self.assertIsNone(icons.find_launcher("unknown", "/usr/bin/python3"))
+
+    def test_link_window_writes_launcher_copy_that_survives_upkeep(self):
+        import tempfile
+        from contextlib import ExitStack
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            root = Path(tmp)
+            _program, overrides, patches = self._window_link_env(root)
+            for patch in patches:
+                stack.enter_context(patch)
+            logs = []
+            self.assertTrue(icons.link_window("kilo", None, logs.append))
+            copy = (overrides / "kilo-desktop.desktop").read_text()
+            self.assertIn("StartupWMClass=kilo\n", copy)
+            self.assertNotIn("StartupWMClass=Kilo", copy)
+            self.assertIn("Icon=kilo-desktop", copy)
+            self.assertIn(icons.OVERRIDE_MARK, copy)
+            self.assertEqual(icons.load_window_classes(), {"kilo-desktop.desktop": "kilo"})
+            self.assertEqual(len(logs), 1)
+            self.assertFalse(icons.link_window("kilo", None, logs.append))     # nothing new
+            self.assertFalse(icons.link_window("bad;class$(x)", None, logs.append))
+
+            with mock.patch.object(icons, "THEME_DIR", root / "theme"), \
+                 mock.patch.object(icons, "_theme_stems", return_value={"kilo-desktop", "other"}), \
+                 mock.patch.object(icons, "base_theme", return_value="WhiteSur"):
+                icons.generate(False, logs.append)
+            self.assertEqual((overrides / "kilo-desktop.desktop").read_text(), copy)
+
+    def test_link_window_edits_only_the_class_of_a_user_launcher(self):
+        import tempfile
+        from contextlib import ExitStack
+
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            root = Path(tmp)
+            _program, overrides, patches = self._window_link_env(root)
+            overrides.mkdir()
+            mine = overrides / "kilo-desktop.desktop"
+            mine.write_text("[Desktop Entry]\nType=Application\nName=Kilo\nStartupWMClass=Kilo\nExec=mine\nIcon=mine\n")
+            for patch in patches:
+                stack.enter_context(patch)
+            self.assertTrue(icons.link_window("kilo", None, lambda _m: None))
+            self.assertEqual(mine.read_text(),
+                             "[Desktop Entry]\nStartupWMClass=kilo\nType=Application\nName=Kilo\nExec=mine\nIcon=mine\n")
+
+    def test_menubar_links_windows_without_app(self):
+        source = (APP / "macify/data/extension/macify-menubar@macify.dev/windowLinks.js").read_text()
+        self.assertIn("is_window_backed()", source)
+        self.assertIn("'link-window'", source)
+        self.assertIn("const MACIFY = '/usr/bin/macify'", source)
+        extension = (APP / "macify/data/extension/macify-menubar@macify.dev/extension.js").read_text()
+        self.assertIn("new WindowLinks()", extension)
+
     def test_second_pass_with_nothing_new_logs_nothing(self):
         """El vigilante corre a menudo: si nada cambió, no escribe en el registro."""
         import tempfile

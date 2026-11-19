@@ -34,6 +34,9 @@ def cli(argv: list[str]) -> int:
     p_look.add_argument("--login", action="store_true", help="Also put it on the login screen (asks for a password).")
     p_claude = sub.add_parser("claude", help="Approve Claude Code requests from the menu bar island.")
     p_claude.add_argument("action", choices=["connect", "disconnect", "status"])
+    p_link = sub.add_parser("link-window", help="Show the app icon in the dock for a window GNOME could not link.")
+    p_link.add_argument("wm_class")
+    p_link.add_argument("--pid", type=int)
     p_restore = sub.add_parser("restore", help="Restore the original GNOME settings.")
     p_restore.add_argument("--dry-run", action="store_true")
     p_uninstall = sub.add_parser("uninstall", help="Revert everything and remove what Macify installed.")
@@ -64,6 +67,8 @@ def cli(argv: list[str]) -> int:
         return 0 if all(c.status == doctor.OK for c in checks) else 1
     elif args.command == "refresh":
         session.refresh(print, login=args.login)
+    elif args.command == "link-window":
+        return 0 if icons.link_window(args.wm_class, args.pid, print) else 1
     elif args.command == "upgrade":
         from . import upgrade
         upgrade.run(print)

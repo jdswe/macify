@@ -1,5 +1,9 @@
 # Macify release notes
 
+## 0.22.0
+
+- **Every app shows its own logo in the dock.** GNOME links a window to its app only when the window's name matches the app's launcher exactly. Some apps ship a launcher that doesn't match (Kilo says `Kilo`, its window says `kilo`), so the dock showed a generic icon even though the right one was installed. Now, when a window opens without an app, Macify finds its launcher — by the program that runs the window and by its name, and only when exactly one launcher fits — and writes a copy in `~/.local/share/applications` with the right window name. The window that is already open switches to the real icon at once; you don't have to reopen the app. System launchers are never edited, the copy keeps everything else (icon, command, actions), and Uninstall Everything removes it. From a terminal: `macify link-window <window-class> --pid <pid>`.
+
 ## 0.21.0
 
 - **Approve Claude Code from the menu bar.** Turn on **Claude Code in the menu bar** on the last setup page (or run `macify claude connect`). When Claude Code asks for permission, the island shows what it wants to do, with the project, the tool and the exact command or file, and **Allow**, **Deny** and, when Claude Code offers to remember the rule, **Always**. Your answer reaches Claude Code at once, so you never have to switch to its terminal. If you are already looking at that terminal, if Macify is not running, or if nobody answers within 45 seconds, Claude Code asks in its terminal as always. The island also tells you when Claude Code finished, with the start of its last message, and when it is waiting for you. Macify adds only its own hooks to `~/.claude/settings.json`, keeps every other setting, saves a backup first, and removes exactly those hooks with `macify claude disconnect` or Uninstall Everything. Everything stays on the computer.

@@ -115,6 +115,8 @@ SPANISH = {
         "{app}: se conservó su icono original con estilo Macify → {name}",
     "GitHub Copilot: link its window to the correct app icon":
         "GitHub Copilot: vincular su ventana con el icono correcto de la app",
+    "{app}: its windows now show the app icon in the dock":
+        "{app}: sus ventanas ahora muestran el icono de la app en el Dock",
     "Bundled font files are missing: {files}": "Faltan archivos de fuentes incluidos: {files}",
     "Installing bundled fonts: {count} files": "Instalando fuentes incluidas: {count} archivos",
     "Skipped: schema {schema} does not exist on this system.": "Omitido: el esquema {schema} no existe en este sistema.",
