@@ -4,11 +4,6 @@ import argparse
 import sys
 from pathlib import Path
 
-# Claude Code runs this on every permission request: answer without loading the rest of Macify.
-if __name__ == "__main__" and len(sys.argv) > 2 and sys.argv[1] == "agent-hook":
-    from .agent_hook import run as _agent_hook
-    sys.exit(_agent_hook(sys.argv[2]))
-
 from .i18n import _
 from . import boot, doctor, icons, installer, profile, session, system
 from .uninstall import uninstall
@@ -16,7 +11,8 @@ from .uninstall import uninstall
 
 def cli(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="macify", description="Turn Ubuntu into a Mac.")
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command", required=True,
+                                metavar="{install,steps,audit,doctor,refresh,upgrade,look,link-window,restore,uninstall}")
 
     p_install = sub.add_parser("install", help="Install and apply everything with the saved choices.")
     p_install.add_argument("--dry-run", action="store_true", help="Only show what would be done.")
@@ -32,8 +28,9 @@ def cli(argv: list[str]) -> int:
     p_look.add_argument("--appearance", choices=["light", "dark"])
     p_look.add_argument("--wallpaper", help="An image to use as wallpaper (its -dark twin is used in dark mode).")
     p_look.add_argument("--login", action="store_true", help="Also put it on the login screen (asks for a password).")
-    p_claude = sub.add_parser("claude", help="Approve Claude Code requests from the menu bar island.")
-    p_claude.add_argument("action", choices=["connect", "disconnect", "status"])
+    # Retirado en 0.23: si quedan ganchos de Claude Code de 0.21/0.22, responden sin hacer nada
+    # (salir con error haría que Claude Code bloquee la acción) hasta que se quitan.
+    sub.add_parser("agent-hook").add_argument("event", nargs="*")
     p_link = sub.add_parser("link-window", help="Show the app icon in the dock for a window GNOME could not link.")
     p_link.add_argument("wm_class")
     p_link.add_argument("--pid", type=int)
@@ -67,6 +64,8 @@ def cli(argv: list[str]) -> int:
         return 0 if all(c.status == doctor.OK for c in checks) else 1
     elif args.command == "refresh":
         session.refresh(print, login=args.login)
+    elif args.command == "agent-hook":
+        return 0
     elif args.command == "link-window":
         return 0 if icons.link_window(args.wm_class, args.pid, print) else 1
     elif args.command == "upgrade":
@@ -85,17 +84,6 @@ def cli(argv: list[str]) -> int:
         installer.apply_look(choices, print)
         if args.login:
             boot.apply(profile.desktop_wallpaper(choices), False, print)
-    elif args.command == "claude":
-        from . import claude_hooks
-        if args.action == "connect":
-            claude_hooks.install(False, print)
-            choices.claude_approvals = True
-            profile.save_choices(choices)
-        elif args.action == "disconnect":
-            claude_hooks.remove(False, print)
-            choices.claude_approvals = False
-            profile.save_choices(choices)
-        print(_("Connected") if claude_hooks.installed() else _("Not connected"))
     elif args.command == "restore":
         system.restore(args.dry_run, print)
     elif args.command == "uninstall":

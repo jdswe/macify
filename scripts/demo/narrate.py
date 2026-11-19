@@ -30,7 +30,7 @@ LEAD = 0.35            # segundos entre el inicio de la escena y la voz
 GAP = 0.3              # silencio mínimo antes de la siguiente frase
 MAX_SPEEDUP = 1.12     # si una frase no cabe, se acelera hasta este punto (no más: sonaría rara)
 
-# Índice de la escena en render.py → lo que dice la voz. Con 29 escenas; si cambian, se
+# Índice de la escena en render.py → lo que dice la voz. Con 31 escenas; si cambian, se
 # comprueba abajo y hay que revisar estos índices.
 # La entrada («Something new is coming» y el golpe de música) va sin voz: la narradora
 # empieza cuando aparece Macify.
@@ -50,12 +50,14 @@ NARRATION = {
         "Control Center works the Apple way, and switching displays takes one shortcut.",
     19: "Every wallpaper comes in light and dark. "
         "The calendar looks like the macOS widget, and screenshots slide in, ready to paste or crop.",
-    22: "Live Activities keep your music and charging at a glance. "
-        "Apps open on frosted glass, and the dock counts your notifications.",
-    25: "Macify stays with you. Updates install only what's new, and Doctor fixes problems in one click.",
-    28: "Macify. Free, open source, and made for Ubuntu.",
+    22: "Live Activities show your music, with a volume for just that app.",
+    23: "Super V brings back your last ten copies.",
+    24: "And with Dictado, just speak. The island shows when it listens.",
+    25: "Apps open on frosted glass, and the dock counts your notifications.",
+    27: "Macify stays with you. Updates install only what's new, and Doctor fixes problems in one click.",
+    30: "Macify. Free, open source, and made for Ubuntu.",
 }
-SCENE_COUNT = 29
+SCENE_COUNT = 31
 # Algunas frases esperan un poco más: la primera deja sonar el golpe de música antes de hablar.
 EXTRA_LEAD = {1: 1.0, 2: 0.7}
 

@@ -372,22 +372,9 @@ class MacifyWindow(Adw.ApplicationWindow):
         self.choices.dictado = voice.get_active()
         voice.connect("notify::active", self._on_dictado_toggle)
         self.summary_options.add(voice)
-        from . import claude_hooks
-        claude = Adw.SwitchRow(title=_("Claude Code in the menu bar"),
-                               subtitle=_("Allow or deny its requests and see when it finishes, without switching "
-                                          "windows. Adds Macify's hooks to ~/.claude/settings.json; nothing else "
-                                          "there changes."))
-        claude.set_active(self.choices.claude_approvals or claude_hooks.installed())
-        self.choices.claude_approvals = claude.get_active()
-        claude.connect("notify::active", self._on_claude_toggle)
-        self.summary_options.add(claude)
         self.summary_title = text(_("Ready to begin"), "mf-title")
         self.summary_detail = text(_("Takes a few minutes. You'll be asked to restart at the end."), "mf-subtitle")
         return self._page(self.summary_title, self.summary_detail, self.summary, self.summary_options)
-
-    def _on_claude_toggle(self, row: Adw.SwitchRow, _param) -> None:
-        self.choices.claude_approvals = row.get_active()
-        self._fill_summary()
 
     def _on_dictado_toggle(self, row: Adw.SwitchRow, _param) -> None:
         self.choices.dictado = row.get_active()

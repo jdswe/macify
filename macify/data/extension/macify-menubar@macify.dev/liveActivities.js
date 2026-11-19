@@ -4,8 +4,6 @@
 //   se abre «Ahora suena» (controles y volumen); con la rueda se cambia el volumen.
 // - Al enchufar o desenchufar el cargador, carga completa y batería baja.
 // - Al perder o recuperar la conexión.
-// - Agentes de programación (Claude Code, Codex...): si esperan tu respuesta, terminaron o
-//   fallaron. Lo que espera de ti se queda hasta que lo atiendes; un clic abre el agente.
 // - Dictado (si está instalado): escuchando, escribiendo o grabando una transcripción.
 // Todo funciona por avisos del sistema. Las barras se mueven unos segundos al empezar una
 // canción o al pasar el puntero, y luego descansan: sin redibujar la barra sin necesidad.
@@ -21,8 +19,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
-import {AgentCards} from './agentCards.js';
-import {Agents} from './agents.js';
 import {DictadoStatus} from './dictadoStatus.js';
 import {_} from './i18n.js';
 import {MediaPlayers} from './mediaPlayers.js';
@@ -72,28 +68,13 @@ class LiveButton extends PanelMenu.Button {
         });
         [this.icon, this.label, this.bars].forEach(w => this.pill.add_child(w));
         this.add_child(this.pill);
-        // Con un agente o Dictado en la cápsula, el clic actúa sobre ellos en vez de abrir
+        // Con Dictado en la cápsula, el clic lo detiene en vez de abrir
         // «Ahora suena».
         this.clickAction = null;
         const toggle = this.menu.toggle.bind(this.menu);
-        // El menú se rellena antes de abrirse: GNOME no abre un menú que parece vacío.
-        this.beforeOpen = null;
-        this.menu.toggle = () => {
-            if (this.clickAction)
-                return this.clickAction();
-            if (!this.menu.isOpen)
-                this.beforeOpen?.();
-            return toggle();
-        };
+        this.menu.toggle = () => (this.clickAction ? this.clickAction() : toggle());
     }
 });
-
-const AGENT_LOOK = {
-    approve: ['dialog-password-symbolic', 'macify-island-agent-waiting'],
-    waiting: ['dialog-question-symbolic', 'macify-island-agent-waiting'],
-    failed: ['dialog-error-symbolic', 'macify-island-agent-failed'],
-    done: ['object-select-symbolic', 'macify-island-agent-done'],
-};
 
 export class LiveActivities {
     constructor() {
@@ -115,14 +96,6 @@ export class LiveActivities {
         Main.screenShield?.connectObject?.('locked-changed', () => this._wakeBars(), this);
 
         this._players.connectObject('changed', () => this._render(), this);
-        this._agents = new Agents();
-        this._agents.connectObject('changed', () => {
-            if (this._button.menu.isOpen)
-                this._fillMenu();
-            this._render();
-        }, this);
-        this._cards = new AgentCards(this._button.menu, this._agents);
-        this._button.beforeOpen = () => this._fillMenu();
         this._button.menu.connectObject('open-state-changed', (_menu, open) => {
             if (open)
                 this._fillMenu();
@@ -141,16 +114,12 @@ export class LiveActivities {
         const event = this._event;
         const voice = this._dictado;
         const dictating = !event && voice.dictation !== 'idle';
-        const waitingAgent = ['waiting', 'approve'].includes(this._agents.current?.state);
-        const recording = !event && !dictating && !waitingAgent && voice.transcription === 'recording';
-        const agent = event || dictating || recording ? null : this._agents.current;
+        const recording = !event && !dictating && voice.transcription === 'recording';
         const busy = dictating || recording;
-        this._button.setSensitive((Boolean(player) || Boolean(agent) || busy) && !event);
-        if (((!player && !this._cards.count) || busy) && this._button.menu.isOpen)
+        this._button.setSensitive((Boolean(player) || busy) && !event);
+        if ((!player || busy) && this._button.menu.isOpen)
             this._button.menu.close();
-        // Con agentes, el clic abre su tarjeta (el aviso entero, Abrir y Descartar).
         this._button.clickAction = busy ? () => voice.stop() : null;
-        this._agentLook(agent?.state);
         this._voiceLook(dictating ? voice.dictation : recording ? 'rec' : null);
         this._tickRec(recording);
         if (event) {
@@ -163,11 +132,6 @@ export class LiveActivities {
                 this._showLevel();
         } else if (recording) {
             this._show('media-record-symbolic', this._recText(), false);
-        } else if (agent) {
-            const waiting = this._agents.waitingCount;
-            const text = ['waiting', 'approve'].includes(agent.state) && waiting > 1
-                ? _('{n} agents waiting', {n: waiting}) : agent.text;
-            this._show(AGENT_LOOK[agent.state][0], text, false);
         } else if (player) {
             this._nowPlaying.show(player, this._players.visible);
             const text = [player.title, player.artist].filter(Boolean).join(' — ') || player.appName;
@@ -180,7 +144,7 @@ export class LiveActivities {
         }
     }
 
-    // La tarjeta muestra los avisos de los agentes y, si suena algo, «Ahora suena» debajo.
+    // La tarjeta muestra «Ahora suena».
     _fillMenu() {
         // Fondo opaco, claro u oscuro como el sistema: el texto se lee sobre cualquier fondo.
         this._interface ??= new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
@@ -188,7 +152,6 @@ export class LiveActivities {
         const box = this._button.menu.actor;
         box.remove_style_class_name(dark ? 'macify-np-light' : 'macify-np-dark');
         box.add_style_class_name(dark ? 'macify-np-dark' : 'macify-np-light');
-        this._cards.fill();
         this._nowPlaying.item.visible = Boolean(this._players.active);
     }
 
@@ -234,17 +197,6 @@ export class LiveActivities {
         } else if (!on && this._recId) {
             GLib.source_remove(this._recId);
             this._recId = 0;
-        }
-    }
-
-    _agentLook(state) {
-        const pill = this._button.pill;
-        const wanted = AGENT_LOOK[state]?.[1];
-        for (const style of new Set(Object.values(AGENT_LOOK).map(look => look[1]))) {
-            if (style === wanted)
-                pill.add_style_class_name(style);
-            else
-                pill.remove_style_class_name(style);
         }
     }
 
@@ -516,8 +468,6 @@ export class LiveActivities {
         this._monitor.disconnectObject(this);
         Main.messageTray.disconnectObject(this);
         Main.messageTray.getSources().forEach(source => source.disconnectObject(this));
-        this._agents.disconnectObject(this);
-        this._agents.destroy();
         this._button.menu.disconnectObject(this);
         this._cards.destroy();
         this._dictado.disconnectObject(this);

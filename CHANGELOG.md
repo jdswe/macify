@@ -1,5 +1,11 @@
 # Macify release notes
 
+## 0.23.0
+
+- **Removed: coding agents and Claude Code approvals in the island.** The menu bar island no longer shows notifications from Claude Code, Codex, ChatGPT, Copilot or Cursor, and the **Claude Code in the menu bar** option, `macify claude` and `macify agent-hook` are gone. If you had connected it, updating removes Macify's hooks from `~/.claude/settings.json` and leaves every other setting as it was. Notifications from those apps show like any other app's. The island keeps music, the volume of just the playing app, charging, connection and Dictado.
+- Fixed: the island's stylesheet no longer has a stray rule left over from the agent cards.
+- The demo video shows the clipboard history, per-app volume and Dictado in the island.
+
 ## 0.22.0
 
 - **Every app shows its own logo in the dock.** GNOME links a window to its app only when the window's name matches the app's launcher exactly. Some apps ship a launcher that doesn't match (Kilo says `Kilo`, its window says `kilo`), so the dock showed a generic icon even though the right one was installed. Now, when a window opens without an app, Macify finds its launcher — by the program that runs the window and by its name, and only when exactly one launcher fits — and writes a copy in `~/.local/share/applications` with the right window name. The window that is already open switches to the real icon at once; you don't have to reopen the app. System launchers are never edited, the copy keeps everything else (icon, command, actions), and Uninstall Everything removes it. From a terminal: `macify link-window <window-class> --pid <pid>`.

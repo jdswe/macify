@@ -26,14 +26,15 @@ OUT = Path(sys.argv[2])
 APP_SHOTS, SHELL_SHOTS = CAPTURES / "app", CAPTURES / "shell"
 WALLPAPER = REPO / "macify" / "data" / "wallpapers" / "lilac-dark.jpg"     # fondo original, no de Apple
 BOOT = Path.home() / ".cache" / "macify" / "plymouth"
-FONTS = Path.home() / ".local" / "share" / "fonts" / "macify"
+FONTS = REPO / "macify" / "data" / "fonts"         # las mismas fuentes que instala Macify (OFL)
 W, H, FPS = 1920, 1080, 30
 OVERLAP = 0.6
-BOLD, SEMI, REG, MONO = "Inter-Bold", "Inter-SemiBold", "Inter-Regular", "JetBrainsMono-Regular"
+BOLD, SEMI, REG, MONO = "Inter-SemiBold", "Inter-SemiBold", "Inter-Regular", "JetBrainsMono-Regular"
 
 
 def font(name, size):
-    return ImageFont.truetype(str(FONTS / f"{name}.otf"), size)
+    path = next(p for p in (FONTS / f"{name}.otf", FONTS / f"{name}.ttf") if p.exists())
+    return ImageFont.truetype(str(path), size)
 
 
 def ease(t):
@@ -151,7 +152,7 @@ def _open(path, crop=None):
     return image.crop(crop) if crop else image
 
 
-def pair_scene(paths_crops, title, sub=""):
+def pair_scene(paths_crops, title, sub="", top=230):
     """Dos a cuatro recortes lado a lado (por ejemplo, los menús de batería, Bluetooth, Wi‑Fi y sonido)."""
     def draw(t, dur):
         frame = background(t)
@@ -162,7 +163,7 @@ def pair_scene(paths_crops, title, sub=""):
         x = (W - total) / 2
         for i, (layer, pad) in enumerate(layers):
             k = ease((t - 0.15 * i) / 0.8)
-            place(frame, layer, x - pad, 230 - pad + 60 * (1 - k), max(0.0, min(1.0, 0.2 + k)))
+            place(frame, layer, x - pad, top - pad + 60 * (1 - k), max(0.0, min(1.0, 0.2 + k)))
             x += layer.width - 2 * pad + 40
         return frame
     return draw
@@ -417,8 +418,13 @@ SCENES = [
     (4.0, shot_scene(S / "screenshot-preview.png", "Screenshots, like on a Mac",
                      "A thumbnail slides in — already copied, paste it with Ctrl+V", crop=(1200, 600, 1920, 1080),
                      max_h=700)),
-    (4.8, shot_scene(S / "now-playing.png", "Live Activities", "Music, charging, connection — click for Now Playing",
-                     crop=(560, 0, 1360, 420), max_h=780)),
+    (5.0, shot_scene(S / "now-playing.png", "Live Activities", "Music, charging, connection — and a volume for just "
+                     "the app that's playing", crop=(560, 0, 1360, 420), max_h=780)),
+    (4.4, shot_scene(S / "clipboard.png", "Clipboard history", "Super+V: your last ten copies, text and images, "
+                     "ready to paste", crop=(700, 160, 1220, 640), max_h=760)),
+    (4.6, pair_scene([(S / "dictado-listening.png", (800, 0, 1040, 34)), (S / "dictado-rec.png", (840, 0, 1080, 34))],
+                     "Voice dictation, optional", "With Dictado, the island shows when it listens and when it records",
+                     top=520)),
     (4.2, shot_scene(S / "app-grid.png", "Apps on frosted glass", "Show Apps works like the Apps view in macOS 27",
                      crop=FIRST_DISPLAY)),
     (3.6, shot_scene(S / "badge.png", "Notification badges", "A red count on the app's dock icon, like on a Mac",

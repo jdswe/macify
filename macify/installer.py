@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .i18n import _
-from . import __version__, apps, boot, claude_hooks, deps, dictado, extensions, fonts, icons, profile, session, snaps, system, themes
+from . import __version__, apps, boot, deps, dictado, extensions, fonts, icons, profile, session, snaps, system, themes
 from .assets import busy, install_bundled_data, save_config_value
 from .profile import Choices
 
@@ -79,10 +79,6 @@ def steps(choices: Choices, dry_run: bool = False) -> list[Step]:
                            _("Speak and it types where the cursor is; transcribes calls and files. "
                              "About 350 MB of speech models download once; everything runs on this computer."),
                            lambda log: dictado.install(dry_run, log)))
-    if choices.claude_approvals:
-        result.append(Step(_("Claude Code in the menu bar"),
-                           _("Allow or deny its requests and see when it finishes, without switching windows."),
-                           lambda log: claude_hooks.install(dry_run, log)))
     if choices.login_screen:
         result.append(Step(_("Startup and login screens"),
                            _("macOS style from the moment you turn on your computer. Asks for your password once."),

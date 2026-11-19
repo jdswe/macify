@@ -34,7 +34,6 @@ class Choices:
     dock_autohide: bool = True      # se esconde cuando una ventana lo tapa; reaparece en el borde inferior
     login_screen: bool = True       # arranque e inicio de sesión estilo macOS (pide contraseña)
     dictado: bool = False           # dictado por voz y transcripción (Dictado, opcional)
-    claude_approvals: bool = False  # Claude Code pregunta en la isla (Allow / Deny)
 
 
 def load_choices() -> Choices:

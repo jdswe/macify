@@ -399,132 +399,15 @@ async function testDockBounce() {
     dock._endAnimation = end;
 }
 
-// Agentes en la isla: un aviso de Claude Code pidiendo permiso se queda en la cápsula hasta
-// atenderlo; uno de Codex que terminó se ve en verde; con varios esperando se cuentan.
-function notify(app, title, body) {
-    return Gio.Subprocess.new(['notify-send', '-a', app, title, body], Gio.SubprocessFlags.NONE);
-}
-
-async function testAgentIsland(macify) {
+// Las notificaciones de otras apps (también de agentes como Claude Code) no ocupan la isla.
+async function testIslandIgnoresNotifications(macify) {
     const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
-    if (!live?._agents) {
-        check('agents part', false, 'missing');
-        return;
-    }
-    const label = () => live._button.visible ? live._button.label.text : '';
-    notify('Claude Code', 'Claude Code', 'Claude needs your permission to use Bash');
-    await until(() => live._agents.current?.state === 'waiting', 5000);
-    await sleep(500);
-    check('agent waiting shows in the island', /Claude Code/.test(label()) &&
-        live._button.pill.has_style_class_name('macify-island-agent-waiting'), label());
-    await screenshot('agent-waiting');
-    notify('Codex', 'Codex', 'Task complete: tests passed');
-    await until(() => live._agents._items.some(i => i.name === 'Codex'), 5000);
-    check('waiting agent stays first over a finished one', live._agents.current?.name === 'Claude Code', label());
-    notify('ChatGPT', 'ChatGPT', 'Waiting for your approval');
-    await until(() => live._agents.waitingCount === 2, 5000);
-    await sleep(300);
-    check('several waiting agents are counted', /2/.test(label()), label());
-    await screenshot('agents-waiting');
-    live._button.menu.toggle();          // un clic en la cápsula: la tarjeta con cada aviso
-    await sleep(400);
-    const findCards = actor => [...(actor._openButton ? [actor] : []), ...(actor.get_children?.() ?? []).flatMap(findCards)];
-    const cards = findCards(live._cards.section.actor);
-    const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)].filter(Boolean);
-    check('clicking the island previews every agent notification', live._button.menu.isOpen && cards.length === 3 &&
-        cards.some(card => texts(card).some(t => /permission to use Bash/.test(t))), `open=${live._button.menu.isOpen} ${cards.length} cards: ${cards[0] ? texts(cards[0]).join('|') : ''}`);
-    await sleep(600);
-    const box = live._button.menu.actor;
-    const content = live._button.menu.box;
-    check('agent card menu is opaque', box.opacity === 255 && content.get_theme_node().get_background_color().alpha >= 240,
-        `opacity ${box.opacity}, background alpha ${content.get_theme_node().get_background_color().alpha}, classes ${box.get_style_class_name()}`);
-    await screenshot('agent-cards');
-    cards[0]._openButton.emit('clicked', 1);
-    await sleep(500);
-    check('Open from the card opens the agent and clears it', live._agents.waitingCount === 1 &&
-        !live._button.menu.isOpen, `${live._agents.waitingCount} waiting, ${label()}`);
-    live._button.menu.toggle();
-    await sleep(300);
-    const left = findCards(live._cards.section.actor);
-    left[0]?._dismissButton.emit('clicked', 1);
-    await sleep(300);
-    live._button.menu.close();
-    check('Dismiss removes the notification', live._agents.waitingCount === 0, `${live._agents.waitingCount} waiting`);
-    check('finished agent shows after the waiting ones', live._agents.current?.state === 'done' &&
-        live._button.pill.has_style_class_name('macify-island-agent-done'), label());
-    await screenshot('agent-done');
-    notify('Thunderbird', 'New mail', 'Claude sent you the invoice');
+    Gio.Subprocess.new(['notify-send', '-a', 'Claude Code', 'Claude Code', 'Claude needs your permission to use Bash'],
+        Gio.SubprocessFlags.NONE);
     await sleep(1500);
-    check('other apps mentioning an agent are ignored', !live._agents._items.some(i => i.source?.title === 'Thunderbird'));
+    const label = live?._button.visible ? live._button.label.text : '';
+    check('island ignores app notifications', live && !live._agents && !/Claude/.test(label), label);
     Main.messageTray.getSources().forEach(source => source.destroy());
-    await until(() => !live._agents.current, 9000);
-    check('island goes back to normal', !live._agents.current, label());
-}
-
-// Claude Code conectado: el hook real (macify agent-hook) pregunta en la isla y espera la respuesta.
-function agentHook(event, input) {
-    const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE});
-    launcher.set_cwd(GLib.getenv('MACIFY_TEST_REPO'));
-    const proc = launcher.spawnv(['python3', '-m', 'macify', 'agent-hook', event]);
-    return new Promise(resolve => proc.communicate_utf8_async(JSON.stringify(input), null, (p, result) => {
-        try {
-            resolve(p.communicate_utf8_finish(result)[1] ?? '');
-        } catch (e) {
-            resolve(`error: ${e.message}`);
-        }
-    }));
-}
-
-async function testClaudeApprovals(macify) {
-    const live = macify._parts.find(p => p.constructor.name === 'LiveActivities');
-    const label = () => live._button.visible ? live._button.label.text : '';
-    const findCards = actor => [...(actor._allowButton ? [actor] : []), ...(actor.get_children?.() ?? []).flatMap(findCards)];
-    const ask = {
-        hook_event_name: 'PermissionRequest', cwd: '/home/me/shop-api', tool_name: 'Bash',
-        tool_input: {command: 'npm run migrate -- --env staging', description: 'Run the staging migrations'},
-        permission_suggestions: [{type: 'addRules', behavior: 'allow', destination: 'localSettings',
-            rules: [{toolName: 'Bash', ruleContent: 'npm run migrate:*'}]}],
-    };
-    const answered = agentHook('permission', ask);
-    await until(() => live._agents.current?.state === 'approve', 8000);
-    await sleep(300);
-    check('a Claude Code permission request shows in the island', /Run the staging migrations/.test(label()) &&
-        live._button.pill.has_style_class_name('macify-island-agent-waiting'), label());
-    if (!live._button.menu.isOpen)
-        live._button.menu.toggle();
-    await sleep(600);
-    let cards = findCards(live._cards.section.actor);
-    const texts = actor => [actor.text, ...(actor.get_children?.() ?? []).flatMap(texts)].filter(Boolean);
-    check('the card shows the exact command', cards.length === 1 && texts(cards[0]).some(t => t.includes('npm run migrate -- --env staging')),
-        cards[0] ? texts(cards[0]).join('|') : 'no card');
-    await screenshot('claude-approval');
-    cards[0]?._allowButton.emit('clicked', 1);
-    const out = await answered;
-    check('Allow answers Claude Code at once', /"behavior": "allow"/.test(out), out);
-    check('the island clears after answering', !live._agents.items.some(i => i.state === 'approve'));
-
-    const denied = agentHook('permission', {...ask, tool_input: {command: 'rm -rf build', description: 'Delete build'}});
-    await until(() => live._agents.current?.state === 'approve', 8000);
-    if (!live._button.menu.isOpen)
-        live._button.menu.toggle();
-    await sleep(400);
-    cards = findCards(live._cards.section.actor);
-    const wasOpen = live._button.menu.isOpen;
-    if (!cards.length && live._agents.current?.state === 'approve')
-        live._agents.answer(live._agents.current, 'deny');   // sin tarjeta: que no espere 45 s
-    cards[0]?._denyButton.emit('clicked', 1);
-    const deniedOut = await denied;
-    check('Deny answers Claude Code', /"behavior": "deny"/.test(deniedOut) && cards.length === 1,
-        `${cards.length} cards, open=${wasOpen}, items=${live._agents.items.map(i => i.state).join(',')}, sensitive=${live._button.reactive}: ${deniedOut}`);
-
-    // Si el puente no contesta (por ejemplo, Macify apagado), el hook no decide nada.
-    const finished = agentHook('stop', {hook_event_name: 'Stop', cwd: '/home/me/shop-api', stop_hook_active: false,
-        last_assistant_message: 'Migrations ran on staging; 3 tables changed.'});
-    await finished;
-    await until(() => live._agents.current?.state === 'done', 5000);
-    check('Claude Code finishing shows in the island', live._agents.current?.state === 'done' &&
-        /Migrations ran on staging/.test(live._agents.current?.text ?? ''), live._agents.current?.text ?? 'none');
-    live._button.menu.close();
 }
 
 // Dictado en la isla, con un Dictado falso en el bus de la prueba (sin micrófono).
@@ -1239,8 +1122,33 @@ async function captureDemo(macify) {
 
     await captureMenu('macify-live', 'now-playing');
     player.stop();
+    await captureClipboard(macify);
+    await testDictadoIsland(macify);
     await captureAppGrid();
     await testBadges();
+}
+
+// Historial del portapapeles para el video: copias normales, de las que haría cualquiera.
+async function captureClipboard(macify) {
+    const clip = macify._parts.find(p => p.constructor.name === 'ClipboardHistory');
+    if (!clip)
+        return;
+    const board = St.Clipboard.get_default();
+    const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 320, 200);
+    pixbuf.fill(0x8e7cc3ff);
+    const [, png] = pixbuf.save_to_bufferv('png', [], []);
+    board.set_content(St.ClipboardType.CLIPBOARD, 'image/png', new GLib.Bytes(png));
+    await until(() => clip._items[0]?.kind === 'image', 3000);
+    for (const text of ['sudo apt install ./macify_all.deb', 'Meeting moved to Thursday at 10:00',
+        'https://github.com/jdswe/macify', 'Thanks! I will send the slides tonight.']) {
+        board.set_text(St.ClipboardType.CLIPBOARD, text);
+        await until(() => clip._items[0]?.text === text, 3000);
+    }
+    clip.open();
+    await sleep(400);
+    await screenshot('clipboard');
+    clip._close();
+    await sleep(300);
 }
 
 async function captureAppGrid() {
@@ -1274,11 +1182,10 @@ async function run() {
             await testDockPreviewEveryDisplay(macify);
             throw new Error('only dock hover requested');
         }
-        if (GLib.getenv('MACIFY_TEST_ONLY') === 'agents') {
-            await testAgentIsland(macify);
-            await testClaudeApprovals(macify);
+        if (GLib.getenv('MACIFY_TEST_ONLY') === 'dictado') {
+            await testIslandIgnoresNotifications(macify);
             await testDictadoIsland(macify);
-            throw new Error('only agents requested');
+            throw new Error('only island checks requested');
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'gtk') {
             await testGtkWindowsOpaque();
@@ -1286,7 +1193,7 @@ async function run() {
         }
         if (GLib.getenv('MACIFY_TEST_ONLY') === 'quick') {
             await testDockBounce();
-            await testAgentIsland(macify);
+            await testIslandIgnoresNotifications(macify);
             await testAppVolume();
             await testClipboardHistory(macify);
             await testGtkWindowsOpaque();
@@ -1325,8 +1232,7 @@ async function run() {
         await testDockScanout();
         await testBadges();
         await testDockBounce();
-        await testAgentIsland(macify);
-        await testClaudeApprovals(macify);
+        await testIslandIgnoresNotifications(macify);
         await testDictadoIsland(macify);
         await testAppVolume();
         await testEditor();

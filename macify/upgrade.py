@@ -16,7 +16,7 @@ import shutil
 import time
 from pathlib import Path
 
-from . import __version__, doctor, extensions, icons, installer, profile, system, wallpapers
+from . import __version__, doctor, extensions, icons, installer, old_hooks, profile, system, wallpapers
 from .assets import CACHE_DIR, busy, load_config, save_config_value
 from .i18n import _
 
@@ -74,6 +74,7 @@ def clean(log) -> None:
             freed += _remove(thumb)
     for name in LEFTOVERS:
         freed += _remove(CACHE_DIR / name)
+    old_hooks.remove(False, log)              # Claude Code en la isla se retiró en 0.23
     for archive in extensions.EXTENSIONS_DIR.glob("*.zip") if extensions.EXTENSIONS_DIR.exists() else []:
         if archive.name.removesuffix(".shell-extension.zip") not in extensions.PINS:
             freed += _remove(archive)          # extensiones que Macify ya no usa

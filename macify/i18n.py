@@ -161,19 +161,7 @@ SPANISH = {
         "Arranque negro con tu logo y la pantalla de inicio de sesión de macOS. Pide tu contraseña una vez.",
     "Startup and login screens": "Arranque e inicio de sesión",
     "Voice dictation (Dictado)": "Dictado por voz (Dictado)",
-    "Connected": "Conectado",
-    "Connected.": "Conectado.",
-    "Not connected.": "No conectado.",
-    "Claude Code in the menu bar": "Claude Code en la barra de menús",
-    "Allow or deny its requests and see when it finishes, without switching windows.":
-        "Permite o deniega sus peticiones y mira cuándo termina, sin cambiar de ventana.",
-    "Allow or deny its requests and see when it finishes, without switching windows. Adds Macify's hooks to ~/.claude/settings.json; nothing else there changes.":
-        "Permite o deniega sus peticiones y mira cuándo termina, sin cambiar de ventana. Añade los hooks de Macify a ~/.claude/settings.json; nada más cambia allí.",
-    "Not connected": "No conectado",
-    "Connect Claude Code to the menu bar ({path})": "Conectar Claude Code a la barra de menús ({path})",
-    "Claude Code asks in the menu bar from its next session.": "Claude Code pregunta en la barra de menús desde su próxima sesión.",
-    "Disconnect Claude Code from the menu bar ({path})": "Desconectar Claude Code de la barra de menús ({path})",
-    "{path} is not a settings object.": "{path} no es un objeto de ajustes.",
+    "Removing Macify's old Claude Code hooks ({path})": "Quitando los ganchos antiguos de Macify en Claude Code ({path})",
     "Speak and it types where the cursor is; transcribes calls and files. About 350 MB of speech models download once; everything runs on this computer.":
         "Hablas y escribe donde está el cursor; transcribe llamadas y archivos. Unos 350 MB de modelos de voz se descargan una vez; todo funciona en este equipo.",
     "Speak and it types where the cursor is; also transcribes calls and files. About 350 MB of speech models download once; everything runs on this computer, nothing is sent online.":

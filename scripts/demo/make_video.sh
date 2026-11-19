@@ -34,7 +34,7 @@ MACIFY_TEST_SETTINGS="/org/gnome/desktop/background/picture-uri='$wallpaper';/or
     "$repo/tests/shell/run.sh" "$work/shell" > /dev/null 2>&1 || true
 for shot in desktop menu-edit menu-window menu-battery menu-bluetooth menu-wifi menu-sound control-center osd date-menu \
     display-switcher \
-    screenshot-preview now-playing app-grid badge; do
+    screenshot-preview now-playing clipboard dictado-listening dictado-rec app-grid badge; do
     [ -f "$work/shell/$shot.png" ] || { echo "missing GNOME screen: $shot"; exit 1; }
 done
 
