@@ -439,6 +439,8 @@ async function testDictadoIsland(macify) {
         check('dictation shows in the island', /Listening/.test(label()) &&
             live._button.pill.has_style_class_name('macify-island-voice-recording'), label());
         check('island bars follow the voice level', live._button.bars.visible && scales !== '0.55,0.95,0.70,0.45', scales);
+        await sleep(900);                  // la cápsula termina de crecer antes de la foto
+        await dictadoCall('TestLevel', new GLib.Variant('(d)', [0.35]));
         await screenshot('dictado-listening');
         live._button.menu.toggle();          // clic: termina el dictado
         await until(() => live._dictado.dictation === 'idle', 3000);

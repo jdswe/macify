@@ -422,7 +422,7 @@ SCENES = [
                      "the app that's playing", crop=(560, 0, 1360, 420), max_h=780)),
     (4.4, shot_scene(S / "clipboard.png", "Clipboard history", "Super+V: your last ten copies, text and images, "
                      "ready to paste", crop=(700, 160, 1220, 640), max_h=760)),
-    (4.6, pair_scene([(S / "dictado-listening.png", (800, 0, 1040, 34)), (S / "dictado-rec.png", (840, 0, 1080, 34))],
+    (4.6, pair_scene([(S / "dictado-listening.png", (838, 0, 1078, 34)), (S / "dictado-rec.png", (840, 0, 1080, 34))],
                      "Voice dictation, optional", "With Dictado, the island shows when it listens and when it records",
                      top=520)),
     (4.2, shot_scene(S / "app-grid.png", "Apps on frosted glass", "Show Apps works like the Apps view in macOS 27",
