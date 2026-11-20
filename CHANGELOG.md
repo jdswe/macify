@@ -1,5 +1,9 @@
 # Macify release notes
 
+## 0.24.1
+
+- Fixed: the menu bar no longer shakes when more icons appear on the right (for example the screen-sharing and recording icons while you stream or record with OBS). The island's title kept hiding and coming back on every frame, so the icons on both sides jumped from side to side. Now the title just gets shorter, or hides and stays hidden, until there is room again.
+
 ## 0.24.0
 
 - **Choose your accent color.** The wallpaper page has a row of color circles, like Appearance on a Mac: blue, purple, pink, red, orange, yellow, green, teal and graphite. The first circle, **Automatic**, keeps taking the color from your wallpaper, as before. The color you pick is used for buttons, switches, selections and highlights across GNOME and its apps, and in **Customize** it changes live. Doctor and updates keep your choice.

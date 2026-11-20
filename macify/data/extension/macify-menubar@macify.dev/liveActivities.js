@@ -34,6 +34,8 @@ const MAX_TEXT = 44;
 // espacio que queda libre de verdad (entre estos límites, en píxeles lógicos).
 const LABEL_MAX_PX = 320;
 const LABEL_MIN_PX = 48;
+const LABEL_HYSTERESIS_PX = 24;
+const ISLAND_SPACING_PX = 8;    // `spacing` of .macify-island in stylesheet.css
 const BARS_STEP_MS = 167;
 const RESTING_BARS = [0.55, 0.95, 0.7, 0.45];
 const UPOWER_STATE = {CHARGING: 1, DISCHARGING: 2, FULL: 4};
@@ -217,13 +219,22 @@ export class LiveActivities {
         const [, left] = panel._leftBox.get_preferred_width(-1);
         const [, right] = panel._rightBox.get_preferred_width(-1);
         const [, center] = panel._centerBox.get_preferred_width(-1);
-        const [, label] = button.label.get_preferred_width(-1);
+        // Width of the center without the title. A hidden title (and the gap before it) is
+        // not part of the center anymore: subtracting it anyway overestimated the free room,
+        // so the title came back, no longer fit, hid again... and the whole bar shook in a
+        // loop (e.g. while streaming, with the screen-sharing icon making the right side wider).
+        const shown = button.label.visible;
+        const label = shown ? button.label.get_preferred_width(-1)[1] + ISLAND_SPACING_PX * scale : 0;
         const room = (panel.width - 2 * Math.max(left, right) - (center - label)) / scale - 8;
         const width = Math.min(LABEL_MAX_PX, Math.floor(room));
         const style = `max-width: ${Math.max(width, 0)}px;`;
         if (button.label.style !== style)
             button.label.style = style;
-        button.label.visible = width >= LABEL_MIN_PX;      // sin sitio: sólo icono y barras
+        // No room: only icon and bars. It only comes back with some margin to spare, so a
+        // pixel more or less never toggles it on and off.
+        const fits = width >= (shown ? LABEL_MIN_PX : LABEL_MIN_PX + LABEL_HYSTERESIS_PX);
+        if (fits !== shown)
+            button.label.visible = fits;
     }
 
     _show(icon, text, playing) {
